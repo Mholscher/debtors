@@ -39,5 +39,38 @@ class TestCreateBill(unittest.TestCase):
         db.session.flush()
         self.assertTrue(bill01.bill_id, 'No bill id found')
 
+    def test_no_sale_date_fails(self):
+        """ The date of sale is required """
+
+        with self.assertRaises(ValueError):
+            bill02 = Bills(date_sale=None, status='new')
+            bill02.add()
+            db.session.flush()
+
+    def test_replaced_bill_must_exist(self):
+        """ Adding a bill replacing a non-existent bill, fails """
+
+        with self.assertRaises(ValueError):
+            bill03 = Bills(date_sale=datetime.now(), date_bill=None,
+                            prev_bill=1005, status='new')
+            bill03.add()
+            db.session.flush()
+
+    def test_can_replace_bill(self):
+        """ Replacing an existing bill succeeds """
+
+        bill04 = Bills(date_sale=datetime.now(), date_bill=None,
+                      status='new')
+        bill04.add()
+        db.session.flush()
+        bill04 = db.session.query(Bills).first()
+        bill05 = Bills(date_sale=datetime.now(), date_bill=None,
+                      prev_bill=bill04.bill_id, status='new')
+        bill05.add()
+        db.session.flush()
+        self.assertEqual(bill05.prev_bill, bill04.bill_id,
+                         'Bill to replace not accepted')
+
+
 if __name__ == '__main__' :
     unittest.main()

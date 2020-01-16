@@ -19,7 +19,7 @@ The interface will lead to the creation of a debt. For each debt there is one cl
 +------------------------+--------------------+-----------+----------+
 | date of the sale       | the source system  | Mandatory | n/a      |
 +------------------------+--------------------+-----------+----------+
-| date of the bill       | the debtor system  | Mandatory | today    |
+| date of the bill       | the debtor system  | optional  | today    |
 +------------------------+--------------------+-----------+----------+
 | bill this one replaces | the source system  | Optional  | None     |
 +------------------------+--------------------+-----------+----------+
@@ -27,6 +27,8 @@ The interface will lead to the creation of a debt. For each debt there is one cl
 +------------------------+--------------------+-----------+----------+
 
 The debt will have a unique id, determined by the debtors system.
+
+The date of the bill is said to be optional, because after creation at first the date is not filled. It is set by the process of producing the notification to the client. See :ref:`notification`
 
 The debt will be detailed in lines. Each line will contain 
 
@@ -72,6 +74,8 @@ For each line we fill fields as follows:
     :a number of units or measures: Supplied by data entry, but optional.
     :a description of the measure: Supplied by data entry, but optional.
     :a unit price: Needs to be supplied by data entry.
+
+.. _notification:
 
 Notification of the client
 --------------------------------
