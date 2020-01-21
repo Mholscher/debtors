@@ -44,6 +44,17 @@ class ReplacedBillError(ValueError):
     pass
 
 
+class ShortDescRequiredError(ValueError):
+    """ A bill line is required to have a short description """
+
+    pass
+
+class UnitPriceRequiredError(ValueError):
+    """ On a bill line a unit price is required """
+
+    pass
+
+
 class Bills(db.Model):
     """ Bill models the bill sent to the client.
     
@@ -68,7 +79,8 @@ class Bills(db.Model):
     date_bill = db.Column(db.DateTime, nullable=True, default=None)
     prev_bill = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
                           nullable=True)
-    status = db.Column(db.String(8), default='new')
+    status = db.Column(db.String(8), server_default='new')
+    lines = db.relationship('BillLines', backref='bill')
     
     def add(self):
         """ Add the bill to the session """
@@ -87,11 +99,21 @@ class Bills(db.Model):
     def validate_previous_bill(self, key, prev_bill):
         """ Checks a previous bill exists """
 
+        if not prev_bill:
+            return prev_bill
         try:
             old = Bills.get_bill_by_id(prev_bill)
         except BillNotFoundError:
-            raise ReplacedBillError('The bill to replace does not exist')
+            raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
         return prev_bill
+
+    def total(self):
+        """ Return the total bill amount """
+
+        total = 0
+        for line in self.lines:
+            total += line.total()
+        return total
 
     @staticmethod
     def get_bill_by_id(id_requested):
@@ -102,3 +124,58 @@ class Bills(db.Model):
             raise BillNotFoundError(
                 'Bill with id {0} was notfound'.format(id_requested))
         return bill
+
+
+class BillLines(db.Model):
+    """ A line on the bill.
+    
+    The lines explain to the client what she is paying for.
+    Each line is e.g. for a product purchased, or a period
+    of a subscription.
+
+        :bill_id: The link to the bill this line belongs to
+        :line_id: The key to this line
+        :short_desc: A short description of what is billed though the line
+        :long_desc: A description of what is billed though the line
+        :number_items: The number of items or measures
+        :measure: Name of the measure used; empty is units
+        :unit_price: The price of one unit (or measure)
+
+    """
+
+    __tablename__ = 'billlines'
+    bill_id = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
+                        nullable=False)
+    line_id = db.Column(db.Integer, db.Sequence('line_sequence'),
+                        primary_key=True)
+    short_desc = db.Column(db.String(10), nullable=False)
+    long_desc = db.Column(db.String(40))
+    number_of = db.Column(db.Integer, server_default='1')
+    measured_in = db.Column(db.String(10), nullable=True) 
+    unit_price = db.Column(db.Integer, nullable=False)
+
+    def add(self):
+        """ Add this line to the session """
+
+        db.session.add(self)
+
+    @validates('short_desc')
+    def validate_short_desc(self, key, short_desc):
+        """ A short description is required """
+
+        if short_desc:
+            return short_desc
+        raise ShortDescRequiredError('A short description is required')
+
+    @validates('unit_price')
+    def validate_unit_price(self, key, unit_price):
+        """ A unit price is required """
+
+        if unit_price:
+            return unit_price
+        raise UnitPriceRequiredError('A unit price is required')
+
+    def total(self):
+        """ Calculate a total amount billed on this line """
+
+        return self.number_of * self.unit_price
