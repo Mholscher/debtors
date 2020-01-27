@@ -30,4 +30,5 @@ CSRFProtect(app)
 #logging.debug('Debug logging')
 
 import debtmodels.debtbilling 
+import clientmodels.clients
 from . import views

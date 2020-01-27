@@ -90,7 +90,8 @@ The database contains the following data for the clients addresses:
 +------------------------+--------------------+-----------+----------+
 | post code              | input data         | Mandatory | No       |              
 +------------------------+--------------------+-----------+----------+
-| Country code           | input data         | Optional  | NLD      |              
+| Country code           | input data         | Optional  | From     |              
+|                        |                    |           | config   |
 +------------------------+--------------------+-----------+----------+
 | address use            | input data         | Optional  | General  |              
 +------------------------+--------------------+-----------+----------+
@@ -134,6 +135,7 @@ The database contains the following data for bank accounts:
 | preferred              | input data         | Optional  | None     |              
 +------------------------+--------------------+-----------+----------+
 
+
 The API for the debtors system
 ------------------------------
 
@@ -144,5 +146,5 @@ The client system needs to be able to supply the debtors system with information
     :selected clients: Select client information by name
     :find client by account: return client information for a given account number
 
-All these interfaces are purely for GETting information from the client ssytem. It will not be possible to do changes through  the interfaces.
+All these interfaces are purely for GETting information from the client system. It will not be possible to do changes through  the interfaces.
 
