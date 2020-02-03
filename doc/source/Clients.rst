@@ -88,7 +88,7 @@ The database contains the following data for the clients addresses:
 +------------------------+--------------------+-----------+----------+
 | town or village        | input data         | Mandatory | No       |              
 +------------------------+--------------------+-----------+----------+
-| post code              | input data         | Mandatory | No       |              
+| post code              | input data         | Optional  | n/a      |              
 +------------------------+--------------------+-----------+----------+
 | Country code           | input data         | Optional  | From     |              
 |                        |                    |           | config   |
