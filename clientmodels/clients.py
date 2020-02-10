@@ -22,8 +22,8 @@ All models will be in this file, because the model is to be as simple as
 can be. After all, it is just for showing what debtors needs.
 """
 from datetime import date
-from sqlalchemy import event
-from sqlalchemy.orm import validates
+from sqlalchemy import event, text
+from sqlalchemy.orm import validates, Session
 from debtors import db
 
 
@@ -63,6 +63,17 @@ class NotAValidAddressType(ValueError):
     pass
 
 
+class DuplicateMailError(Exception):
+    """ A mail address must be unique for a client """
+
+    pass
+
+class TooManyPreferredMailsError(Exception):
+    """ Only one mail address can be preferred """
+
+    pass
+
+
 VALID_ADDRESS_TYPES = {'P', 'R', ' '}
 POSTAL_ADDRESS = 'P'
 RESIDENTIAL_ADDRESS = 'R'
@@ -85,6 +96,7 @@ class Clients(db.Model):
     birthdate = db.Column(db.Date)
     sex = db.Column(db.String(1), server_default=' ')
     addrs = db.relationship('Addresses', backref='adressee')
+    emails = db.relationship('EMail', backref='to')
 
     @validates('surname')
     def validate_surname(self, key, surname):
@@ -126,6 +138,11 @@ class Clients(db.Model):
 
         return Addresses.postal_address_for_client(self)
 
+    def preferred_mail(self):
+        """ Return the preferred mail address for the client """
+
+        return EMail.preferred_mail_for_client(self)
+
 
 class Addresses(db.Model):
     """ Address records for a client. 
@@ -149,7 +166,7 @@ class Addresses(db.Model):
     address_use = db.Column(db.String(1), nullable=False, default=' ')
 
     def add(self):
-        """ Add 6this address to the session """
+        """ Add this address to the session """
 
         db.session.add(self)
         return self
@@ -217,4 +234,76 @@ class Addresses(db.Model):
         if general_addresses:
             return general_addresses[0]
         raise NoPostalAddressError(f'A postal addres could not be found: {client.surname}')
+
+
+class EMail(db.Model):
+    """ Electronic mail addresses for a client
+    
+    It is just an electronic mail address for the client, plus an
+    indicator telling if an address is preferred to contact the client.
+    """
+
+    __tablename__ = 'email'
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
+                          primary_key=True, nullable=False)
+    mail_address = db.Column(db.String(65), primary_key=True, nullable=False,
+                             index=True)
+    preferred = db.Column(db.Integer, server_default=text("0"))
+
+    def add(self):
+        """ Add this address to the session """
+
+        db.session.add(self)
+
+    @staticmethod
+    def preferred_mail_for_client(client):
+        """ Return the preferred mail address for client """
+
+        mail_address = [x for x in client.emails if x.preferred]
+        if mail_address:
+            return mail_address[0]
+        return client.emails[0]
+
+    def check_duplicates(self, session):
+        """ The check searches for duplicates of this mail address.
         
+        It can only be executed after all changes in a transaction
+        are completed, i.e. typically in the before_flush event.
+        N.B. The passing of the session is a hack; you can get it also
+        as the global session, but this makes the importance of the 
+        session for the process clearer.
+        """
+
+        for email in self.to.emails:
+            if email.mail_address == self.mail_address\
+                and email != self\
+                and not email in session.deleted:
+                    raise DuplicateMailError('Can not have equal addresses for client')
+
+    def check_preferred(self, session):
+        """ Check that at most one address is preferred """
+
+        count = 0
+        for email in self.to.emails:
+            if email.preferred:
+                count += 1
+        if count > 1:
+            raise TooManyPreferredMailsError('Only one preferred mail address allowed')
+
+    def check_before_flushing(self, session):
+        """ Do all before flushing checks """
+
+        self.check_duplicates(session)
+        self.check_preferred(session)
+
+@event.listens_for(Session, "before_flush")
+def before_flush(session, flush_context, instances):
+    """ This is the place to do cross item edits.
+    
+    All items are ready to be persisted and need no more
+    updates.
+    """
+
+    for instance in session.dirty | session.new:
+        if isinstance(instance, EMail):
+            instance.check_before_flushing(session)

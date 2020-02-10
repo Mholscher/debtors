@@ -18,7 +18,8 @@ import unittest
 from debtors import db
 from datetime import date, timedelta
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
-    POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS
+    POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
+        DuplicateMailError, TooManyPreferredMailsError
 
 
 class TestCreateClient(unittest.TestCase):
@@ -246,3 +247,102 @@ class TestAddressUse(unittest.TestCase):
         db.session.flush()
         with self.assertRaises(NoPostalAddressError):
             adr12 = self.clt09.postal_address()
+
+
+class TestMailAddress(unittest.TestCase):
+
+    def setUp(self):
+
+        self.clt10 = Clients(surname='Snavelaar', first_name='Karel',
+                        initials='K.T.', birthdate=date(1971, 4, 5),
+                        sex='M')
+        self.clt10.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_add_mail_address(self):
+        """ We can add a first mail address """
+
+        mad01 = EMail(mail_address='ksnavelaar@gmail.com')
+        self.clt10.emails.append(mad01)
+        db.session.flush()
+        self.assertEqual(self.clt10.emails[0].mail_address,
+                         'ksnavelaar@gmail.com', 
+                         'Email not added')
+    def test_add_more_than_one(self):
+        """ We can add more than one mail address """
+
+        mad02 = EMail(mail_address='ksnavelaar@gmail.com')
+        self.clt10.emails.append(mad02)
+        mad03 = EMail(mail_address='praatgraag@ziggo.nl')
+        self.clt10.emails.append(mad03)        
+        db.session.flush()
+        self.assertEqual(len(self.clt10.emails), 2, 'No 2 emails for client')
+
+    def test_cannot_add_mail_twice(self):
+        """ We cannot add the same mail address twice """
+
+        with self.assertRaises(DuplicateMailError):
+            mad04 = EMail(mail_address='schnitzel@gmail.com')
+            self.clt10.emails.append(mad04)
+            mad05 = EMail(mail_address='schnitzel@gmail.com')
+            self.clt10.emails.append(mad05)        
+            db.session.flush()
+
+    def test_delete_duplicate(self):
+        """ We can add a mail address after we deleted a duplicate """
+
+        mad06 = EMail(mail_address='saucijs@gmail.com')
+        self.clt10.emails.append(mad06)
+        db.session.flush()
+        db.session.delete(mad06)
+        mad07 = EMail(mail_address='saucijs@gmail.com')
+        self.clt10.emails.append(mad07)        
+        db.session.flush()
+        self.assertEqual(self.clt10.emails[0], mad06, 'Wrong mail address on client')
+
+    def test_can_set_preferred(self):
+        """ We can set a preferred mail address """
+
+        mad10 = EMail(mail_address='bigmouth@gmail.com', preferred=1)
+        self.clt10.emails.append(mad10)
+        db.session.flush()
+        self.assertTrue(self.clt10.emails[0].preferred, 'Email address not preferred')
+
+    def test_client_knows_preferred(self):
+        """ We can find the preferred mail address for a client """
+
+        mad11 = EMail(mail_address='nondescrip@gmail.com', preferred=1)
+        self.clt10.emails.append(mad11)
+        mad12 = EMail(mail_address='verydescrip@gmail.com')
+        self.clt10.emails.append(mad12)
+        db.session.flush()
+        self.assertEqual(self.clt10.preferred_mail(), mad11,
+                         'Client did not return preferred address')
+
+    def test_no_preferred_any_will_do(self):
+        """ No preferred address for client, than any will do """
+
+        mad13 = EMail(mail_address='any1@gmail.com', preferred=1)
+        self.clt10.emails.append(mad13)
+        mad14 = EMail(mail_address='any2@gmail.com')
+        self.clt10.emails.append(mad14)
+        db.session.flush()
+        self.assertIn(self.clt10.preferred_mail(), {mad13, mad14},
+                      'Invalid/no mail returned')
+        
+
+    def test_cannot_set_preferred_twice(self):
+        """ We should not be able to set preferred on 2 addresses """
+
+        with self.assertRaises(TooManyPreferredMailsError):
+            mad08 = EMail(mail_address='bigmouth@gmail.com', preferred=1)
+            self.clt10.emails.append(mad08)
+            mad09 = EMail(mail_address='maggie@gmail.com', preferred=1)
+            self.clt10.emails.append(mad09)        
+            db.session.flush()
+        
+        

@@ -41,6 +41,7 @@ The client can have one or more addresses. These come in flavors, a mail address
 An electronic mail address is utterly simple:
 
     :email: Electronic mail address for internet use. This address is checked to have valid syntax ("format")
+    :preferred: Is this the client his preferred mail address?
 
 The client can have one or more bank accounts. 
 
@@ -108,11 +109,11 @@ The database contains the following data for email addresses:
 +------------------------+--------------------+-----------+----------+
 | Field name             |Source              | Optional? | Default  |
 +========================+====================+===========+==========+
-| client id              | the client system  | Mandatory | n/a      |              
-+------------------------+--------------------+-----------+----------+
-| id                     | the client system  | n/a       | n/a      |              
+| client id              | the client system  | Mandatory | n/a      |             
 +------------------------+--------------------+-----------+----------+
 | mail address           | input data         | Mandatory | No       |              
++------------------------+--------------------+-----------+----------+
+| preferred              | input data         | Optional  | None     |              
 +------------------------+--------------------+-----------+----------+
 
 The database contains the following data for bank accounts:
