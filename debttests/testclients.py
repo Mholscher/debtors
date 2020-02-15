@@ -19,7 +19,7 @@ from debtors import db
 from datetime import date, timedelta
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
-        DuplicateMailError, TooManyPreferredMailsError
+        DuplicateMailError, TooManyPreferredMailsError, BankAccounts
 
 
 class TestCreateClient(unittest.TestCase):
@@ -344,5 +344,75 @@ class TestMailAddress(unittest.TestCase):
             mad09 = EMail(mail_address='maggie@gmail.com', preferred=1)
             self.clt10.emails.append(mad09)        
             db.session.flush()
+
+
+class TestBankAccounts(unittest.TestCase):
+
+    def setUp(self):
+
+        self.clt11 = Clients(surname='Gijzen', first_name='Fien',
+                        initials='F.', birthdate=date(1941, 4, 16),
+                        sex='F')
+        self.clt11.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_can_create_account(self):
+        """ We can create a new bankaccount """
+
+        ba01 = BankAccounts(iban='NL82INGB0001789067', 
+                            client_name='Mevr. F. Gijzen')
+        self.clt11.accounts.append(ba01)
+        db.session.flush()
+        self.assertEqual(self.clt11.accounts[0].client_name,
+                         'Mevr. F. Gijzen', 'Name account owner incorrect')
+
+    def test_name_defaults(self):
+        """ No name specified? Default is initials + surname """
+
+        ba02 = BankAccounts(iban='NL82INGB0001789067') 
+        self.clt11.accounts.append(ba02)
+        db.session.flush()
+        self.assertEqual(self.clt11.accounts[0].client_name, 
+                         (self.clt11.initials + ' ' + self.clt11.surname),
+                         'Name default not set correctly')
+
+    def test_reject_failed_checksum(self):
+        """ An account number with invalid checksum is rejected """
+
+        with self.assertRaises(ValueError):
+            ba03 = BankAccounts(iban='NL02ABNA0123456780',
+                                client_name='W. Vanderman')
+            self.clt11.accounts.append(ba03)
+            db.session.flush()
+
+    def test_reject_on_control(self):
+        """ An account number with invalid control digits is rejected """
+
+        with self.assertRaises(ValueError):
+            ba04 = BankAccounts(iban='NL01ABNA0123456789',
+                                client_name='W. Vanderman')
+            self.clt11.accounts.append(ba04)
+            db.session.flush()
+        with self.assertRaises(ValueError):
+            ba05 = BankAccounts(iban='NL99ABNA0123456789',
+                                client_name='W. Vanderman')
+            self.clt11.accounts.append(ba05)
+            db.session.flush()
+
+    def test_iban_mandatory(self):
+        """ The IBAN is mandatory """
+
+        with self.assertRaises(ValueError):
+            ba06 = BankAccounts(iban=None,
+                                client_name='W. Vanderman')
+            self.clt11.accounts.append(ba06)
+            db.session.flush()
         
-        
+
+
+if __name__ == '__main__' :
+    unittest.main()

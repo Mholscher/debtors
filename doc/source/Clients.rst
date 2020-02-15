@@ -133,8 +133,6 @@ The database contains the following data for bank accounts:
 |                        |                    |           | name and |              
 |                        |                    |           | initials |              
 +------------------------+--------------------+-----------+----------+
-| preferred              | input data         | Optional  | None     |              
-+------------------------+--------------------+-----------+----------+
 
 
 The API for the debtors system
@@ -144,6 +142,7 @@ The client system needs to be able to supply the debtors system with information
 
     :the client address: Address information for a client
     :client bank accounts: Deliver bank account information
+    :bank account info: Deliver data for one (specified) bank account
     :selected clients: Select client information by name
     :find client by account: return client information for a given account number
 

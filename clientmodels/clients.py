@@ -63,6 +63,12 @@ class NotAValidAddressType(ValueError):
     pass
 
 
+class InvalidIBANError(ValueError):
+    """ An IBAN failed the check for a valid checksum """
+
+    pass
+
+
 class DuplicateMailError(Exception):
     """ A mail address must be unique for a client """
 
@@ -97,6 +103,7 @@ class Clients(db.Model):
     sex = db.Column(db.String(1), server_default=' ')
     addrs = db.relationship('Addresses', backref='adressee')
     emails = db.relationship('EMail', backref='to')
+    accounts = db.relationship('BankAccounts', backref='owner')
 
     @validates('surname')
     def validate_surname(self, key, surname):
@@ -296,6 +303,62 @@ class EMail(db.Model):
         self.check_duplicates(session)
         self.check_preferred(session)
 
+
+class BankAccounts(db.Model):
+    """ Bank accounts for a client
+    
+    Each account is identified for the outside world by a IBAN.
+    Other account numbers are not supported. The bank account use
+    is for billing and receipt processing. No balances or so
+    are being maintained.
+    """
+
+    __tablename__ = 'bankaccounts'
+    id = db.Column(db.Integer, db.Sequence('bankacc-seq'), primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
+                          nullable=False)
+    iban = db.Column(db.String(40), nullable=True, index=True)
+    bic = db.Column(db.String(10), nullable=True)
+    client_name = db.Column(db.String(60))
+
+    """ Translate table for IBAN checks; mind you: ASCII/Unicode specific! """
+    iban_trans = {x : str(x - 87) for x in range(97, 123)}
+
+    def add(self):
+        """ Add this account to the database session """
+
+        db.session.add(self)
+
+    @validates("iban")
+    def validate_iban(self, key, iban):
+        """ Validate an IBAN using the 97-test."""
+
+        if iban is None or iban == '':
+            raise InvalidIBANError('An IBAN is required')
+        check_digit = int(iban[2:4])
+        if check_digit < 2 or check_digit > 98:
+            raise InvalidIBANError('Check digit invalid')
+        recomposed = (iban[4:len(iban)] + iban[0:4]).lower()
+        recomposed = recomposed.translate(self.iban_trans)
+        if int(recomposed) % 97 == 1:
+            return iban
+        raise InvalidIBANError('IBAN failed checksum test')
+
+    def check_account_name(self, session):
+        """ Check that the account name is not empty. If it is empty,
+        default to the initials and name of the client.
+        
+        This should be done just before flushing, when everything is
+        filled.
+        """
+
+        if self.client_name is None or self.client_name == '':
+            self.client_name = self.owner.initials + ' ' + self.owner.surname
+        
+    def check_before_flushing(self, session):
+
+        self.check_account_name(session)
+
 @event.listens_for(Session, "before_flush")
 def before_flush(session, flush_context, instances):
     """ This is the place to do cross item edits.
@@ -305,5 +368,5 @@ def before_flush(session, flush_context, instances):
     """
 
     for instance in session.dirty | session.new:
-        if isinstance(instance, EMail):
+        if isinstance(instance, EMail) or isinstance(instance, BankAccounts):
             instance.check_before_flushing(session)
