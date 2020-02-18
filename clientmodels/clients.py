@@ -26,6 +26,7 @@ from sqlalchemy import event, text
 from sqlalchemy.orm import validates, Session
 from debtors import db
 
+query = db.session.query
 
 class  NoSurnameError(ValueError):
     """ The surname cannot be empty """
@@ -44,9 +45,20 @@ class InvalidSexError(ValueError):
 
     pass
 
+class NoClientFoundError(ValueError):
+    """ A request did not find a client """
+
+    pass
+
 
 class NoPostalAddressError(Exception):
     """ No postal address was found """
+
+    pass
+
+
+class NoResidentialAddressError(Exception):
+    """ No residetial address was found """
 
     pass
 
@@ -65,6 +77,12 @@ class NotAValidAddressType(ValueError):
 
 class InvalidIBANError(ValueError):
     """ An IBAN failed the check for a valid checksum """
+
+    pass
+
+
+class NoAccountFoundError(ValueError):
+    """ No account found for the requested id or IBAN """
 
     pass
 
@@ -145,11 +163,36 @@ class Clients(db.Model):
 
         return Addresses.postal_address_for_client(self)
 
+    def residential_address(self):
+        """ Return the correct residential address for the client """
+
+        return Addresses.residential_addres_for_client(self)
+
     def preferred_mail(self):
         """ Return the preferred mail address for the client """
 
         return EMail.preferred_mail_for_client(self)
 
+    @staticmethod
+    def get_client_by_iban(iban):
+        """ Get a client by IBAN
+        
+        If more than one client exists with this IBAN (Compte Jointe)
+        we return an error, also when the IBAN does not occur in the
+        database.
+        """
+
+        try:
+            return BankAccounts.get_account_by_iban(iban).owner
+        except NoAccountFoundError as naf:
+            raise NoClientFoundError(naf.e) from naf
+
+    @staticmethod
+    def get_clients_by_name(surname):
+        """ Get a list of clients with the surname supplied """
+
+        return query(Clients).filter(Clients.surname == surname).all()
+            
 
 class Addresses(db.Model):
     """ Address records for a client. 
@@ -241,6 +284,26 @@ class Addresses(db.Model):
         if general_addresses:
             return general_addresses[0]
         raise NoPostalAddressError(f'A postal addres could not be found: {client.surname}')
+
+    @staticmethod
+    def residential_addres_for_client(client):
+        """ Return one residential address for a client.
+        
+        If the client has at least one address marked residential, return
+        that. Otherwise return one general address.
+        If no residential or general address is available,
+        fail.
+        """
+        
+        residential_addresses = [x for x in client.addrs\
+            if x.address_use == RESIDENTIAL_ADDRESS]
+        if residential_addresses:
+            return residential_addresses[0]
+        residential_addresses = [x for x in client.addrs\
+            if x.address_use == GENERAL_ADDRESS]
+        if residential_addresses:
+            return residential_addresses[0]
+        raise NoResidentialAddressError(f'No residential address found: {client.surname}')
 
 
 class EMail(db.Model):
@@ -358,6 +421,17 @@ class BankAccounts(db.Model):
     def check_before_flushing(self, session):
 
         self.check_account_name(session)
+
+    @staticmethod
+    def get_account_by_iban(iban):
+        """ Get the data of an account based on a supplied iban """
+
+        accounts = query(BankAccounts).filter(BankAccounts.iban == iban).all()
+        if len(accounts) == 0:
+            raise NoAccountFoundError('No account for {}'.format(iban))
+        if len(accounts) > 1:
+            raise MoreThanOnAccountError('More than 1 account for {}'.format(iban))
+        return accounts[0]
 
 @event.listens_for(Session, "before_flush")
 def before_flush(session, flush_context, instances):

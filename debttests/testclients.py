@@ -19,7 +19,8 @@ from debtors import db
 from datetime import date, timedelta
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
-        DuplicateMailError, TooManyPreferredMailsError, BankAccounts
+        DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
+        NoResidentialAddressError
 
 
 class TestCreateClient(unittest.TestCase):
@@ -248,6 +249,19 @@ class TestAddressUse(unittest.TestCase):
         with self.assertRaises(NoPostalAddressError):
             adr12 = self.clt09.postal_address()
 
+    def test_no_residential_address(self):
+        """ No residential address fails when getting residential address """
+
+        clt13 = Clients(surname='Kansom', initials='G.J.',
+                        sex='M')
+        adr18 = Addresses(po_box='12', town_or_village='Ootmarsum',
+                         address_use=POSTAL_ADDRESS)
+        clt13.addrs.append(adr18)
+        db.session.flush()
+        with self.assertRaises(NoResidentialAddressError):
+            adr19 = clt13.residential_address()
+        
+
 
 class TestMailAddress(unittest.TestCase):
 
@@ -411,7 +425,91 @@ class TestBankAccounts(unittest.TestCase):
                                 client_name='W. Vanderman')
             self.clt11.accounts.append(ba06)
             db.session.flush()
-        
+
+
+class TestDebtorInterface(unittest.TestCase):
+
+    def setUp(self):
+
+        self.clt12 = Clients(surname='Jansen', first_name='Tycho',
+                        initials='T.M.', birthdate=date(1971, 2, 23),
+                        sex='M')
+        self.clt12.add()
+        self.adr14 = Addresses(po_box='42', town_or_village='Den Haag',
+                               postcode='2754 DP', country_code='NLD',
+                               address_use=POSTAL_ADDRESS)
+        self.clt12.addrs.append(self.adr14)
+        self.adr15 = Addresses(street='Willemsstraat',
+                               town_or_village='Naaldwijk',
+                               house_number='77',
+                               postcode='2822 GH', country_code='NLD',
+                               address_use=RESIDENTIAL_ADDRESS)
+        self.clt12.addrs.append(self.adr15)
+        self.mad15 = EMail(mail_address='tyhoj@aprovider.com')
+        self.clt12.emails.append(self.mad15)
+        self.mad16 = EMail(mail_address='tyhoj@otherprovider.com',
+                           preferred=True)
+        self.clt12.emails.append(self.mad16)
+        self.ba07 = BankAccounts(iban='GB33BUKB20201555555555', 
+                            client_name='Tycho Jansen')
+        self.clt12.accounts.append(self.ba07)
+        self.ba08 = BankAccounts(iban='NL83INSI0807135747', 
+                            client_name='T.M. Jansen')
+        self.clt12.accounts.append(self.ba08)        
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_get_postal_address(self):
+        """ We get the correct postal address """
+
+        adr16 = self.clt12.postal_address()
+        self.assertEqual(adr16, self.adr14, 'Wrong postal address')
+
+    def test_get_residential_address(self):
+        """ We can get the residential address """
+
+        adr17 = self.clt12.residential_address()
+        self.assertEqual(adr17, self.adr15, 'Wrong residential address')
+
+    def test_get_bank_account_list(self):
+        """ We can get a list of bank accounts for a client """
+
+        account_list = self.clt12.accounts
+        self.assertEqual(len(account_list), 2, f'Wrong no. of accounts: {len(account_list)}') 
+        self.assertIn(self.ba08, account_list, 'Account missing')
+
+    def test_get_acccount_data_by_iban(self):
+        """  We can get account data by IBAN """
+
+        ba09 = BankAccounts.get_account_by_iban(self.ba08.iban)
+        self.assertEqual(ba09.client_name, self.ba08.client_name,
+                         'Wrong account data returned')
+
+    def test_get_client_by_iban(self):
+        """ Get a client from IBAN """
+
+        clt14 = Clients.get_client_by_iban(self.ba08.iban)
+        self.assertEqual(clt14, self.clt12, 'Wrong client returned')
+
+    def test_get_client_by_name(self):
+        """ Get a client by surname """
+
+        clt_list01 = Clients.get_clients_by_name(self.clt12.surname)
+        self.assertEqual(clt_list01[0].surname, self.clt12.surname, 
+                         'Client returned with wrong surname')
+
+    def test_more_clients_same_name(self):
+        """ More clients with the same surname are returned """
+
+        clt15 = Clients(surname='Jansen', first_name='Arne',
+                        sex='M')
+        clt15.add()
+        db.session.flush()
+        clt_list02 = Clients.get_clients_by_name(self.clt12.surname)
+        self.assertEqual(len(clt_list02), 2, 'Not the correct no. of Clients returned')
 
 
 if __name__ == '__main__' :
