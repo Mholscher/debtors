@@ -17,7 +17,7 @@
 
 import logging
 import configparser
-from flask import Flask
+from flask import Flask, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
@@ -32,3 +32,8 @@ CSRFProtect(app)
 import debtmodels.debtbilling 
 import clientmodels.clients
 from . import views
+client_pages = Blueprint('client', __name__)
+app.register_blueprint(client_pages)
+from clientviews.clients import ClientView
+app.add_url_rule('/client/<int:id>', view_func=ClientView.as_view('clients'))
+app.add_url_rule('/client/new', view_func=ClientView.as_view('create_client'))

@@ -1,0 +1,17 @@
+<!doctype html>
+<head>
+{% block title %}
+<title>{{localtitle}}  {% if localtitle %} : {% endif %} Debtors </title>
+{% endblock %} 
+<link rel=stylesheet type="text/css" href="{{ url_for('static', filename='master.css') }}">
+</head>
+<body>
+<div class=page>
+  {% block menu %}{% endblock menu %} 
+  {% block searches %}{% endblock searches %}
+  {% for message in get_flashed_messages() %}
+    <div class=flash>{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock content %}
+</div>
+</body>

@@ -21,7 +21,7 @@ delivered with debtors.
 All models will be in this file, because the model is to be as simple as
 can be. After all, it is just for showing what debtors needs.
 """
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import event, text
 from sqlalchemy.orm import validates, Session
 from debtors import db
@@ -119,6 +119,8 @@ class Clients(db.Model):
     initials = db.Column(db.String(10))
     birthdate = db.Column(db.Date)
     sex = db.Column(db.String(1), server_default=' ')
+    updated_at = db.Column(db.DateTime, onupdate=datetime.now,
+                           default=datetime.now)
     addrs = db.relationship('Addresses', backref='adressee')
     emails = db.relationship('EMail', backref='to')
     accounts = db.relationship('BankAccounts', backref='owner')
@@ -135,6 +137,8 @@ class Clients(db.Model):
     def validate_birthdate(self, key, birthdate):
         """ A birthdate will be in the past """
 
+        if not birthdate:
+            return birthdate
         if birthdate > date.today():
             raise BirthDateError('Birthdate cannot be after today')
         return birthdate
@@ -143,6 +147,8 @@ class Clients(db.Model):
     def validate_sex_code(self, key, sex):
         """ Sex maybe M (Male), F (Female) or space (unknown) """
 
+        if not sex:
+            sex = ' '
         if sex in {'M', 'F', ' '}:
             return sex
         raise InvalidSexError('{} is not a valid sex code'.format(sex))
@@ -172,6 +178,15 @@ class Clients(db.Model):
         """ Return the preferred mail address for the client """
 
         return EMail.preferred_mail_for_client(self)
+
+    @staticmethod
+    def get_by_id(requested_id):
+        """ Get the client with the supplied id """
+
+        client = query(Clients).filter(Clients.id == requested_id).first()
+        if client:
+            return client
+        raise NoClientFoundError('No client with id {}'.format(requested_id))
 
     @staticmethod
     def get_client_by_iban(iban):

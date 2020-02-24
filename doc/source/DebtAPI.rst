@@ -12,3 +12,15 @@ The module clientmodels clients
 
 .. automodule:: clientmodels.clients
    :members:
+   
+The module clientviews clients
+------------------------------
+
+.. automodule:: clientviews.clients
+   :members:
+
+The module clientviews forms
+----------------------------
+
+.. automodule:: clientviews.forms
+   :members:

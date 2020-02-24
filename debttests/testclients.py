@@ -15,8 +15,8 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from debtors import db
-from datetime import date, timedelta
+from debtors import db, app
+from datetime import date, timedelta, datetime
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
@@ -85,6 +85,32 @@ class TestCreateClient(unittest.TestCase):
             clt06.add()
             db.session.flush()
 
+
+class TestClientFunctions(unittest.TestCase):
+
+    def setUp(self):
+
+        self.clt16 = Clients(surname='Zwaluwen', first_name='Job',
+                        initials='J.N.', birthdate=date(1984, 11, 2),
+                        sex='M')
+        self.clt16.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_get_by_id(self):
+        """ Get a client by its id """
+
+        clt17 = Clients.get_by_id(self.clt16.id)
+        self.assertEqual(clt17.id, self.clt16.id, 'Get client with wrong id')
+
+    def test_invalid_client_id_fails(self):
+        """ An invalid id fails """
+
+        with self.assertRaises(ValueError):
+            clt18 = Clients.get_by_id(1)
 
 class TestAddressCreate(unittest.TestCase):
 
@@ -511,6 +537,81 @@ class TestDebtorInterface(unittest.TestCase):
         clt_list02 = Clients.get_clients_by_name(self.clt12.surname)
         self.assertEqual(len(clt_list02), 2, 'Not the correct no. of Clients returned')
 
+
+class TestClientTransactions(unittest.TestCase):
+
+    def setUp(self):
+
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def rollback():
+
+        pass
+
+    def test_get_client(self):
+        """ We can get a client """
+
+        clt19 = Clients(surname='Zomervreugd', first_name='Fedor',
+                        birthdate=date(1988, 11,3))
+        clt19.add()
+        db.session.flush()
+        rv = self.app.get('/client/' + str(clt19.id))
+        self.assertIn(clt19.surname.encode(), rv.data, 'Name not in response')
+
+    def test_fail_get_client(self):
+        """ Get a client that doesn't exist bows out gracefully """
+
+        rv = self.app.get('/client/56')
+        self.assertIn(b'Not Found', rv.data, 'Client exists')
+
+    def test_client_create_start(self):
+        """ We can use /client/new to start creating a client """
+
+        rv = self.app.get('/client/new')
+        self.assertIn(b'Client surname', rv.data, 'Incorrect data returned')
+
+    def test_post_new_client(self):
+        """ We can post data for a new client """
+
+        data=dict(surname='Kansenkapper',
+                    initials='K.L.P.',
+                    first_name='Kees',
+                    birthdate='08-12-2001',
+                    sex='M')
+        rv = self.app.post('client/new', data=data, follow_redirects=True)
+        client_list = Clients.get_clients_by_name('Kansenkapper')
+        self.assertTrue(client_list[0].id, 'Client did not get id')
+        for each in client_list:
+            db.session.delete(each)
+        db.session.commit()
+
+    def test_update_client(self):
+        """ We update an existing client """
+
+        rv = self.app.post('/client/new', data=dict(surname='Klapperboom',
+                                                   first_name='Jan',
+                                                   initials="J.G.H.",
+                                                   birthdate='05-07-1986',
+                                                   sex='M'),
+                           follow_redirects=True)
+        client_list = Clients.get_clients_by_name('Klapperboom')
+        id = client_list[0].id
+        rv = self.app.post('/client/' + str(id), 
+                           data=dict(
+                                        surname='Klapperboom',
+                                        first_name='Jan',
+                                        initials='J.G.H.',
+                                        birthdate='05-07-1985',
+                                        sex='M'),
+                           follow_redirects=True)
+        client = Clients.get_by_id(int(id))
+        self.assertEqual(client.birthdate, date(1985, 7, 5),
+                         'Birth date not updated')
+        client_list = Clients.get_clients_by_name('Klapperboom')
+        for each in client_list:
+            db.session.delete(each)
+        db.session.commit()
 
 if __name__ == '__main__' :
     unittest.main()
