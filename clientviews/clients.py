@@ -22,10 +22,11 @@ Using the views in the module, one can enter clients and update the
 clients themselves and the dependents like addresses an bank accounts.
 """
 
-from flask import render_template, abort, redirect, url_for, flash
+from flask import render_template, abort, redirect, url_for, flash, request
 from flask.views import MethodView
 from clientmodels.clients import Clients, Addresses, NoClientFoundError, db
 from clientviews.forms import ClientForm
+from clientviews.mixins import PaginatorMixin
 
 
 class ClientView(MethodView):
@@ -87,5 +88,36 @@ class ClientView(MethodView):
             for message in error_value:
                 flash('Field ' + error_key + ': ' + str(message))
         return render_template('client.html', form=client_form)
-            
-        
+
+
+class ClientViewingList(list, PaginatorMixin):
+    """ We create a list that can be used for viewing a list of clients,
+    with some associated data
+    
+    It stores the base client data (as in the Clients class) together
+    wit a list of mail addresses (EMail class) and the postal address
+    of the client. It assembles the data to be used by e.g. the 
+    ClientListView
+    """
+
+    def __init__(self, list_creator, page=1, page_length=4):
+
+        PaginatorMixin.__init__(self, list_creator, page=page, page_length=page_length)
+    
+
+class ClientListView(MethodView):
+    """ This view shows a list of clients.
+    
+    If you request a list without parameters, it will show you the newest
+    clients in the list, in descending order of change date. When you add 
+    a search parameter, it will show clients whose surname contains the 
+    search parameter.
+    """
+
+    def get(self):
+        """ Get a list of clients from the database """
+
+        page = int(request.args.get('page', default=1))
+        client_paginator = ClientViewingList(Clients.client_list)
+        return render_template('clientlist.html',
+                        client_list=client_paginator.get_page(page))

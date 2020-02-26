@@ -207,6 +207,17 @@ class Clients(db.Model):
         """ Get a list of clients with the surname supplied """
 
         return query(Clients).filter(Clients.surname == surname).all()
+
+    @staticmethod
+    def client_list(start_at=0, list_for=None):
+        """ Return a list of clients """
+
+        client_list = query(Clients).order_by(Clients.updated_at.desc())
+        if start_at:
+            client_list = client_list.offset(start_at)
+        if list_for:
+            client_list = client_list.limit(list_for)
+        return client_list.all()
             
 
 class Addresses(db.Model):

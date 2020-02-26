@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<h2> Client list </h2>
+
+{% for client in client_list %}
+    Name      <a href={{url_for('clients', id=client.id)}}>{{client.initials}}{{client.surname}}</a> </br>
+    {% if client.first_name %}
+    First name {{client.first_name}} </br>
+    {% endif %}
+    Birth date {% if client.birthdate %}{{ client.birthdate.strftime('%d-%m-%Y') }}{% endif %} </br>
+    Sex        {% if client.sex == 'F'%} Female {% endif %}
+               {% if client.sex == 'M'%} Male {% endif %}
+               {% if client.sex == ' '%} - {% endif %} </br></br>
+    {% for email in client.emails %}
+    Mail address {{email.mail_address}} {% if email.preferred %} (preferred {% endif %} </br> </br>
+    {% endfor %}
+    Traditional addresses </br></br>
+    {% for address in client.addrs %}
+    {% if address.street %}
+                 {{address.street}} {{address.house_number}} </br>
+    {% endif %}
+    {% if address.po_box %}
+                 Postbox {{address.po_box}} </br>
+    {% endif %}
+                 {{ address.postcode }} {{ address.town_or_village }} </br>
+    {% endfor %}
+{% endfor %}
+{% endblock content %}

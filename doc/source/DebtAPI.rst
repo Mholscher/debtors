@@ -24,3 +24,9 @@ The module clientviews forms
 
 .. automodule:: clientviews.forms
    :members:
+
+The module clientviews mixins
+-----------------------------
+
+.. automodule:: clientviews.mixins
+   :members:

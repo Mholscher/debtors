@@ -21,6 +21,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError
+from clientviews.clients import ClientViewingList
 
 
 class TestCreateClient(unittest.TestCase):
@@ -612,6 +613,236 @@ class TestClientTransactions(unittest.TestCase):
         for each in client_list:
             db.session.delete(each)
         db.session.commit()
+
+class TestClientList(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        db.session.flush()
+        spread_created_at(self)
+        add_addresses(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_get_list_from_model(self):
+        """ We can get a list of clients from the model """
+
+        client_list = Clients.client_list()
+        self.assertEqual(len(client_list), 6, 'Wrong number of clients')
+
+    def test_client_list_is_ordered(self):
+        """ The client list is ordered """
+
+        client_list = Clients.client_list()
+        self.assertEqual(client_list[0].surname, self.clt3.surname,
+                         'List starts with wrong client')
+        self.assertEqual(client_list[5].surname, self.clt6.surname,
+                         'List ends with wrong client')
+
+    def test_we_can_limit_client_list(self):
+        """ We can limit the list to say, client 2 until 4 """
+
+        client_list = Clients.client_list(start_at=2, list_for=3)
+        self.assertEqual(client_list[0], self.clt5, 'List does not start at 2nd')
+        self.assertEqual(client_list[-1], self.clt4, 'List does not end at 5th')
+
+    def test_get_list_beyond_end(self):
+        """ Requesting a list beyond the end of the table, returns empty list 
+        """
+
+        client_list = Clients.client_list(start_at=8)
+        self.assertEqual(len(client_list), 0, 'List has clients')
+
+    def test_get_more_than_left_truncates(self):
+        """ If we ask for more than remaining, the list is truncated """
+
+        client_list = Clients.client_list(start_at=3, list_for=5)
+        self.assertEqual(len(client_list), 3, 'List has wrong no. of clients')
+
+    def test_can_create_list_view(self):
+        """ We create a view over a client list """
+
+        client_paginator = ClientViewingList(Clients.client_list,
+                                            page=1, page_length=4)
+        client_list_view = client_paginator.get_page()
+        self.assertEqual(len(client_list_view), 4,
+                         'Wrong number of clients in view')
+
+    def test_can_get_other_page(self):
+        """ We can get the second page """
+
+        client_paginator = ClientViewingList(Clients.client_list,
+                                            page=1, page_length=4)
+        client_list_view = client_paginator.get_page(page_number=2)
+        self.assertEqual(len(client_list_view), 2,
+                         'Wrong number of clients in view')
+
+    def test_get_mail_adresses(self):
+        """ Mail addresses are reachable from list elements """
+
+        client_list = Clients.client_list()
+        selected_client = client_list[client_list.index(self.clt2)]
+        self.assertEqual(len(selected_client.emails), 2,
+                         'Too little/many mail addresses')
+
+    def test_get_adresses(self):
+        """ Traditional addresses are reachable from list elements """
+
+        client_list = Clients.client_list()
+        selected_client = client_list[client_list.index(self.clt2)]
+        self.assertEqual(len(selected_client.addrs), 2,
+                         'Too little/many mail addresses')
+
+
+class TestClientListFunctions(unittest.TestCase):
+    
+
+    def setUp(self):
+
+        create_clients(self)
+        db.session.flush()
+        spread_created_at(self)
+        add_addresses(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_get_first_page(self):
+        """ We can get the first page of the client list """
+
+        rv = self.app.get('/client/list')
+        self.assertIn(b'Karmozijn', rv.data, 'Expected Karmozijn, not found')
+
+    def test_get_2nd_page(self):
+        """ We can get the second page of the list """
+
+        rv = self.app.get('/client/list?page=2')
+        self.assertIn(b'Turkoois', rv.data, 'Expected Turkoois, not found')
+
+    def test_email_present(self):
+        """ We return the email addresses of a client """
+
+        rv = self.app.get('/client/list?page=1')
+        self.assertIn(b'nogor', rv.data, 'Expected "nogor", not found')
+        self.assertIn(b'snipper12', rv.data, 'Expected "snipper12", not found')
+
+    def test_traditional_address(self):
+        """ We return postal and residential addresses for clients """
+
+        rv = self.app.get('/client/list?page=1')
+        self.assertIn(b'Vrijheidsplein', rv.data, 
+                      'Expected "Vrijheidsplein", not found')
+        self.assertIn(b'Hengelo', rv.data, 'Expected "Hengelo", not found')  
+    
+
+def create_clients(instance):
+    """ Create clients for the test 'instance' """
+
+    instance.clt1 = Clients(surname='Karmozijn',
+                            initials='K.T.Y.',
+                            first_name='Karel')
+    instance.clt1.add()
+    instance.clt2 = Clients(surname='Petrol',
+                            initials='C.R.',
+                            birthdate=date(1988, 3, 12),
+                            sex='F')
+    instance.clt2.add()
+    instance.clt3 = Clients(surname='Aquamarijn',
+                            initials='P.J.',
+                            first_name='Peter',
+                            birthdate=date(1998, 3, 17),
+                            sex='M')
+    instance.clt3.add()
+    instance.clt4 = Clients(surname='Turkoois',
+                            initials='G.',
+                            first_name='Gerrit',
+                            birthdate=date(1982, 1, 17),
+                            sex='M')
+    instance.clt4.add()
+    instance.clt5 = Clients(surname='Aubergine',
+                            initials='A.R.',
+                            first_name='Antoinette',
+                            birthdate=date(1981, 11, 14),
+                            sex='F')
+    instance.clt5.add()
+    instance.clt6 = Clients(surname='Oker',
+                            initials='D.R.',
+                            first_name='Drella',
+                            birthdate=date(1968, 12, 12),
+                            sex='M')
+    instance.clt6.add()
+
+def spread_created_at(instance):
+    # This routine is used on the production of create_clients
+
+    instance.clt1.updated_at = datetime(2018, 11, 3, hour=12, minute=17)
+    instance.clt2.updated_at = datetime(2016, 9, 14, hour=12, minute=7)
+    instance.clt3.updated_at = datetime(2018, 11, 3, hour=13, minute=7)
+    instance.clt4.updated_at = datetime(2014, 2, 2, hour=2, minute=37)
+    instance.clt5.updated_at = datetime(2017, 10, 1, hour=14, minute=55)
+    instance.clt6.updated_at = datetime(2011, 1, 2, hour=0, minute=25)
+
+def add_addresses(instance):
+    # This routine is used on the production of create_clients
+
+    instance.adr20 = Addresses(street='Wilhelminastraat',
+                            town_or_village='Meddo',
+                            house_number='12',
+                            postcode='8822 DH', country_code='NLD',
+                            address_use=GENERAL_ADDRESS)
+    instance.clt1.addrs.append(instance.adr20)
+    instance.adr21 = Addresses(street='Vrijheidsplein',
+                            town_or_village='Enschede',
+                            house_number='78',
+                            postcode='7821 HJ', country_code='NLD',
+                            address_use=RESIDENTIAL_ADDRESS)
+    instance.clt2.addrs.append(instance.adr21)
+    instance.adr22 = Addresses(po_box ='12',
+                            town_or_village='Hengelo',
+                            postcode='2822 AJ', country_code='NLD',
+                            address_use=POSTAL_ADDRESS)
+    instance.clt2.addrs.append(instance.adr22)
+    instance.adr23 = Addresses(street='Beukenlaan',
+                            town_or_village='Zeist',
+                            house_number='52',
+                            postcode='3812 DG', country_code='NLD',
+                            address_use=GENERAL_ADDRESS)
+    instance.clt4.addrs.append(instance.adr23)
+    instance.adr24 = Addresses(street='Zeugnisstraße',
+                            town_or_village='Neuenrath',
+                            house_number='34',
+                            postcode='6798', country_code='DEU',
+                            address_use=GENERAL_ADDRESS)
+    instance.clt4.addrs.append(instance.adr24)
+    instance.adr25 = Addresses(street='Stationsplein',
+                            town_or_village='Dinxperlo',
+                            house_number='123',
+                            postcode='8815 JJ', country_code='NLD',
+                            address_use=GENERAL_ADDRESS)
+    instance.clt5.addrs.append(instance.adr25)
+    instance.clt6.addrs.append(instance.adr23)
+    # Mail addresses
+    instance.mad01 = EMail(mail_address='dingor@prov.com')
+    instance.clt1.emails.append(instance.mad01)
+    instance.mad02 = EMail(mail_address='nogor@oprov.com')
+    instance.clt2.emails.append(instance.mad02)
+    instance.mad03 = EMail(mail_address='snipper12@gierton.org')
+    instance.clt2.emails.append(instance.mad03)
+    instance.mad04 = EMail(mail_address='bozeboer@tractie.nl')
+    instance.clt4.emails.append(instance.mad04)
+    instance.mad05 = EMail(mail_address='klap.noot@prov.com')
+    instance.clt5.emails.append(instance.mad05)
+    instance.mad06 = EMail(mail_address='snodeplanner@bedrijf.co.uk')
+    instance.clt6.emails.append(instance.mad06)
+
 
 if __name__ == '__main__' :
     unittest.main()
