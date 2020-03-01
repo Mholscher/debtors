@@ -24,8 +24,9 @@ clients themselves and the dependents like addresses an bank accounts.
 
 from flask import render_template, abort, redirect, url_for, flash, request
 from flask.views import MethodView
-from clientmodels.clients import Clients, Addresses, NoClientFoundError, db
-from clientviews.forms import ClientForm
+from clientmodels.clients import Clients, Addresses, NoClientFoundError,\
+    EMail, db
+from clientviews.forms import ClientForm, ClientMailForm
 from clientviews.mixins import PaginatorMixin
 
 
@@ -121,3 +122,47 @@ class ClientListView(MethodView):
         client_paginator = ClientViewingList(Clients.client_list)
         return render_template('clientlist.html',
                         client_list=client_paginator.get_page(page))
+
+
+class MailView(MethodView):
+    """ Add a new mail address to a client """
+
+    def get(self, id):
+        """ Return a page to enter a mail address for a client  """
+
+        if id is None:
+            return 'A client is required', 404
+        try:
+            client = Clients.get_by_id(id)
+        except NoClientFoundError as ncfe:
+            abort(404, str(ncfe))
+        
+        client_mail_form = ClientMailForm()
+        
+        return render_template('clientmail.html', form=client_mail_form,
+                               client=client)
+
+    def post(self, id):
+        """ Processs adding a new mail address for a client """
+
+        if id:
+            try:
+                client = Clients.get_by_id(int(id))
+            except NoClientFoundError as ncf:
+                abort(404, str(ncf))
+        else:
+            abort(404, 'A client is required')
+                
+        client_mail_form = ClientMailForm()
+        
+        bool_preferred = client_mail_form.preferred.data
+        if bool_preferred:
+            preferred = 1
+        else:
+            preferred = 0
+        mail = EMail(mail_address=client_mail_form.mail_address.data,
+                     preferred=preferred)
+        client.emails.append(mail)
+        
+        db.session.commit()
+        return redirect(url_for('clients', id=client.id))

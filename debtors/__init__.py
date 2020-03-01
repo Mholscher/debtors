@@ -34,8 +34,9 @@ import clientmodels.clients
 from . import views
 client_pages = Blueprint('client', __name__)
 app.register_blueprint(client_pages)
-from clientviews.clients import ClientView, ClientListView
+from clientviews.clients import ClientView, ClientListView, MailView
 app.add_url_rule('/client/<int:id>', view_func=ClientView.as_view('clients'))
 app.add_url_rule('/client/new', view_func=ClientView.as_view('create_client'))
 app.add_url_rule('/client/list', 
                  view_func=ClientListView.as_view('list_clients'))
+app.add_url_rule('/client/<int:id>/mail/new', view_func=MailView.as_view('add_mail'))

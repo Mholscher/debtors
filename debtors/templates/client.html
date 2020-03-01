@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-
+{% block title %}
+  <title>{% if form.surname.data %}{{form.initials.data}} {{form.surname.data}} : {%endif %}Clients</title>
+{% endblock %}
 {% block content %}
 {% if form.id.data %}
     <h2> Client {{form.initials.data}} {{form.surname.data}}</h2>

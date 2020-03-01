@@ -13,8 +13,9 @@
     Sex        {% if client.sex == 'F'%} Female {% endif %}
                {% if client.sex == 'M'%} Male {% endif %}
                {% if client.sex == ' '%} - {% endif %} </br></br>
+    Mail addresses </br></br>
     {% for email in client.emails %}
-    Mail address {{email.mail_address}} {% if email.preferred %} (preferred {% endif %} </br> </br>
+                {{email.mail_address}} {% if email.preferred %} (preferred) {% endif %} </br> </br>
     {% endfor %}
     Traditional addresses </br></br>
     {% for address in client.addrs %}

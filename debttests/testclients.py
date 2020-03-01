@@ -386,6 +386,21 @@ class TestMailAddress(unittest.TestCase):
             self.clt10.emails.append(mad09)        
             db.session.flush()
 
+    def test_add_mail_thru_interface(self):
+        """ We can add a mail address thru the transaction """
+
+        self.app = app.test_client()
+        self.app.testing = True
+        rv = self.app.post('client/' + str(self.clt10.id) + '/mail/new',
+                           data={'mail_address' : 'kronos23@wxs.nl',
+                                 'preferred' : False }, follow_redirects=True)
+        addrs = db.session.query(EMail).filter(EMail.mail_address=='kronos23@wxs.nl').all()
+        self.assertEqual(len(addrs), 1, 'Address not added/too many')
+        db.session.query(EMail).filter(EMail.client_id == self.clt10.id).delete()
+        db.session.query(Addresses).filter(Addresses.client_id == self.clt10.id).delete()
+        db.session.query(Clients).filter(Clients.id == self.clt10.id).delete()
+        db.session.commit()
+
 
 class TestBankAccounts(unittest.TestCase):
 

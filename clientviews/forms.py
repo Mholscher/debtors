@@ -21,8 +21,10 @@ the demo client system.
 
 from datetime import date
 from flask_wtf import FlaskForm
-from wtforms import HiddenField, StringField, DateField, SubmitField
-from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from wtforms import HiddenField, StringField, DateField, SubmitField,\
+    BooleanField
+from wtforms.validators import DataRequired, Length, Optional, Email,\
+    ValidationError
 from flask_wtf.csrf import CSRFProtect
 
 
@@ -58,3 +60,12 @@ class ClientForm(FlaskForm):
     sex = StringField('Client sex')
     update = SubmitField('Update client and exit')
     addmore = SubmitField('Update, than add client')
+
+class ClientMailForm(FlaskForm):
+    """ This form enables inputting a mail address for a client """
+
+    client_id = HiddenField('Client number')
+    csrf_token = HiddenField('csrf_token')
+    mail_address = StringField('Mail address', validators=[Email()])
+    preferred = BooleanField('Is preferred?', validators=[Optional()])
+    update = SubmitField('Add address')
