@@ -6,14 +6,23 @@
 {% block content %}
 {% if form.id.data %}
     <h2> Client {{form.initials.data}} {{form.surname.data}}</h2>
-    <form action="/client/{{form.id.data}}", method="POST", class="inlineform">
+    <form action="/client/{{form.id.data}}" method="POST" class="inlineform">
 {% else %}
     <h2> New client </h2>
-    <form action={{ url_for('create_client')}}, method="POST", class="inlineform">
+    <form action={{ url_for('create_client') }} method="POST" class="inlineform">
 {% endif %}
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>
+{% endif %}
+{% if form.errors %}
+    <ul class="errors">
+        {% for field_name, field_errors in form.errors|dictsort if field_errors %}
+            {% for error in field_errors %}
+                <li>{{ form[field_name].label }}: {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
 {% endif %}
 <div class="inputline">{{ form.surname.label(class="lbl") }} {{form.surname}}</div>
 <div class="inputline">{{ form.initials.label(class="lbl") }} {{form.initials}}</div>

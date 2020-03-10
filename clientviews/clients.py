@@ -25,8 +25,9 @@ clients themselves and the dependents like addresses an bank accounts.
 from flask import render_template, abort, redirect, url_for, flash, request
 from flask.views import MethodView
 from clientmodels.clients import Clients, Addresses, NoClientFoundError,\
-    EMail, db
-from clientviews.forms import ClientForm, ClientMailForm
+    EMail, NoAddressFoundError, db
+from clientviews.forms import ClientForm, ClientMailForm, ClientAddressForm,\
+    AddressDeleteForm
 from clientviews.mixins import PaginatorMixin
 
 
@@ -130,31 +131,20 @@ class MailView(MethodView):
     def get(self, id):
         """ Return a page to enter a mail address for a client  """
 
-        if id is None:
-            return 'A client is required', 404
-        try:
-            client = Clients.get_by_id(id)
-        except NoClientFoundError as ncfe:
-            abort(404, str(ncfe))
-        
+        client = get_client_by_id(self.id)
+
         client_mail_form = ClientMailForm()
-        
+
         return render_template('clientmail.html', form=client_mail_form,
                                client=client)
 
     def post(self, id):
         """ Processs adding a new mail address for a client """
 
-        if id:
-            try:
-                client = Clients.get_by_id(int(id))
-            except NoClientFoundError as ncf:
-                abort(404, str(ncf))
-        else:
-            abort(404, 'A client is required')
-                
+        client = get_client_by_id(self, id)
+
         client_mail_form = ClientMailForm()
-        
+
         bool_preferred = client_mail_form.preferred.data
         if bool_preferred:
             preferred = 1
@@ -163,6 +153,97 @@ class MailView(MethodView):
         mail = EMail(mail_address=client_mail_form.mail_address.data,
                      preferred=preferred)
         client.emails.append(mail)
-        
+
         db.session.commit()
         return redirect(url_for('clients', id=client.id))
+
+
+class AddressView(MethodView):
+    """ Class used for adding postal/residential addresses for a client """
+
+    def get(self, id=None, address_id=None):
+        """ Return a page to add an address to the client """
+
+        client = get_client_by_id(self, id)
+
+        client_address_form = ClientAddressForm()
+
+        return render_template('clientaddress.html', client=client,
+                               form=client_address_form)
+
+    def post(self, id=None):
+        """ Add or change an address to or for a client """
+
+        client = get_client_by_id(self, id)
+        
+        client_address_form = ClientAddressForm()
+
+        if client_address_form.id.data:
+            address = Addresses.get_by_id(client_address_form.id.data)
+        else:
+            address = Addresses()
+
+        if client_address_form.validate_on_submit():
+            address.client_id = client.id
+            address.street = client_address_form.street.data
+            address.house_number = client_address_form.house_number.data
+            address.po_box = client_address_form.po_box.data
+            address.postcode = client_address_form.postcode.data
+            address.town_or_village = client_address_form.town_or_village.data
+            address.address_use = client_address_form.address_use.data
+            address.country_code = client_address_form.country.data
+            if address.id is None:
+                address.add()
+            client.addrs.append(address)
+            db.session.commit()
+            return redirect(url_for('clients', id=id))
+        return render_template('clientaddress.html', client=client,
+                               form=client_address_form)
+
+
+class AddressDeleteConfirmationView(MethodView):
+    """ Class used for processing confirmations for address deletion """
+
+    def get(self, id=None, address_id=None):
+        """ Show the deletion confirmation page  """
+
+        address_delete_form = AddressDeleteForm()
+
+        try:
+            address = Addresses.get_by_id(address_id)
+        except NoAddressFoundError as nafe:
+            abort(404, str(nafe))
+
+        client = address.addressee
+
+        return render_template('confirmaddressdelete.html', client=client,
+                               address=address, form=address_delete_form)
+
+    def post(self, id=None, address_id=None):
+        """ Process the posted confirmation result """
+
+        address_delete_form = AddressDeleteForm()
+
+        if address_delete_form.delete.data:
+            try:
+                address = Addresses.get_by_id(address_id)
+            except NoAddressFoundError as nafe:
+                abort(404, str(nafe))
+            address.delete_address()
+            db.session.commit()
+
+        return redirect(url_for('clients', id=id, _method='GET'))                        
+
+
+def get_client_by_id(instance, id):
+    """ Get the client from the model by the id passed in """
+
+    if id:
+        try:
+            client = Clients.get_by_id(int(id))
+        except NoClientFoundError as ncf:
+            abort(404, str(ncf))
+    else:
+        abort(404, 'A client is required')
+
+    return client

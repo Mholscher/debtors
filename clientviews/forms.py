@@ -69,3 +69,25 @@ class ClientMailForm(FlaskForm):
     mail_address = StringField('Mail address', validators=[Email()])
     preferred = BooleanField('Is preferred?', validators=[Optional()])
     update = SubmitField('Add address')
+
+class ClientAddressForm(FlaskForm):
+    """ Input a postal- or residential address for a client"""
+
+    client_id = HiddenField('Client number')
+    csrf_token = HiddenField('csrf_token')
+    id = HiddenField('Address id')
+    street = StringField('Street')
+    po_box = StringField('Postbox')
+    house_number = StringField('House number')
+    town_or_village = StringField('Town')
+    postcode = StringField('Postal code')
+    country = StringField('Country code', validators=[Length(max=3, min=3)])
+    address_use = StringField('Soort adres')
+    update = SubmitField('Add address')
+
+
+class AddressDeleteForm(FlaskForm):
+    """ Confirm deletion of a client address """
+
+    delete = SubmitField('Delete address')
+    cancel = SubmitField('Cancel deletion')

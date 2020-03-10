@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<div class="page">
+<h2>Client {{client.initials}} {{client.surname}} : confirm deletion of address</h2> </br></br>
+<table>
+<tr><td>Address</td> <td>{%if address.street %}{{address.street}} {{address.house_number}}{%else%}
+Post box   {{address.po_box}}{% endif %}</br>
+           {{address.postcode}} {{address.town_or_village}} </td>
+ </table> </br> </br>
+ <form action={{ url_for('confirm_delete_address', id=client.id, address_id=address.id) }} method="POST">
+ <div>{{ form.delete }}  {{ form.cancel }}
+ </div>
+{% endblock content %}

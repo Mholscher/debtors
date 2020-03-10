@@ -51,6 +51,12 @@ class NoClientFoundError(ValueError):
     pass
 
 
+class NoAddressFoundError(Exception):
+    """ No postal address was found """
+
+    pass
+
+
 class NoPostalAddressError(Exception):
     """ No postal address was found """
 
@@ -121,9 +127,12 @@ class Clients(db.Model):
     sex = db.Column(db.String(1), server_default=' ')
     updated_at = db.Column(db.DateTime, onupdate=datetime.now,
                            default=datetime.now)
-    addrs = db.relationship('Addresses', backref='adressee')
-    emails = db.relationship('EMail', backref='to')
-    accounts = db.relationship('BankAccounts', backref='owner')
+    addrs = db.relationship('Addresses', backref='addressee',
+                            cascade='all, delete')
+    emails = db.relationship('EMail', backref='to',
+                            cascade='all, delete')
+    accounts = db.relationship('BankAccounts', backref='owner',
+                            cascade='all, delete')
 
     @validates('surname')
     def validate_surname(self, key, surname):
@@ -231,7 +240,8 @@ class Addresses(db.Model):
 
     __tablename__ = 'addresses'
     id = db.Column(db.Integer, db.Sequence('address_seq'), primary_key=True)
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
+                                                    on_delete='CASCADE'),
                           nullable=False)
     street = db.Column(db.String(25))
     house_number = db.Column(db.String(12))
@@ -331,6 +341,20 @@ class Addresses(db.Model):
             return residential_addresses[0]
         raise NoResidentialAddressError(f'No residential address found: {client.surname}')
 
+    @staticmethod
+    def get_by_id(id=None):
+        """ Return an address by id """
+
+        address = db.session.query(Addresses).filter_by(id = id).first()
+        if address is None:
+            raise NoAddressFoundError(f'No address for id {id}')
+        return address
+
+    def delete_address(self):
+        """ Delete this address form the database """
+
+        db.session.delete(self)
+
 
 class EMail(db.Model):
     """ Electronic mail addresses for a client
@@ -340,8 +364,9 @@ class EMail(db.Model):
     """
 
     __tablename__ = 'email'
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
-                          primary_key=True, nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
+                                                    on_delete='CASCADE'),
+                          nullable=False)
     mail_address = db.Column(db.String(65), primary_key=True, nullable=False,
                              index=True)
     preferred = db.Column(db.Integer, server_default=text("0"))
@@ -404,7 +429,8 @@ class BankAccounts(db.Model):
 
     __tablename__ = 'bankaccounts'
     id = db.Column(db.Integer, db.Sequence('bankacc-seq'), primary_key=True)
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
+                                                    on_delete='CASCADE'),
                           nullable=False)
     iban = db.Column(db.String(40), nullable=True, index=True)
     bic = db.Column(db.String(10), nullable=True)

@@ -210,6 +210,19 @@ class TestAddressCreate(unittest.TestCase):
             self.clt07.addrs.append(adr13)
             db.session.flush()
 
+    def test_delete_address(self):
+        """ We can delete an address """
+
+        adr14 = Addresses(street='Rue des Promesses', house_number='1',
+                              town_or_village='La Vilette', postcode='54765',
+                              country_code='FRA')
+        self.clt07.addrs.append(adr14)
+        db.session.flush()
+        self.assertIn(adr14, self.clt07.addrs, 'Failed to add address')
+        adr14.delete_address()
+        db.session.flush()
+        self.assertNotIn(adr14, db.session.deleted, 'Address not deleted')
+
 
 class TestAddressUse(unittest.TestCase):
 
@@ -287,7 +300,60 @@ class TestAddressUse(unittest.TestCase):
         db.session.flush()
         with self.assertRaises(NoResidentialAddressError):
             adr19 = clt13.residential_address()
-        
+
+
+class TestAddressFunctions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_add_address(self):
+        """ We can add an address to a client having an address """
+
+        id = self.clt1.id
+        address_dict = dict(street='Oude Gangsteeg', house_number='42',
+                           postcode='4234 KK', town_or_village='Meppel',
+                           country='NLD', address_use=GENERAL_ADDRESS)
+        rv = self.app.post('/client/' + str(self.clt1.id) + '/address/new',
+                           data=address_dict, follow_redirects=True)
+        self.clt1 = Clients.query.filter(Clients.id == id).first()
+        self.assertEqual(len(self.clt1.addrs), 2, 'Address too many/missing')
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_get_delete_address_confirmation(self):
+        """ We can request the confirmation screenh for a delete """
+
+        rv = self.app.get('/client/' + str(self.clt4.id) + '/address/'\
+            + str(self.adr23.id) + '/confirm')
+        self.assertIn(b'Beukenlaan', rv.data, 'Address not returned')
+        self.assertIn(b'delete', rv.data, 'Button name missing')
+
+    def test_post_delete_address_confirmation(self):
+        """ When we confirm a deletion, it is done """
+
+        adr23_id = self.adr23.id
+        adr24_id = self.adr24.id
+        rv = self.app.post('/client/' + str(self.clt4.id) + '/address/'\
+            + str(self.adr23.id) + '/confirm', data={"delete" : True},
+            follow_redirects=True)
+        address_list = db.session.query(Addresses).all()
+        id_set = set()
+        for address in address_list:
+            id_set.add(address.id)
+        self.assertNotIn(adr23_id, id_set, 'Not deleted')
+        self.assertIn(adr24_id, id_set, 'This should be here!')
+        delete_test_clients(self)
+        db.session.commit()
 
 
 class TestMailAddress(unittest.TestCase):
@@ -313,6 +379,7 @@ class TestMailAddress(unittest.TestCase):
         self.assertEqual(self.clt10.emails[0].mail_address,
                          'ksnavelaar@gmail.com', 
                          'Email not added')
+
     def test_add_more_than_one(self):
         """ We can add more than one mail address """
 
@@ -761,39 +828,47 @@ class TestClientListFunctions(unittest.TestCase):
 def create_clients(instance):
     """ Create clients for the test 'instance' """
 
+    if not hasattr(instance, 'client_list'):
+        instance.client_list = []
     instance.clt1 = Clients(surname='Karmozijn',
                             initials='K.T.Y.',
                             first_name='Karel')
     instance.clt1.add()
+    instance.client_list.append(instance.clt1.surname)
     instance.clt2 = Clients(surname='Petrol',
                             initials='C.R.',
                             birthdate=date(1988, 3, 12),
                             sex='F')
     instance.clt2.add()
+    instance.client_list.append(instance.clt2.surname)
     instance.clt3 = Clients(surname='Aquamarijn',
                             initials='P.J.',
                             first_name='Peter',
                             birthdate=date(1998, 3, 17),
                             sex='M')
     instance.clt3.add()
+    instance.client_list.append(instance.clt3.surname)
     instance.clt4 = Clients(surname='Turkoois',
                             initials='G.',
                             first_name='Gerrit',
                             birthdate=date(1982, 1, 17),
                             sex='M')
     instance.clt4.add()
+    instance.client_list.append(instance.clt4.surname)
     instance.clt5 = Clients(surname='Aubergine',
                             initials='A.R.',
                             first_name='Antoinette',
                             birthdate=date(1981, 11, 14),
                             sex='F')
     instance.clt5.add()
+    instance.client_list.append(instance.clt5.surname)
     instance.clt6 = Clients(surname='Oker',
                             initials='D.R.',
                             first_name='Drella',
                             birthdate=date(1968, 12, 12),
                             sex='M')
     instance.clt6.add()
+    instance.client_list.append(instance.clt6.surname)
 
 def spread_created_at(instance):
     # This routine is used on the production of create_clients
@@ -857,6 +932,14 @@ def add_addresses(instance):
     instance.clt5.emails.append(instance.mad05)
     instance.mad06 = EMail(mail_address='snodeplanner@bedrijf.co.uk')
     instance.clt6.emails.append(instance.mad06)
+
+def delete_test_clients(instance):
+    """ Delete clients and dependants added in create_clients """
+
+    client_list =\
+        db.session.query(Clients).filter(Clients.surname.in_(instance.client_list)).all()
+    for client in client_list:
+        db.session.delete(client)
 
 
 if __name__ == '__main__' :

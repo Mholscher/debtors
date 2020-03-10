@@ -50,7 +50,7 @@ a.IMG {
     
 .inlineform {
     width : 50em ;
-    display : float ;
+    display : block ;
     margin-left : 15% ;    
     }
 

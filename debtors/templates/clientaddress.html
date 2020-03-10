@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<div class="page">
+<h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
+<table>
+{% for address in client.addrs %}
+<tr><td>Address</td> <td>{%if address.street %}{{address.street}} {{address.house_number}}{%else%}
+Post box   {{address.po_box}}{% endif %}</br>
+           {{address.postcode}} {{address.town_or_village}} </td><td> <a href={{url_for('confirm_delete_address', id=client.id, address_id=address.id)}}> Delete address</a></tr>
+{% endfor %} </table>
+<form action="{{ url_for('add_address', id=client.id)}}" method="POST" class="inlineform">
+{{ form.csrf_token }}
+{% if form.csrf_token.errors %}
+    <div class="warning">You have submitted an invalid CSRF token</div>
+{% endif %}
+{% if form.errors %}
+    <ul class="errors">
+        {% for field_name, field_errors in form.errors|dictsort if field_errors %}
+            {% for error in field_errors %}
+                <li>{{ form[field_name].label }}: {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
+{% endif %}
+<div class="inputline">{{ form.street.label(class="lbl") }} {{form.street}}
+</div>
+<div class="inputline">{{ form.house_number.label(class="lbl") }} {{form.house_number}}
+</div>
+OR
+<div class="inputline">{{ form.po_box.label(class="lbl") }} {{form.po_box}}
+</div> </br>
+<div class="inputline">{{ form.postcode.label(class="lbl") }} {{form.postcode}}
+</div>
+<div class="inputline">{{ form.town_or_village.label(class="lbl") }} {{form.town_or_village}}
+</div>
+<div class="inputline">{{ form.country.label(class="lbl") }} {{form.country}}
+</div>
+<div class="inputline">{{ form.address_use.label(class="lbl") }} {{form.address_use}}
+</div>
+{{form.update}}
+</form>
+</div>
+{% endblock content %}
