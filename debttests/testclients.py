@@ -779,6 +779,36 @@ class TestClientList(unittest.TestCase):
         self.assertEqual(len(selected_client.addrs), 2,
                          'Too little/many mail addresses')
 
+    def test_list_for_search_string(self):
+        """ We can get a list of clients for a search string on surname """
+
+        search_for = 'kar'
+        client_list = Clients.client_list(search_for=search_for)
+        self.assertEqual(len(client_list), 1, 'Too many/no clients in list')
+        self.assertEqual(client_list[0].id, self.clt1.id, 'Its the wrong client')
+
+    def test_more_clients_in_list(self):
+        """ We get more clients if they conform to search """
+
+        clt20 = Clients(surname='Boldootkar',
+                                initials='S.T.I.N.K.',
+                                first_name='Simon')
+        clt20.add()
+        db.session.flush()
+        search_for = 'kar'
+        client_list = Clients.client_list(search_for=search_for)
+        self.assertEqual(len(client_list), 2, 'Too many/too little clients in list')
+
+    def test_list_with_search_and_page(self):
+        """ We can combine search string and page """
+
+        search_for = 'kar'
+        client_paginator = ClientViewingList(Clients.client_list,
+                                            page=1, page_length=4)
+        client_list_view = client_paginator.get_page(page_number=2,
+                                                    search_for=search_for)
+        self.assertEqual(len(client_list_view), 0, 'Clients in list')        
+
 
 class TestClientListFunctions(unittest.TestCase):
     

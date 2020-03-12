@@ -30,12 +30,13 @@ class PaginatorMixin():
         self.page_length = page_length
         self.list_creator = list_creator
 
-    def get_page(self, page_number=1):
+    def get_page(self, page_number=1, **kwargs):
         """  We get the data from the list creator for the page
         that was requested.
         """
-        
+
         start_at = (page_number -1) * self.page_length
         list_for = self.page_length
-        return self.list_creator(start_at=start_at, list_for=list_for)
+        return self.list_creator(start_at=start_at, list_for=list_for,
+                                 **kwargs)
         

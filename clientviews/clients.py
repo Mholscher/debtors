@@ -27,7 +27,7 @@ from flask.views import MethodView
 from clientmodels.clients import Clients, Addresses, NoClientFoundError,\
     EMail, NoAddressFoundError, db
 from clientviews.forms import ClientForm, ClientMailForm, ClientAddressForm,\
-    AddressDeleteForm
+    AddressDeleteForm, ClientSearchForm
 from clientviews.mixins import PaginatorMixin
 
 
@@ -49,10 +49,12 @@ class ClientView(MethodView):
                 abort(404, str(ncf))
         else:
             client = None
-        
+
+        search_form = ClientSearchForm()
         client_form = ClientForm(obj=client)
 
-        return render_template('client.html', form=client_form)
+        return render_template('client.html', form=client_form,
+                               search_form=search_form)
 
     def post(self, id=None):
         """ Process new posted client data.
@@ -89,7 +91,9 @@ class ClientView(MethodView):
         for error_key, error_value in client_form.errors.items():
             for message in error_value:
                 flash('Field ' + error_key + ': ' + str(message))
-        return render_template('client.html', form=client_form)
+        search_form = ClientSearchForm()
+        return render_template('client.html', form=client_form,
+                               search_form=search_form)
 
 
 class ClientViewingList(list, PaginatorMixin):
@@ -119,10 +123,20 @@ class ClientListView(MethodView):
     def get(self):
         """ Get a list of clients from the database """
 
+        search_form = ClientSearchForm()
+        search_for = request.args.get('search_for')
+
         page = int(request.args.get('page', default=1))
         client_paginator = ClientViewingList(Clients.client_list)
+        if search_for:
+            client_list = client_paginator.get_page(page,
+                                                    search_for=search_for)
+        else:
+            client_list = client_paginator.get_page(page)
+
         return render_template('clientlist.html',
-                        client_list=client_paginator.get_page(page))
+                        client_list=client_list,
+                        search_form=search_form)
 
 
 class MailView(MethodView):

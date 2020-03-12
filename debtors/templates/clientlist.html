@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 
-
+{% block searches %}
+   {% include "clientsearch.html" %}
+{% endblock searches %}
 {% block content %}
-<h2> Client list </h2>
-
+<h2 class="inlineform"> Client list </h2>
+<div class="inlineform">
 {% for client in client_list %}
     Name      <a href={{url_for('clients', id=client.id)}}>{{client.initials}}{{client.surname}}</a> </br>
     {% if client.first_name %}
@@ -28,4 +30,5 @@
                  {{ address.postcode }} {{ address.town_or_village }} </br>
     {% endfor %}
 {% endfor %}
+</div>
 {% endblock content %}

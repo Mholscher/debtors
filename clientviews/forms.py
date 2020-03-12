@@ -22,7 +22,7 @@ the demo client system.
 from datetime import date
 from flask_wtf import FlaskForm
 from wtforms import HiddenField, StringField, DateField, SubmitField,\
-    BooleanField
+    BooleanField, SelectField
 from wtforms.validators import DataRequired, Length, Optional, Email,\
     ValidationError
 from flask_wtf.csrf import CSRFProtect
@@ -50,6 +50,8 @@ class BirthDateBeforeToday(ValueError):
 class ClientForm(FlaskForm):
     """ This form enables entering client data into the system """
 
+    sex_choices = [(' ', '--Choose one--'), ('M' , 'Male'),
+                   ('F', 'Female'), (' ', 'Unknown')]
     id = HiddenField('id')
     csrf_token = HiddenField('csrf_token')
     surname = StringField('Client surname', validators=[DataRequired(), Length(max=30)])
@@ -57,7 +59,7 @@ class ClientForm(FlaskForm):
     first_name = StringField('First name', validators=[Length(max=20)])
     birthdate = DateField('Birthdate', format='%d-%m-%Y', 
                           validators=[Optional(), BirthDateBeforeToday()])
-    sex = StringField('Client sex')
+    sex = SelectField('Client sex', choices=sex_choices)
     update = SubmitField('Update client and exit')
     addmore = SubmitField('Update, than add client')
 
@@ -73,6 +75,8 @@ class ClientMailForm(FlaskForm):
 class ClientAddressForm(FlaskForm):
     """ Input a postal- or residential address for a client"""
 
+    address_use_choices = [(' ', 'General'), ('P', 'Postal'),
+                           ('R', 'Residential')]
     client_id = HiddenField('Client number')
     csrf_token = HiddenField('csrf_token')
     id = HiddenField('Address id')
@@ -82,7 +86,7 @@ class ClientAddressForm(FlaskForm):
     town_or_village = StringField('Town')
     postcode = StringField('Postal code')
     country = StringField('Country code', validators=[Length(max=3, min=3)])
-    address_use = StringField('Soort adres')
+    address_use = SelectField('Address type', choices=address_use_choices)
     update = SubmitField('Add address')
 
 
@@ -91,3 +95,10 @@ class AddressDeleteForm(FlaskForm):
 
     delete = SubmitField('Delete address')
     cancel = SubmitField('Cancel deletion')
+
+
+class ClientSearchForm(FlaskForm):
+    """ Form for client search """
+
+    search_for = StringField('Search client')
+    start_search = SubmitField('Find...')

@@ -218,10 +218,13 @@ class Clients(db.Model):
         return query(Clients).filter(Clients.surname == surname).all()
 
     @staticmethod
-    def client_list(start_at=0, list_for=None):
+    def client_list(start_at=0, list_for=None, search_for=None):
         """ Return a list of clients """
 
         client_list = query(Clients).order_by(Clients.updated_at.desc())
+        if search_for:
+            client_list =client_list.\
+                filter(Clients.surname.like('%' + search_for + '%'))
         if start_at:
             client_list = client_list.offset(start_at)
         if list_for:
@@ -241,7 +244,7 @@ class Addresses(db.Model):
     __tablename__ = 'addresses'
     id = db.Column(db.Integer, db.Sequence('address_seq'), primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
-                                                    on_delete='CASCADE'),
+                                                    ondelete='CASCADE'),
                           nullable=False)
     street = db.Column(db.String(25))
     house_number = db.Column(db.String(12))
@@ -365,7 +368,7 @@ class EMail(db.Model):
 
     __tablename__ = 'email'
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
-                                                    on_delete='CASCADE'),
+                                                    ondelete='CASCADE'),
                           nullable=False)
     mail_address = db.Column(db.String(65), primary_key=True, nullable=False,
                              index=True)
@@ -430,7 +433,7 @@ class BankAccounts(db.Model):
     __tablename__ = 'bankaccounts'
     id = db.Column(db.Integer, db.Sequence('bankacc-seq'), primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
-                                                    on_delete='CASCADE'),
+                                                    ondelete='CASCADE'),
                           nullable=False)
     iban = db.Column(db.String(40), nullable=True, index=True)
     bic = db.Column(db.String(10), nullable=True)

@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="page">
+<div class="inlineform">
 <h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
 {% for mail in client.emails %}
 Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %}
@@ -13,6 +14,7 @@ Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %}
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
 <div class="inputline">{{ form.mail_address.label(class="lbl") }} {{form.mail_address}}
+</div>
 </div>
 <div class="inputline">{{ form.preferred.label(class="lbl") }} {{form.preferred}}
 </div>
