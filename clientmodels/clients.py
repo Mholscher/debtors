@@ -209,7 +209,7 @@ class Clients(db.Model):
         try:
             return BankAccounts.get_account_by_iban(iban).owner
         except NoAccountFoundError as naf:
-            raise NoClientFoundError(naf.e) from naf
+            raise NoClientFoundError(naf.message) from naf
 
     @staticmethod
     def get_clients_by_name(surname):
@@ -462,6 +462,11 @@ class BankAccounts(db.Model):
             return iban
         raise InvalidIBANError('IBAN failed checksum test')
 
+    def delete(self):
+        """ Delete this account from the session """
+
+        db.session.delete(self)
+
     def check_account_name(self, session):
         """ Check that the account name is not empty. If it is empty,
         default to the initials and name of the client.
@@ -487,6 +492,16 @@ class BankAccounts(db.Model):
         if len(accounts) > 1:
             raise MoreThanOnAccountError('More than 1 account for {}'.format(iban))
         return accounts[0]
+
+    @staticmethod
+    def get_by_id(id):
+        """ Get a bank account by its id """
+
+        account = query(BankAccounts).filter(BankAccounts.id == id).first()
+        if account is None:
+            raise NoAccountFoundError('No account for this id')
+        return account
+        
 
 @event.listens_for(Session, "before_flush")
 def before_flush(session, flush_context, instances):

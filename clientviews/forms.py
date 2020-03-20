@@ -87,7 +87,7 @@ class ClientAddressForm(FlaskForm):
     postcode = StringField('Postal code')
     country = StringField('Country code', validators=[Length(max=3, min=3)])
     address_use = SelectField('Address type', choices=address_use_choices)
-    update = SubmitField('Add address')
+    update = SubmitField('Update/add address')
 
 
 class AddressDeleteForm(FlaskForm):
@@ -95,6 +95,26 @@ class AddressDeleteForm(FlaskForm):
 
     delete = SubmitField('Delete address')
     cancel = SubmitField('Cancel deletion')
+
+
+class ClientBankAccountForm(FlaskForm):
+    """ Maintain or create a bank account for a client """
+
+    client_id = HiddenField('Client number')
+    csrf_token = HiddenField('csrf_token')
+    id = HiddenField('Bank account id')
+    iban = StringField('Bank Account Number (IBAN)')
+    bic = StringField('Bank Identification')
+    client_name = StringField('In name of')
+    update = SubmitField('Update/add account')
+
+
+class AccountDeleteForm(FlaskForm):
+    """ Confirm deletion of a bank account """
+
+    delete = SubmitField('Delete account')
+    cancel = SubmitField('Cancel deletion')
+
 
 
 class ClientSearchForm(FlaskForm):

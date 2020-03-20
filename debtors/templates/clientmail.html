@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% from "fields.html" import fld %}
 
 {% block content %}
 <div class="page">
@@ -13,10 +14,10 @@ Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
-<div class="inputline">{{ form.mail_address.label(class="lbl") }} {{form.mail_address}}
+<div class="inputline">{{ fld(form.mail_address)}}
 </div>
 </div>
-<div class="inputline">{{ form.preferred.label(class="lbl") }} {{form.preferred}}
+<div class="inputline">{{ fld(form.preferred)}}
 </div>
 {{form.update}}
 </form>

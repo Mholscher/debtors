@@ -25,9 +25,10 @@ clients themselves and the dependents like addresses an bank accounts.
 from flask import render_template, abort, redirect, url_for, flash, request
 from flask.views import MethodView
 from clientmodels.clients import Clients, Addresses, NoClientFoundError,\
-    EMail, NoAddressFoundError, db
+    EMail, NoAddressFoundError, BankAccounts, NoAccountFoundError, db
 from clientviews.forms import ClientForm, ClientMailForm, ClientAddressForm,\
-    AddressDeleteForm, ClientSearchForm
+    AddressDeleteForm, ClientSearchForm, ClientBankAccountForm,\
+        AccountDeleteForm
 from clientviews.mixins import PaginatorMixin
 
 
@@ -180,7 +181,11 @@ class AddressView(MethodView):
 
         client = get_client_by_id(self, id)
 
-        client_address_form = ClientAddressForm()
+        if address_id:
+            address = Addresses.get_by_id(address_id)
+            client_address_form = ClientAddressForm(obj=address)
+        else:
+            client_address_form = ClientAddressForm()
 
         return render_template('clientaddress.html', client=client,
                                form=client_address_form)
@@ -208,7 +213,7 @@ class AddressView(MethodView):
             address.country_code = client_address_form.country.data
             if address.id is None:
                 address.add()
-            client.addrs.append(address)
+                client.addrs.append(address)
             db.session.commit()
             return redirect(url_for('clients', id=id))
         return render_template('clientaddress.html', client=client,
@@ -246,7 +251,104 @@ class AddressDeleteConfirmationView(MethodView):
             address.delete_address()
             db.session.commit()
 
-        return redirect(url_for('clients', id=id, _method='GET'))                        
+        return redirect(url_for('clients', id=id, _method='GET'))
+
+
+class BankAccountView(MethodView):
+    """ Class used for adding and maintaining bank accounts """
+
+    def get(self, id=None, account_id=None):
+        """ Get a specific bank account """
+
+        client =  get_client_by_id(self, id)
+        if account_id:
+            for acc in client.accounts:
+                if account_id == acc.id:
+                    account = acc
+                    break
+            bank_account_form = ClientBankAccountForm(obj=account)
+        else:
+            account=None
+            bank_account_form = ClientBankAccountForm()
+
+        return render_template('clientbankaccount.html', client=client,
+                               form=bank_account_form, account=account)
+
+    def post(self, id=None, account_id=None):
+        """ Add or update an account for a client """
+
+        client =  get_client_by_id(self, id)
+
+        bank_account_form = ClientBankAccountForm()
+        
+        if bank_account_form.validate_on_submit():
+            if account_id:
+                account = None
+                for acc in client.accounts:
+                    if account_id == acc.id:
+                        account = acc
+                        break
+                if not account:
+                    abort(404, 'Bank account not found')
+            else:
+                account = BankAccounts()
+            account.client_id = id
+            account.iban = bank_account_form.iban.data
+            account.bic = bank_account_form.bic.data
+            account.client_name = bank_account_form.client_name.data
+            if not account_id:
+                client.accounts.append(account)
+            db.session.commit()
+            return redirect(url_for('clients', id=id))
+        return render_template('clientbankaccount.html', client=client,
+                               form=bank_account_form, account=account)
+
+class BankAccountDeleteView(MethodView):
+    """ Process confirmation of bank account deletion """
+
+    def get(self, id=None, account_id=None):
+        """ Show the bank account deletion form """
+
+        account_delete_form = AccountDeleteForm()
+        
+        try:
+            account = BankAccounts.get_by_id(account_id)
+        except NoAccountFoundError as nafe:
+            abort(404, 'The requested account was not found')
+
+        if account.owner.id != id:
+            abort(404, 'The client could not be found')
+        
+        return render_template('confirmaccountdelete.html',
+                               client=account.owner,
+                               account=account, form=account_delete_form)
+
+    def post(self, id=None, account_id=None):
+        """ Process the posting of the account delete form """
+
+        client = get_client_by_id(self, id)
+        
+        bank_account_form = ClientBankAccountForm()
+        
+        if bank_account_form.validate_on_submit():
+            if request.form.get("cancel", False):
+                return redirect(url_for('clients', id=id))
+            if account_id:
+                account = None
+                for acc in client.accounts:
+                    if account_id == acc.id:
+                        account = acc
+                        break
+                if not account:
+                    abort(404, 'Bank account not found')
+            else:
+                abort(404, 'A bank account is required')
+            account.delete()
+            db.session.commit()
+            return redirect(url_for('clients', id=id))
+        return render_template('confirmaccountdelete.html',
+                               client=account.owner,
+                               account=account, form=account_delete_form)        
 
 
 def get_client_by_id(instance, id):

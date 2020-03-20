@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'fields.html' import fld %}
 
 {% block title %}
   <title>{% if form.surname.data %}{{form.initials.data}} {{form.surname.data}} : {%endif %}Clients</title>
@@ -18,20 +19,11 @@
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
-{% if form.errors %}
-    <ul class="errors">
-        {% for field_name, field_errors in form.errors|dictsort if field_errors %}
-            {% for error in field_errors %}
-                <li>{{ form[field_name].label }}: {{ error }}</li>
-            {% endfor %}
-        {% endfor %}
-    </ul>
-{% endif %}
-<div class="inputline">{{ form.surname.label(class="lbl") }} {{form.surname}}</div>
-<div class="inputline">{{ form.initials.label(class="lbl") }} {{form.initials}}</div>
-<div class="inputline">{{ form.first_name.label(class="lbl") }} {{form.first_name}}</div>
-<div class="inputline">{{ form.birthdate.label(class="lbl") }} {{form.birthdate}}</div>
-<div class="inputline">{{ form.sex.label(class="lbl") }} {{form.sex}}</div>
+<div class="inputline">{{fld(form.surname)}} </div>
+<div class="inputline">{{fld(form.initials)}}</div>
+<div class="inputline">{{fld(form.first_name)}}</div>
+<div class="inputline">{{fld(form.birthdate)}}</div>
+<div class="inputline">{{fld(form.sex)}}</div>
 {{form.update}} {{form.addmore}}
 </form>
 {% endblock content %}

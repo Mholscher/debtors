@@ -20,7 +20,7 @@ from datetime import date, timedelta, datetime
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
-        NoResidentialAddressError
+        NoResidentialAddressError, NoClientFoundError
 from clientviews.clients import ClientViewingList
 
 
@@ -536,6 +536,136 @@ class TestBankAccounts(unittest.TestCase):
             db.session.flush()
 
 
+class TestBankAccountsFunctions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        db.session.flush()
+        spread_created_at(self)
+        add_addresses(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_get_bankaccount(self):
+        """ Get a bank account for a client """
+
+        rv = self.app.get('/client/'+ str(self.clt3.id) + '/account/'\
+            + str(self.ba4.id))
+        self.assertIn(self.ba4.client_name.encode(), rv.data, 'Name not in output')
+
+    def test_show_empty_account_page(self):
+        """ Show the account page for adding an account """
+
+        rv = self.app.get('/client/'+ str(self.clt3.id) + '/account/new')
+        self.assertIn(b'Bank', rv.data, 'Bank not in output')
+
+    def test_add_bank_account(self):
+        """ Add a bank account to a client """
+
+        clt4_id = self.clt4.id
+        rv = self.app.post('/client/'+ str(self.clt4.id) + '/account/new',
+                           data = dict(client_id=str(self.clt4.id),
+                                       id=None,
+                                       iban='NL02DEUT0946769532',
+                                       bic=None,
+                                       client_name='Gerrit Turkoois'))
+        clt4 = db.session.query(Clients).filter_by(id=clt4_id).first()
+        self.assertEqual(len(clt4.accounts), 1, 'Incorrect no. of accounts')
+
+    def test_account_not_for_client(self):
+        """ We cannot update an account passing an incorrect client """
+
+        rv = self.app.post('/client/'+ str(self.clt4.id) + '/account/'
+                           + str(self.ba1.id),
+                           data = dict(client_id=str(self.clt4.id),
+                                       id=None,
+                                       iban='NL26BKMG0794396038',
+                                       bic=None,
+                                       client_name='G. Turkoois'))
+        self.assertIn(b'Not Found', rv.data, 'No not found')
+
+    def test_change_owner_name(self):
+        """ We can change the owner name on the account """
+
+        ba5_id = self.ba5.id
+        rv = self.app.post('/client/'+ str(self.clt5.id) + '/account/'
+                           + str(self.ba5.id),
+                           data = dict(client_id=str(self.clt5.id),
+                                       id=self.clt5.id,
+                                       iban='NL76INGB0594788005',
+                                       bic=None,
+                                       client_name='Antoinette Aubergine'),
+                           follow_redirects=True)
+        clt5_new = db.session.query(BankAccounts).filter_by(id=ba5_id).first()
+        self.assertIn('Antoinette', clt5_new.client_name,
+                      'Antoinette not in owner name')
+
+    def test_show_account_delete(self):
+        """ We show the delete confirmation page for accounts """
+
+        iban_nr = self.ba5.iban
+        rv = self.app.get('/client/' + str(self.clt5.id) + '/account/'
+                           + str(self.ba5.id) + '/delete')
+        self.assertIn(iban_nr.encode(), rv.data, 'IBAN not in page content')
+
+    def test_request_wrong_account(self):
+        """ We get an errror if the account and owner diverge """
+
+        rv = self.app.get('/client/' + str(self.clt5.id) + '/account/'
+                          + str(self.ba1.id) + '/delete')
+        self.assertIn(b'404', rv.data, '404 not returned')
+
+    def test_request_non_existing_account(self):
+        """ An error is returned on deletion of a non-existing account  """
+
+        rv = self.app.get('/client/' + str(self.clt5.id) + 
+                          '/account/1/delete')
+        self.assertIn(b'404', rv.data, '404 not returned')
+
+    def test_post_delete_confirmation(self):
+        """ Post the delete confirmation for a bank account """
+
+        ba5_id = self.ba5.id
+        clt5_id = self.clt5.id
+        rv=self.app.post('client/' + str(self.clt5.id) + '/account/'
+                         + str(self.ba5.id) + '/delete', 
+                         data=dict(client_id=self.clt5.id, delete=True),
+                         follow_redirects=True)
+        clt5_new = db.session.query(Clients).filter_by(id=clt5_id).first()
+        self.assertTrue(clt5_new, 'Read client unsuccessful')
+        account_ids = []
+        for account in clt5_new.accounts:
+            account_ids.append(account.id)
+        self.assertNotIn(ba5_id, account_ids, 'Account not deleted')
+
+    def test_post_invalid_account(self):
+        """ We cannot confirm deleting the wrong account """
+
+        rv=self.app.post('client/' + str(self.clt5.id) + '/account/'
+                         + str(self.ba3.id) + '/delete', 
+                         data=dict(client_id=self.clt5.id, delete=True),
+                         follow_redirects=True)
+        self.assertIn(b'404', rv.data, 'Deleting account not refused')
+
+    def test_deleting_non_existing_account(self):
+        """ Deleting a non-existing account is met with 404 """
+
+        rv=self.app.post('client/' + str(self.clt5.id)
+                         + '/account/1/delete', 
+                         data=dict(client_id=self.clt5.id, delete=True),
+                         follow_redirects=True)
+        self.assertIn(b'404', rv.data,
+                      'Deleting non-existing account not refused')
+
+
 class TestDebtorInterface(unittest.TestCase):
 
     def setUp(self):
@@ -962,6 +1092,26 @@ def add_addresses(instance):
     instance.clt5.emails.append(instance.mad05)
     instance.mad06 = EMail(mail_address='snodeplanner@bedrijf.co.uk')
     instance.clt6.emails.append(instance.mad06)
+    # Bank accounts
+    instance.ba1 = BankAccounts(iban='NL45INGB0162029659',
+                                client_name='F. Wanders')
+    instance.clt1.accounts.append(instance.ba1)
+    instance.ba2 = BankAccounts(iban='NL08INGB0212952803',
+                                client_name=None)
+    instance.clt2.accounts.append(instance.ba2)
+    instance.ba3 = BankAccounts(iban='NL94INGB0264350197',
+                                client_name=None)
+    instance.clt3.accounts.append(instance.ba3)
+    instance.ba4 = BankAccounts(iban='NL76INGB0395563003',
+                                client_name='Peter Aquamarijn')
+    instance.clt3.accounts.append(instance.ba4)
+    instance.ba5 = BankAccounts(iban='NL76INGB0594788005',
+                                client_name=None)
+    instance.clt5.accounts.append(instance.ba5)
+    instance.ba6 = BankAccounts(iban='NL95INGB0696154021',
+                                client_name=None)
+    instance.clt6.accounts.append(instance.ba6)
+
 
 def delete_test_clients(instance):
     """ Delete clients and dependants added in create_clients """

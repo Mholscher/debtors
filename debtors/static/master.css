@@ -60,8 +60,8 @@ a.IMG {
     
 .flash {
     background-color : yellow ;
-    font-weight : bold ;
-    display : float ;
+    color : red ;
+    font-weight : normal ;
     margin-left : 15% ;
     }
     

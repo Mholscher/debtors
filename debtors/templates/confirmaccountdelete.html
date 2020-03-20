@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<div class="page">
+<h2>Client {{client.initials}} {{client.surname}} : {{ account.iban }}, confirm deletion of bank account </h2> </br></br>
+<table>
+<tr><td>Account</td> <td>{{ account.iban }} {{ account.bic }} </br> 
+{{ account.client_name }} </td> </tr>
+ </table> </br> </br>
+ <form action={{ url_for('delete_account', id=client.id, account_id=account.id) }} method="POST">
+ <div>{{ form.delete }}  {{ form.cancel }}
+ </div>
+{% endblock content %}

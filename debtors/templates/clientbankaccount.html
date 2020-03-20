@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% from "fields.html" import fld %}
+
+{% block content %}
+<div class="page">
+<div  class="inlineform">
+<h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
+{% for account in client.accounts %}
+Bank account {{account.iban}}  {{account.bic }}
+{% endfor %} </br>
+<form action="{% if account.id %}{{ url_for('change_accounts', id=client.id, account_id=account.id)}} {% else %}{{ url_for('add_account', id=client.id)}} {% endif %}" method="POST" class="inlineform">
+{{ form.csrf_token }}
+{% if form.csrf_token.errors %}
+    <div class="warning">You have submitted an invalid CSRF token</div>
+{% endif %}
+<div class="inputline">{{ fld(form.iban) }}
+</div>
+<div class="inputline">{{ fld(form.bic) }}
+</div> 
+<div class="inputline">{{ fld(form.client_name) }}
+</div> 
+{{form.update}}
+</form>
+</div>
+{% endblock content %}

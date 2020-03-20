@@ -1,0 +1,8 @@
+    <form action={{ url_for('list_clients') }} method="GET" class="inlineform">
+    {# {{ search_form.csrf_token }}
+       {% if form.csrf_token.errors %}
+        <div class="warning">You have submitted an invalid CSRF token</div>
+    {% endif %} #}
+    <div class="inputline"> {{ search_form.search_for.label(class="lbl") }} {{ search_form.search_for }} {{search_form.start_search}}
+    </div>  
+    </form>

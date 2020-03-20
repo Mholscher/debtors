@@ -1,0 +1,5 @@
+{% macro fld(field) -%}
+{# This macro displays a field label, the field and any errors on the field. #}
+    {{ field.label(class="lbl") }} {{field}}{% if field.errors %} <ul class="flash"> {% for error in field.errors %} {{ error }} {% endfor %}</ul>
+    {% endif %}
+{%- endmacro %}

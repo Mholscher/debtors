@@ -4,7 +4,7 @@ Process payments
 Payments from bank statements
 -----------------------------
 
-If payments are being made into our bank account, these appear on our daily statement. It is assumed that statements are coming in, detailing payments. 
+If payments are being made into our bank account, these appear on our daily statement. It is assumed that statements are digitally coming in, detailing payments. The example implementation is for CAMT.053 formatted statements. Check the documentation of your preferred bank to see what it supports.
 
 +------------------------+--------------------+-----------+----------+
 | Field name             |Source              | Optional? | Default  |

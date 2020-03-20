@@ -48,7 +48,6 @@ The client can have one or more bank accounts.
     :account_number: The bank account number
     :bic: Business Identifier Code of the bank where the account is held
     :name: The name that is on the bank account
-    :preferred: Set for the account the client prefers to use
 
 
 Storing client information
