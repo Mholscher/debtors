@@ -13,7 +13,7 @@
     <form action="/client/{{form.id.data}}" method="POST" class="inlineform">
 {% else %}
     <h2 class="inlineform"> New client </h2>
-    <form action={{ url_for('create_client') }} method="POST" class="inlineform">
+    <form action={{ url_for('.create_client') }} method="POST" class="inlineform">
 {% endif %}
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}

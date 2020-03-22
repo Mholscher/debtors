@@ -9,7 +9,7 @@
 {% for mail in client.emails %}
 Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %}
 {% endfor %} </br>
-<form action="{{ url_for('add_mail', id=client.id)}}" method="POST" class="inlineform">
+<form action="{{ url_for('.add_mail', id=client.id)}}" method="POST" class="inlineform">
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>

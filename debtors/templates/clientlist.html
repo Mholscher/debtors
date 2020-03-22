@@ -7,7 +7,7 @@
 <h2 class="inlineform"> Client list </h2>
 <div class="inlineform">
 {% for client in client_list %}
-    Name      <a href={{url_for('clients', id=client.id)}}>{{client.initials}}{{client.surname}}</a> </br>
+    Name      <a href={{url_for('.clients', id=client.id)}}>{{client.initials}}{{client.surname}}</a> </br>
     {% if client.first_name %}
     First name {{client.first_name}} </br>
     {% endif %}
@@ -29,6 +29,12 @@
     {% endif %}
                  {{ address.postcode }} {{ address.town_or_village }} </br>
     {% endfor %}
+    Bank accounts : </br></br>
+    {% for account in client.accounts %}
+    {{ account.iban }}  {{ account.bic }} </br>
+    In the name of {{ account.client_name }} </br>
+    {% endfor %}
+
 {% endfor %}
 </div>
 {% endblock content %}

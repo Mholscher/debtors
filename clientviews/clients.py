@@ -85,7 +85,7 @@ class ClientView(MethodView):
             db.session.commit()
 
             if client_form.addmore.data:
-                return redirect(url_for('create_client'))
+                return redirect(url_for('.create_client'))
             else:
                 return redirect(url_for('index'))
 
@@ -170,7 +170,7 @@ class MailView(MethodView):
         client.emails.append(mail)
 
         db.session.commit()
-        return redirect(url_for('clients', id=client.id))
+        return redirect(url_for('.clients', id=client.id))
 
 
 class AddressView(MethodView):
@@ -215,7 +215,7 @@ class AddressView(MethodView):
                 address.add()
                 client.addrs.append(address)
             db.session.commit()
-            return redirect(url_for('clients', id=id))
+            return redirect(url_for('.clients', id=id))
         return render_template('clientaddress.html', client=client,
                                form=client_address_form)
 
@@ -251,7 +251,7 @@ class AddressDeleteConfirmationView(MethodView):
             address.delete_address()
             db.session.commit()
 
-        return redirect(url_for('clients', id=id, _method='GET'))
+        return redirect(url_for('.clients', id=id, _method='GET'))
 
 
 class BankAccountView(MethodView):
@@ -299,7 +299,7 @@ class BankAccountView(MethodView):
             if not account_id:
                 client.accounts.append(account)
             db.session.commit()
-            return redirect(url_for('clients', id=id))
+            return redirect(url_for('.clients', id=id))
         return render_template('clientbankaccount.html', client=client,
                                form=bank_account_form, account=account)
 
@@ -332,7 +332,7 @@ class BankAccountDeleteView(MethodView):
         
         if bank_account_form.validate_on_submit():
             if request.form.get("cancel", False):
-                return redirect(url_for('clients', id=id))
+                return redirect(url_for('.clients', id=id))
             if account_id:
                 account = None
                 for acc in client.accounts:
@@ -345,7 +345,7 @@ class BankAccountDeleteView(MethodView):
                 abort(404, 'A bank account is required')
             account.delete()
             db.session.commit()
-            return redirect(url_for('clients', id=id))
+            return redirect(url_for('.clients', id=id))
         return render_template('confirmaccountdelete.html',
                                client=account.owner,
                                account=account, form=account_delete_form)        

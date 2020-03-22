@@ -34,7 +34,7 @@ class TestCreateBill(unittest.TestCase):
         """ We can create a new bill  """
 
         bill01 = Bills(date_sale=datetime.now(), date_bill=None,
-                      prev_bill=None, status='new')
+                      prev_bill=None, status=Bills.NEW)
         bill01.add()
         db.session.flush()
         self.assertTrue(bill01.bill_id, 'No bill id found')
@@ -43,7 +43,7 @@ class TestCreateBill(unittest.TestCase):
         """ The date of sale is required """
 
         with self.assertRaises(ValueError):
-            bill02 = Bills(date_sale=None, status='new')
+            bill02 = Bills(date_sale=None, status=Bills.NEW)
             bill02.add()
             db.session.flush()
 
@@ -52,7 +52,7 @@ class TestCreateBill(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             bill03 = Bills(date_sale=datetime.now(), date_bill=None,
-                            prev_bill=1005, status='new')
+                            prev_bill=1005, status=Bills.NEW)
             bill03.add()
             db.session.flush()
 
@@ -60,12 +60,12 @@ class TestCreateBill(unittest.TestCase):
         """ Replacing an existing bill succeeds """
 
         bill04 = Bills(date_sale=datetime.now(), date_bill=None,
-                      status='new')
+                      status=Bills.NEW)
         bill04.add()
         db.session.flush()
         bill04 = db.session.query(Bills).first()
         bill05 = Bills(date_sale=datetime.now(), date_bill=None,
-                      prev_bill=bill04.bill_id, status='new')
+                      prev_bill=bill04.bill_id, status=Bills.NEW)
         bill05.add()
         db.session.flush()
         self.assertEqual(bill05.prev_bill, bill04.bill_id,
@@ -77,7 +77,7 @@ class TestBillFunctions(unittest.TestCase):
     def setUp(self):
 
         self.bill08 = Bills(date_sale=datetime.now(), date_bill=None,
-                            status='new')
+                            status=Bills.NEW)
         self.bill08.add()
         self.bl09 = BillLines(short_desc='Lumpy', unit_price=18)
         self.bill08.lines.append(self.bl09)
@@ -95,6 +95,21 @@ class TestBillFunctions(unittest.TestCase):
 
         self.assertEqual(self.bill08.total(), 243, 
                          'Incorrect total bill amount')
+
+    def test_can_set_status(self):
+        """ We can set the status of a bill """
+
+        self.bill08.status = Bills.ISSUED
+        db.session.flush()
+        self.assertEqual(self.bill08.status, Bills.ISSUED, 
+                         'Change not accepted')
+
+    def test_set_invalid_status_fails(self):
+        """  cannot set a status to an invalid value """
+
+        with self.assertRaises(ValueError):
+            self.bill08.status = 'blabber'
+            db.session.flush()            
 
 
 class TestLineCreate(unittest.TestCase):

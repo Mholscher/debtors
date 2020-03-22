@@ -32,6 +32,13 @@ class BillNotFoundError(ValueError):
 
     pass
 
+
+class BillStatusInvalidError(ValueError):
+    """ A passed in bill status is not valid """
+
+    pass
+
+
 class NoSaleDateError(ValueError):
     """ A sale date is required but not supplied """
 
@@ -70,6 +77,12 @@ class Bills(db.Model):
 
     """
 
+    NEW = 'new'
+    ISSUED = 'issued'
+    PAID = 'paid'
+    STATUS_NAME = { 'new' : 'New', 'issued' : 'Billed, unpaid',
+                           'paid' : 'Fully paid' }
+
     __tablename__ = 'bill'
     bill_id = db.Column(db.Integer, db.Sequence('bill_sequence'),
                         primary_key=True)
@@ -106,6 +119,14 @@ class Bills(db.Model):
         except BillNotFoundError:
             raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
         return prev_bill
+
+    @validates('status')
+    def validate_bill_status(self, key, status):
+        """ Checks a status passed has a valid value """
+
+        if not status in Bills.STATUS_NAME:
+            raise BillStatusInvalidError('Status {} is invalid'.format(status))
+        return status
 
     def total(self):
         """ Return the total bill amount """

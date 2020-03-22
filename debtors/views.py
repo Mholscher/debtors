@@ -7,4 +7,4 @@ def index():
     """This is the index page of the application. It shows
     a list of accounts
     """
-    return redirect(url_for('list_clients')) 
+    return redirect('/client/list') 

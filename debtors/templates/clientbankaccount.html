@@ -6,10 +6,12 @@
 <div class="page">
 <div  class="inlineform">
 <h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
+<table>
 {% for account in client.accounts %}
-Bank account {{account.iban}}  {{account.bic }}
-{% endfor %} </br>
-<form action="{% if account.id %}{{ url_for('change_accounts', id=client.id, account_id=account.id)}} {% else %}{{ url_for('add_account', id=client.id)}} {% endif %}" method="POST" class="inlineform">
+<tr><td>Bank account {{account.iban}}  {{account.bic }}</td><td> <a href={{url_for('.delete_account', id=client.id, account_id=account.id)}}> Delete this account</a></td></tr>
+{% endfor %}
+</table></br></br>
+<form action="{% if account.id %}{{ url_for('.change_accounts', id=client.id, account_id=account.id)}} {% else %}{{ url_for('.add_account', id=client.id)}} {% endif %}" method="POST" class="inlineform">
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>

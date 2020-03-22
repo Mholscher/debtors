@@ -613,21 +613,21 @@ class TestBankAccountsFunctions(unittest.TestCase):
 
         iban_nr = self.ba5.iban
         rv = self.app.get('/client/' + str(self.clt5.id) + '/account/'
-                           + str(self.ba5.id) + '/delete')
+                           + str(self.ba5.id) + '/confirm')
         self.assertIn(iban_nr.encode(), rv.data, 'IBAN not in page content')
 
     def test_request_wrong_account(self):
         """ We get an errror if the account and owner diverge """
 
         rv = self.app.get('/client/' + str(self.clt5.id) + '/account/'
-                          + str(self.ba1.id) + '/delete')
+                          + str(self.ba1.id) + '/confirm')
         self.assertIn(b'404', rv.data, '404 not returned')
 
     def test_request_non_existing_account(self):
         """ An error is returned on deletion of a non-existing account  """
 
         rv = self.app.get('/client/' + str(self.clt5.id) + 
-                          '/account/1/delete')
+                          '/account/1/confirm')
         self.assertIn(b'404', rv.data, '404 not returned')
 
     def test_post_delete_confirmation(self):
@@ -636,7 +636,7 @@ class TestBankAccountsFunctions(unittest.TestCase):
         ba5_id = self.ba5.id
         clt5_id = self.clt5.id
         rv=self.app.post('client/' + str(self.clt5.id) + '/account/'
-                         + str(self.ba5.id) + '/delete', 
+                         + str(self.ba5.id) + '/confirm', 
                          data=dict(client_id=self.clt5.id, delete=True),
                          follow_redirects=True)
         clt5_new = db.session.query(Clients).filter_by(id=clt5_id).first()
@@ -650,7 +650,7 @@ class TestBankAccountsFunctions(unittest.TestCase):
         """ We cannot confirm deleting the wrong account """
 
         rv=self.app.post('client/' + str(self.clt5.id) + '/account/'
-                         + str(self.ba3.id) + '/delete', 
+                         + str(self.ba3.id) + '/confirm', 
                          data=dict(client_id=self.clt5.id, delete=True),
                          follow_redirects=True)
         self.assertIn(b'404', rv.data, 'Deleting account not refused')
@@ -659,7 +659,7 @@ class TestBankAccountsFunctions(unittest.TestCase):
         """ Deleting a non-existing account is met with 404 """
 
         rv=self.app.post('client/' + str(self.clt5.id)
-                         + '/account/1/delete', 
+                         + '/account/1/confirm', 
                          data=dict(client_id=self.clt5.id, delete=True),
                          follow_redirects=True)
         self.assertIn(b'404', rv.data,
