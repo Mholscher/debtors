@@ -7,6 +7,18 @@ The module debtmodels debtbilling
 ..  automodule:: debtmodels.debtbilling
     :members:
 
+The module debtors debtapibp
+----------------------------
+
+..  automodule:: debtors.debtapibp
+    :members:
+
+The module clients clientbp
+-------------------------------
+
+.. automodule:: clients.clientbp
+   :members:
+
 The module clientmodels clients
 -------------------------------
 

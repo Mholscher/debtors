@@ -34,4 +34,5 @@ import clientmodels.clients
 from . import views
 from clients.clientbp import client_pages
 app.register_blueprint(client_pages)
-
+from debtors.debtapibp import debtapi
+app.register_blueprint(debtapi)

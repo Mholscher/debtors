@@ -24,6 +24,7 @@
 """
 
 from sqlalchemy.orm import validates
+from iso4217 import raw_table  # This is the currency table
 from debtors import db
 
 
@@ -38,6 +39,11 @@ class BillStatusInvalidError(ValueError):
 
     pass
 
+
+class InvalidBillingCcyError(ValueError):
+    """ A passed in billing  currency is not valid """
+
+    pass
 
 class NoSaleDateError(ValueError):
     """ A sale date is required but not supplied """
@@ -86,7 +92,9 @@ class Bills(db.Model):
     __tablename__ = 'bill'
     bill_id = db.Column(db.Integer, db.Sequence('bill_sequence'),
                         primary_key=True)
-    client_id = db.Column(db.Integer)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), index=True)
+    bankaccount_id = db.Column(db.Integer, db.ForeignKey('bankaccounts.id'),
+                             index=True, nullable=True)
     billing_ccy = db.Column(db.String(3), default='EUR')
     date_sale = db.Column(db.DateTime, nullable=False)
     date_bill = db.Column(db.DateTime, nullable=True, default=None)
@@ -94,11 +102,22 @@ class Bills(db.Model):
                           nullable=True)
     status = db.Column(db.String(8), server_default='new')
     lines = db.relationship('BillLines', backref='bill')
+    client = db.relationship('Clients', backref='bills')
+    bank_account = db.relationship('BankAccounts', backref='used_in_bills')
     
     def add(self):
         """ Add the bill to the session """
 
         db.session.add(self)
+
+    @validates('billing_ccy')
+    def validate_billing_ccy(self, key, billing_ccy):
+        """ Validate the currency against iso 4217 table """
+
+        if not billing_ccy in raw_table.keys():
+            raise InvalidBillingCcyError(
+                'The currency {} is invalid'.format(billing_ccy))
+        return billing_ccy
 
     @validates('date_sale')
     def validate_date_sale(self, key, date_sale):
@@ -145,6 +164,18 @@ class Bills(db.Model):
             raise BillNotFoundError(
                 'Bill with id {0} was not found'.format(id_requested))
         return bill
+
+    @staticmethod
+    def get_bills_with_status(client, statuses):
+        """ Return a list of bills for a client with passed in status """
+
+        return [bill for bill in client.bills if bill.status in statuses]
+
+    @staticmethod
+    def get_outstanding_bills(client):
+        """ Return a list of outstanding bills for client """
+
+        return Bills.get_bills_with_status(client, [Bills.NEW, Bills.ISSUED])
 
 
 class BillLines(db.Model):

@@ -16,9 +16,13 @@
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-from debtors import db
+from debtors import app, db
+from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
 from debtmodels.debtbilling import Bills, BillLines
-from datetime import datetime
+from debtviews.bills import BillDict, BillListDict
+from debttests.helpers import delete_test_clients, add_addresses,\
+    create_clients, spread_created_at 
+from datetime import datetime, date
 
 class TestCreateBill(unittest.TestCase):
 
@@ -56,6 +60,26 @@ class TestCreateBill(unittest.TestCase):
             bill03.add()
             db.session.flush()
 
+    def test_billing_ccy_must_exist(self):
+        """ The billing currency must be on ISO 4217 """
+
+        with self.assertRaises(ValueError):
+            bill09 = Bills(date_sale=datetime.now(), date_bill=None,
+                            billing_ccy = 'BAL',
+                            prev_bill=None, status=Bills.NEW)
+            bill09.add()
+            db.session.flush()
+
+    def test_billing_ccy_may_be_none(self):
+        """ We can enter none for the billing currency """
+
+        bill10 = Bills(date_sale=datetime.now(), date_bill=None,
+                       billing_ccy=None,
+                       prev_bill=None, status=Bills.NEW)
+        bill10.add()
+        db.session.flush()
+        self.assertEqual(bill10.billing_ccy, 'EUR', 'No defaulting of currency')
+
     def test_can_replace_bill(self):
         """ Replacing an existing bill succeeds """
 
@@ -84,11 +108,15 @@ class TestBillFunctions(unittest.TestCase):
         self.bl10 = BillLines(short_desc='Gravy', unit_price=45,
                               number_of=5)
         self.bill08.lines.append(self.bl10)
+        create_clients(self)
+        add_addresses(self)
+        self.bill08.client = self.clt1
         db.session.flush()
 
     def tearDown(self):
 
         db.session.rollback()
+        delete_test_clients(self)
 
     def test_bill_total(self):
         """ The bill can return total due on it """
@@ -109,7 +137,124 @@ class TestBillFunctions(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.bill08.status = 'blabber'
-            db.session.flush()            
+            db.session.flush()
+
+    def test_get_all_client_bills(self):
+        """ Get all bills for a client """
+
+        bill08_id = self.bill08.bill_id
+        bill11 = Bills(date_sale=datetime.now(), date_bill=None,
+                       status=Bills.NEW)
+        bill11.client = self.clt1
+        db.session.flush()
+
+        bill08_new = db.session.query(Bills).filter_by(bill_id=bill08_id).first()
+        self.assertEqual(len(bill08_new.client.bills), 2, 'Wrong no. of bills')
+        self.assertEqual(len(self.clt2.bills), 0, 'Unexpected bill on client')
+
+    def test_get_only_issued_bills(self):
+        """ We can get only bills for one status """
+
+        bill08_id = self.bill08.bill_id
+        bill12 = Bills(date_sale=datetime.now(), date_bill=None,
+                       status=Bills.ISSUED)
+        bill12.client = self.clt1
+        db.session.flush()
+
+        list_issued = Bills.get_bills_with_status(self.clt1, [Bills.ISSUED])
+        self.assertEqual(len(list_issued), 1, 'Wrong no. of issued bills')
+
+    def test_return_outstanding_bills(self):
+        """ We can return a list of outstanding bills for a client """
+
+        bill13 = Bills(date_sale=datetime.now(), date_bill=None,
+                       status=Bills.ISSUED)
+        bill13.client = self.clt1
+        bill14 = Bills(date_sale=datetime.now(), date_bill=None,
+                       status=Bills.PAID)
+        bill14.client = self.clt1
+        db.session.flush()
+
+        list_unpaid = Bills.get_outstanding_bills(self.clt1)
+        self.assertIn(bill13, list_unpaid, 'Unpaid bill not in unpaid list')
+        self.assertNotIn(bill14, list_unpaid, 'Paid bill  in unpaid list')
+
+
+class TestConvertToTagged(unittest.TestCase):
+    """ Testing conversion from domain model to something the view
+    can work with
+    """
+
+    def setUp(self):
+        
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+    
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_convert_bill(self):
+        """ We can convert a bill to a billdict """
+
+        bld1 = BillDict(self.bll1) 
+        self.assertEqual(bld1["date-sale"].date(), self.bll1.date_sale.date(),
+                         'Date sale not set correctly')
+
+    def test_bill_list(self):
+        """ We can convert a list of bills with its client data """
+
+        blld1 = BillListDict(bill_list=self.bll1.get_outstanding_bills(self.clt1))
+        self.assertEqual(blld1["bills"][0], BillDict(self.bll1),
+                         'First bill not the expected one')
+        self.assertEqual(blld1["client"], self.bll1.client.id,
+                         'Client id incorrect')
+
+    def test_bill_list_from_client(self):
+        """ We can convert a list of bills from only a client number """
+
+        blld2 = BillListDict(client=self.clt1)
+        self.assertEqual(blld2["bills"][0], BillDict(self.bll1),
+                         'First bill not the expected one')
+        self.assertEqual(blld2["client"], self.bll1.client.id,
+                         'Client id incorrect')
+
+    def test_no_list_or_client(self):
+        """ Passing no bill list nor client fails """
+
+        with self.assertRaises(TypeError):
+            blld3 = BillListDict()
+
+    def test_empty_list_fails(self):
+        """ When we send in an empty list, failure occurs """
+
+        with self.assertRaises(TypeError):
+            blld4 = BillListDict(bill_list=[])        
+
+
+class TestBillTransactions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def rollback():
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+
+    def test_get_outstanding(self):
+        """ We can retrieve a json with the debt """
+
+        rv = self.app.get('/api/10/client/' + str(self.clt1.id) + '/bills')
+        self.assertIn(str(self.clt1.id).encode(), rv.data, 'ID number bill not found')
 
 
 class TestLineCreate(unittest.TestCase):
@@ -196,6 +341,20 @@ class TestBillLineFunctions(unittest.TestCase):
             totals.append(line.total())
         self.assertIn(75, totals, 'Line not correctly calculated')
         self.assertIn(340, totals, 'Line not correctly calculated')
+
+def create_bills(instance):
+    """ Create bills for test 'instance' """
+
+    instance.bll1 = Bills(date_sale=datetime.now(), date_bill=None,
+                          status='new')
+    instance.clt1.bills.append(instance.bll1)
+
+def delete_test_bills(instance):
+    """ Delete all the bills created for a test """
+
+    for attribute in instance.vars():
+        if isinstance(attribute, Bills):
+            db.session.delete(attribute)
 
 
 if __name__ == '__main__' :
