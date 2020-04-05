@@ -23,9 +23,19 @@
 
 """
 
+from dateutil.parser import parse
 from sqlalchemy.orm import validates
 from iso4217 import raw_table  # This is the currency table
-from debtors import db
+from clientmodels.clients import Clients, db
+
+
+class InvalidDataError(ValueError):
+    """ The data passed in is invalid """
+
+    def to_dict(self):
+        """ Return a dictionary with interesting info """
+
+        return {"message" : str(self) }
 
 
 class BillNotFoundError(ValueError):
@@ -40,29 +50,29 @@ class BillStatusInvalidError(ValueError):
     pass
 
 
-class InvalidBillingCcyError(ValueError):
+class InvalidBillingCcyError(InvalidDataError):
     """ A passed in billing  currency is not valid """
 
     pass
 
-class NoSaleDateError(ValueError):
+class NoSaleDateError(InvalidDataError):
     """ A sale date is required but not supplied """
 
     pass
 
 
-class ReplacedBillError(ValueError):
+class ReplacedBillError(InvalidDataError):
     """ A bill which will be replaced does not exist """
 
     pass
 
 
-class ShortDescRequiredError(ValueError):
+class ShortDescRequiredError(InvalidDataError):
     """ A bill line is required to have a short description """
 
     pass
 
-class UnitPriceRequiredError(ValueError):
+class UnitPriceRequiredError(InvalidDataError):
     """ On a bill line a unit price is required """
 
     pass
@@ -177,6 +187,29 @@ class Bills(db.Model):
 
         return Bills.get_bills_with_status(client, [Bills.NEW, Bills.ISSUED])
 
+    @classmethod
+    def create_from_dict(cls, bill_dict):
+        """ Create a bill and bill lines from a dictiobnary
+        
+        The dictionary is modeled after the message an external system
+        may send to debtors. The bill may need to default some of the
+        items, as will bill lines. The result is a bill that is returned.
+        """
+
+        client = Clients.get_by_id(int(bill_dict['client'])) 
+        try:
+            bill = cls(date_sale=parse(bill_dict["date-sale"]))
+        except KeyError as ke:
+            raise NoSaleDateError("date-sale missing")
+        bill.client = client
+        if bill_dict.get('currency'):
+            bill.billing_ccy = bill_dict['currency']
+        if bill_dict.get('bill-replaced'):
+            bill.prev_bill = bill_dict['bill-replaced']
+        for bill_line in bill_dict["bill-lines"]:
+            BillLines.create_line_from_dict(bill, bill_line)
+        return bill
+
 
 class BillLines(db.Model):
     """ A line on the bill.
@@ -231,3 +264,23 @@ class BillLines(db.Model):
         """ Calculate a total amount billed on this line """
 
         return self.number_of * self.unit_price
+
+    @classmethod
+    def create_line_from_dict(cls, bill, line_dict):
+        """ This creates a bill line from a dictionary for a bill
+        
+        The bill is a Bills instance, used to attach the created line to.
+        The line_dict is defining a line for the bill
+        """
+
+        line = cls()
+        if line_dict.get("short-desc"):
+            line.short_desc = line_dict.get("short-desc")
+        if line_dict.get("long-desc"):
+            line.long_desc = line_dict.get("long-desc")
+        line.unit = line_dict["unit"]
+        if line_dict.get("unit-desc"):
+            line.unit_desc = line_dict["unit-desc"]
+        if line_dict.get("unit-price"):
+            line.unit_price = line_dict["unit-price"]
+        bill.lines.append(line)

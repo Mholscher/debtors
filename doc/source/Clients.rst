@@ -1,3 +1,5 @@
+.. _democlientsystem:
+
 The client subsystem
 ====================
 

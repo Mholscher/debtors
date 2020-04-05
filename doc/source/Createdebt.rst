@@ -4,9 +4,9 @@ Creating debt: money is due
 Another system is creating the debt
 -----------------------------------
 
-Normally another system will be creating the debt. Sales are made and with that a client gets the obligation to pay. The debtors system is notified by the system that knows it needs to be created by an interface. **TODO link to tech docs.**
+Normally another system will be creating the debt. Sales are made and with that a client gets the obligation to pay. The debtors system is notified by the system that knows it needs to be created by an interface. For a description see :ref:`requestbill`
 
-The interface will lead to the creation of a debt. For each debt there is one client who is identified in the message. The client is assumed to be administrated in an external system. **TODO link to tech docs.** For testing purposes a very simple client system will be provided. For the debt the following client and general data needs to be provided:
+The interface will lead to the creation of a debt. For each debt there is one client who is identified in the message. The client is assumed to be administrated in an external system. For testing purposes a very simple client system (:ref:`democlientsystem`) is provided. For the debt the following client and general data needs to be provided:
 
 +------------------------+--------------------+-----------+----------+
 | Field name             |Source              | Optional? | Default  |

@@ -16,6 +16,7 @@
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+from json import dumps
 from debtors import app, db
 from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
 from debtmodels.debtbilling import Bills, BillLines
@@ -96,6 +97,56 @@ class TestCreateBill(unittest.TestCase):
                          'Bill to replace not accepted')
 
 
+class TestBillFromMessage(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        db.session.flush()
+        self.bill_dict =\
+            {"client" : str(self.clt1.id),
+             "currency" : "USD",
+             "date-sale" : "2020-03-29",
+             "bill-lines": [{"short-desc" : "Short desc", 
+                        "long-desc" : "A longer description",
+                        "unit" : 25,
+                        "unit-desc" : "kilos",
+                        "unit-price" : 1765},
+                        {"short-desc" : "Another", 
+                        "long-desc" : "Another longer description",
+                        "unit" : 1,
+                        "unit-price" : 2265}]
+             }
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_bill_from_dict(self):
+        """ We can create a bill from the dict """
+
+        bill15 = Bills.create_from_dict(self.bill_dict)
+        self.assertIn(bill15, self.clt1.bills, 'Bill not added')
+
+    def test_invalid_client_fails(self):
+        """ Adding a bill for a non-existing client fails """
+
+        self.bill_dict['client'] = 1
+        with self.assertRaises(ValueError):
+            bill16 = Bills.create_from_dict(self.bill_dict)
+
+    def test_bill_lines_added(self):
+        """ The bill lines are added to the bill """
+
+        bill17 = Bills.create_from_dict(self.bill_dict)
+        self.assertEqual(len(bill17.lines), 2, 'Incorrect no of lines')
+        
+
 class TestBillFunctions(unittest.TestCase):
 
     def setUp(self):
@@ -116,7 +167,9 @@ class TestBillFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        delete_test_bills(self)
         delete_test_clients(self)
+        db.session.commit()
 
     def test_bill_total(self):
         """ The bill can return total due on it """
@@ -194,12 +247,15 @@ class TestConvertToTagged(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
 
     def test_convert_bill(self):
         """ We can convert a bill to a billdict """
 
         bld1 = BillDict(self.bll1) 
-        self.assertEqual(bld1["date-sale"].date(), self.bll1.date_sale.date(),
+        self.assertEqual(bld1["date-sale"], str(self.bll1.date_sale.date()),
                          'Date sale not set correctly')
 
     def test_bill_list(self):
@@ -241,20 +297,78 @@ class TestBillTransactions(unittest.TestCase):
         add_addresses(self)
         create_bills(self)
         db.session.flush()
+        self.bill_dict =\
+            {"client" : str(self.clt1.id),
+             "currency" : "USD",
+             "date-sale" : "2020-03-29",
+             "bill-lines": [{"short-desc" : "Short desc", 
+                        "long-desc" : "A longer description",
+                        "unit" : 25,
+                        "unit-desc" : "kilos",
+                        "unit-price" : 1765},
+                        {"short-desc" : "Another", 
+                        "long-desc" : "Another longer description",
+                        "unit" : 1,
+                        "unit-price" : 2265}]
+             }
         self.app = app.test_client()
         self.app.testing = True
 
-    def rollback():
+    def tearDown(self):
 
         db.session.rollback()
         delete_test_bills(self)
         delete_test_clients(self)
+        db.session.commit()
 
     def test_get_outstanding(self):
         """ We can retrieve a json with the debt """
 
         rv = self.app.get('/api/10/client/' + str(self.clt1.id) + '/bills')
         self.assertIn(str(self.clt1.id).encode(), rv.data, 'ID number bill not found')
+
+    def test_non_existing_client_fails(self):
+        """ A request for a list of bills for a nonexisting client fails """
+
+        rv = self.app.get('/api/10/client/1/bills')
+        self.assertIn(b'404', rv.data, 'Not found not done')
+
+    def test_empty_list_succeeds(self):
+        """ A request for a list of bills for a client with no bill """
+
+        rv = self.app.get('/api/10/client/' + str(self.clt2.id) + '/bills')
+        self.assertIn(b'Petrol', rv.data, 'Request for bills not OK')
+        self.assertEqual(200, rv.status_code, 'Status not OK')
+
+    def test_add_bill_success(self):
+        """ We can add a bill to the database through a transaction """
+
+        rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
+        self.assertEqual(rv.status_code, 200, 'Failure')
+        self.assertIn(b'bill-id', rv.data, 'No bill id returned')
+
+    def test_missing_date_fails(self):
+        """ Sending a json with a missing date-sale causes 400 """
+
+        bill_dict = self.bill_dict.copy()
+        del bill_dict['date-sale']
+        rv = self.app.post('/api/10/bill/new', json=bill_dict)
+        self.assertEqual(400, rv.status_code, 'No 400 status returned')
+
+    def test_prev_bill_not_found(self):
+        """ Trying to replace a non-existing bill gives 400 """
+
+        self.bill_dict["bill-replaced"] = 1
+        rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
+        self.assertEqual(400, rv.status_code, 'No 400 status returned')
+        
+
+    def test_get_bill_by_id(self):
+        """ We can get a bill by its bill id """
+
+        rv = self.app.get('/api/10/bill/' + str(self.bll2.bill_id))
+        bill_date = str(self.bll2.date_bill.date()).encode()
+        self.assertIn(bill_date, rv.data, 'Date not returned')
 
 
 class TestLineCreate(unittest.TestCase):
@@ -348,13 +462,24 @@ def create_bills(instance):
     instance.bll1 = Bills(date_sale=datetime.now(), date_bill=None,
                           status='new')
     instance.clt1.bills.append(instance.bll1)
+    instance.bll2 = Bills(date_sale=datetime.now(), date_bill=datetime.now(),
+                          status='paid')
+    instance.clt1.bills.append(instance.bll2)
+    instance.bll3 = Bills(date_sale=date(year=2019, month=11, day=18),
+                          date_bill=None,
+                          status='new')
+    instance.clt3.bills.append(instance.bll3)
+
 
 def delete_test_bills(instance):
     """ Delete all the bills created for a test """
 
-    for attribute in instance.vars():
-        if isinstance(attribute, Bills):
-            db.session.delete(attribute)
+    try:
+        for attribute in instance.vars():
+            if isinstance(attribute, Bills):
+                db.session.delete(attribute)
+    except AttributeError:
+        pass
 
 
 if __name__ == '__main__' :

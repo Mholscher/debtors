@@ -25,10 +25,23 @@ It also has the url_rules to add to the rule map of wekzeug, so incoming
 messages can be dispatched.
 """
 
-from flask import Blueprint
-from debtviews.bills import ClientBillsView
+from flask import Blueprint, jsonify
+#from debtviews.bills import ClientBillsView, BillCreateView, BillView
+import debtviews.bills as view_bill
 
 debtapi = Blueprint('debtapi', __name__, url_prefix='/api/10')
 
 debtapi.add_url_rule('/client/<int:client_number>/bills',
-                     view_func=ClientBillsView.as_view('client_bills'))
+                     view_func=view_bill.ClientBillsView.as_view('client_bills'))
+debtapi.add_url_rule('/bill/<bill_id>',
+                     view_func=view_bill.BillView.as_view('bill'))
+debtapi.add_url_rule('/bill/new',
+                     view_func=view_bill.BillCreateView.as_view('new_bill'))
+
+@debtapi.errorhandler(view_bill.InvalidDataError)
+def handle_invalid_data(ide):
+    response_dict = ide.to_dict()
+    response_dict['status'] = 'Bad Request'
+    response = jsonify(response_dict)
+    response.status_code = 400
+    return response

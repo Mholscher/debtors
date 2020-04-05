@@ -4,14 +4,20 @@ The debtors API
 The module debtmodels debtbilling
 ---------------------------------
 
-..  automodule:: debtmodels.debtbilling
-    :members:
+.. automodule:: debtmodels.debtbilling
+   :members:
 
 The module debtors debtapibp
 ----------------------------
 
-..  automodule:: debtors.debtapibp
-    :members:
+.. automodule:: debtors.debtapibp
+   :members:
+
+The module debtviews bills
+--------------------------
+
+.. automodule:: debtviews.bills
+   :members:
 
 The module clients clientbp
 -------------------------------

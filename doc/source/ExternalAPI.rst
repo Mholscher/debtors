@@ -52,16 +52,89 @@ The meaning of the fields is as follows:
     status
         A status of the bill. It is a shortcut which enables us to say something about the status of a bill (billed, paid etc.) without having to calculate the status each time it is retrieved.
 
-The answer is a success message or an error message (:ref:`errormessages`).
+The answer is a success message (the list) or an error message (:ref:`errormessages`).
+
+.. _requestbill:
+
+Submitting a bill request
+-------------------------
+
+Through the API other systems can submit bill requests to debtors. The url is
+
+    /api/10/bill/new
+
+The content of the payload is as follows::
+
+    {"client" : "25",
+     "currency" : "USD",
+     "date-sale" : "2020-03-29:",
+     "bill-replaced": "6",
+     "bill-lines": [{"short-desc" : "Short description", 
+                     "long-desc" : "A longer description",
+                     "unit" : 25,
+                     "unit-desc" : "kilos",
+                     "unit-price" : 1765},
+                     {"short-desc" : "Another description", 
+                     "long-desc" : "Another longer description",
+                     "unit" : 1,
+                     "unit-price" : 2265}]
+     }
+
+The meaning of the fields is as follows:
+
+    client
+        The client id of the client that will be billed
+
+    currency
+        The currency that the bill will be in. It is the error code as found in ISO 2417
+
+    date-sale
+        The date the transaction was completed that created the debt
+
+    bill-replaced
+        If the current bill request should replace a previous bill, this is added; the bill with the bill_id from this item is invalidated by debtors. This item is optional, it will not be present on most bills
+
+    bill-lines
+        The individual lines detailing what is billed here and how the amount is made up
+
+    short-desc
+        The short description of the line. This is mandatory, it contains data that is sufficient for the recipient of the bill to understand what is billed.
+
+    long-desc
+        An optional explanation/precision of the bill line
+
+    unit
+        The number of units billed. This is an amount greater than zero
+
+    unit-desc
+        An optional field describing what the number in unit is. It is optional, default is units.
+
+    unit-price
+        The price per unit. The total for the line is unit * unit-price
+    
+
+The debtor system will answer a success message (:ref:`successmessage`). This successmessage wil have the format::
+
+    {"status" : "OK", "bill-id" : 725 }
 
 
+.. _successmessage:
+
+Confirm a successful transaction
+--------------------------------
+
+Confirming a succesful transaction is done by a success message. This message has the following format::
+
+    {"status" : "OK", "bill-id" : 725  } 
+
+The variant message is dependent on the transaction, it will usually contain an "interesting" key for the external system. E.g. after adding a bill request it will hold the bill_id.
 
 .. _errormessages:
 
 Error messages
 --------------
 
-Errors are returned as HTTP errors with a payload explaining the error, when an explication is available. E.g. a 500 error will usually not have any more "interesting" error info available, but a 404 will usually, because we can return a message explaining what resource was not found.
+Errors are returned as HTTP errors with a payload explaining the error, when an explication is available. E.g. a 500 error will usually not have any more "interesting" error info available, but a 404 will usually have that, we can return a message explaining what resource was not found.
 
 A  message payload is as follows::
 

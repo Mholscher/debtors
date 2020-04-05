@@ -15,9 +15,11 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import jsonify
+from flask import jsonify, abort, request
 from flask.views import MethodView
-from clientmodels.clients import Clients
+#from debtors import db
+from debtmodels.debtbilling import Bills,db, InvalidDataError
+from clientmodels.clients import Clients, NoClientFoundError
 
 class ClientBillsView(MethodView):
     """ A view that enables listings of outstanding bills for a client """
@@ -25,8 +27,41 @@ class ClientBillsView(MethodView):
     def get(self, client_number=None):
         """ Get the list of outstanding bills for a client """
 
-        client = Clients.get_by_id(client_number)
+        try:
+            client = Clients.get_by_id(client_number)
+        except NoClientFoundError as ncfe:
+            abort(404, str(ncfe))
         return jsonify(BillListDict(client=client))
+
+
+class BillView(MethodView):
+    """ This view is for accessing a bill directly by id  
+    
+    This is a logical exxtension, from creating a new bill we return the
+    bill_id as the information that will make it possible to access
+    the bill.
+    """
+
+    def get(self, bill_id=None):
+        """ Get the bill for the passed in bill_id """
+
+        bill = Bills.get_bill_by_id(bill_id)
+        return jsonify(BillDict(bill))
+
+
+class BillCreateView(MethodView):
+    """ This view makes it possible for external systems to create a bill
+    
+    Of course the bill is not billed at this time.
+    """
+
+    def post(self):
+        """ Post the data for the bill """
+
+        bill_dict = request.get_json()
+        bill = Bills.create_from_dict(bill_dict)
+        db.session.commit()
+        return jsonify(create_success_response({"bill-id" : bill.bill_id}))
 
 
 class BillDict(dict):
@@ -39,10 +74,13 @@ class BillDict(dict):
 
     def __init__(self, bill):
 
-        self['bill-id'] = bill.bill_id
-        self['date-sale'] = bill.date_sale
-        self['date-billed'] = bill.date_bill
-        self['bill-replaced'] = bill.prev_bill
+        self['bill-id'] = None if bill.bill_id is None\
+            else int(bill.bill_id)
+        self['date-sale'] = str(bill.date_sale.date())
+        self['date-billed'] = None if bill.date_bill is None\
+            else str(bill.date_bill.date()) 
+        if bill.prev_bill:
+            self['bill-replaced'] = bill.prev_bill
         self['status'] = bill.STATUS_NAME[bill.status]
 
 
@@ -65,4 +103,18 @@ class BillListDict(dict):
 
         self['client'] = client.id
         self['name'] =  client.initials + ' ' + client.surname
-        self['bills'] = [BillDict(bill) for bill in client.bills] 
+        self['bills'] = [BillDict(bill) for bill in client.bills]
+
+def create_success_response(payload):
+    """ Create an OK response after a transaction.
+    
+    Payload is a dictionary with extra data that needs to be
+    added to the message content
+    """
+
+    success = {"status" : "OK"}
+    if payload:
+        payload.update(success)
+        return payload
+    else:
+        return success
