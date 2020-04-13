@@ -1,5 +1,28 @@
+#    Copyright 2020 Menno Hölscher
+#
+#    This file is part of debtors.
+
+#    debtors is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+
+#    debtors is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
+
+""" This is the views module of the debtors app. It does not contain
+the code for views (with the exception of the root view), but contains
+the url_rules pointing to the different views in the debtviews module.
+"""
+
 from debtors import app
 from flask import redirect, url_for
+from debtviews.bills import BillView
 
 
 @app.route('/')
@@ -8,3 +31,6 @@ def index():
     a list of accounts
     """
     return redirect(url_for('client.list_clients')) 
+
+app.add_url_rule('/bill/new', view_func=BillView.as_view('bill_create'))
+app.add_url_rule('/bill/<int:bill_id>', view_func=BillView.as_view('bill_update'))

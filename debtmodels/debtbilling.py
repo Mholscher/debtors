@@ -111,7 +111,8 @@ class Bills(db.Model):
     prev_bill = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
                           nullable=True)
     status = db.Column(db.String(8), server_default='new')
-    lines = db.relationship('BillLines', backref='bill')
+    lines = db.relationship('BillLines', backref='bill',
+                            cascade='all, delete')
     client = db.relationship('Clients', backref='bills')
     bank_account = db.relationship('BankAccounts', backref='used_in_bills')
     
@@ -141,13 +142,7 @@ class Bills(db.Model):
     def validate_previous_bill(self, key, prev_bill):
         """ Checks a previous bill exists """
 
-        if not prev_bill:
-            return prev_bill
-        try:
-            old = Bills.get_bill_by_id(prev_bill)
-        except BillNotFoundError:
-            raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
-        return prev_bill
+        return self.check_prev_bill(prev_bill)
 
     @validates('status')
     def validate_bill_status(self, key, status):
@@ -174,6 +169,18 @@ class Bills(db.Model):
             raise BillNotFoundError(
                 'Bill with id {0} was not found'.format(id_requested))
         return bill
+
+    @staticmethod
+    def check_prev_bill(prev_bill):
+        """ Check if a bill id passed in prev_bill exists """
+
+        if not prev_bill:
+            return prev_bill
+        try:
+            old = Bills.get_bill_by_id(prev_bill)
+        except BillNotFoundError:
+            raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
+        return prev_bill
 
     @staticmethod
     def get_bills_with_status(client, statuses):

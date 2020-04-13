@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from 'fields.html' import fld %}
+
+{% block title %}
+  <title>{% if form.bill_id.data %}Bill {{form.bill_id.data}} : {%endif %}Bills</title>
+{% endblock %}
+{# {% block searches %}
+    
+{% endblock searches %} #}
+{% block content %}
+{% if form.bill_id.data %}
+    <h2 class="inlineform"> Bill {{form.bill_id.data}} </h2>
+    <form action="/bill/{{form.bill_id.data}}" method="POST" class="inlineform">
+{% else %}
+    <h2 class="inlineform"> New Bill </h2>
+    <form action={{ url_for('.bill_create') }} method="POST" class="inlineform">
+{% endif %}
+{%  if form.bill_id.data %}{% set readonly = true %} {% endif %}
+{{ form.csrf_token }}
+{% if form.csrf_token.errors %}
+    <div class="warning">You have submitted an invalid CSRF token</div>
+{% endif %}
+<div class="inputline">{{fld(form.client_id, readonly=readonly)}} {% if form.client_id.data %}<a href="{{ url_for('client.clients', id=form.client_id.data)}}"> Client data </a>{% endif %}</div>
+<div class="inputline">{{fld(form.billing_ccy)}}</div>
+<div class="inputline">{{fld(form.date_sale)}}</div>
+<div class="inputline">{{fld(form.bill_replaced, readonly=readonly)}}</div>
+{{form.update}} {{form.add_1}} {{form.add_more}}
+</form>
+{% endblock content %}

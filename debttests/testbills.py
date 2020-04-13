@@ -20,7 +20,7 @@ from json import dumps
 from debtors import app, db
 from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
 from debtmodels.debtbilling import Bills, BillLines
-from debtviews.bills import BillDict, BillListDict
+from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at 
 from datetime import datetime, date
@@ -167,7 +167,6 @@ class TestBillFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
-        delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -370,6 +369,61 @@ class TestBillTransactions(unittest.TestCase):
         bill_date = str(self.bll2.date_bill.date()).encode()
         self.assertIn(bill_date, rv.data, 'Date not returned')
 
+    def test_get_bill_page(self):
+        """ We can get the bill page """
+
+        rv = self.app.get('/bill/new')
+        self.assertEqual(200, rv.status_code, 'Cannot get page')
+
+    def test_get_bill_for_change(self):
+        """ We get a bill for changing it """
+
+        rv = self.app.get('/bill/'+ str(self.bll1.bill_id))
+        self.assertEqual(200, rv.status_code, 'Cannot get page')
+        self.assertIn(str(self.bll1.client_id).encode(), rv.data,
+                      'Client id incorrect')
+
+    def test_post_new_bill(self):
+        """ Post a new bill for an existing client """
+
+        clt1_id = self.clt1.id
+        new_bill_dict = dict(client_id=str(self.clt1.id),
+                         billing_ccy='USD',
+                         date_sale='12-4-2020',
+                         update=True)
+        rv = self.app.post('/bill/new',
+                           data=new_bill_dict,
+                           follow_redirects=True)
+        self.assertEqual(200, rv.status_code, 'Error code')
+        clt1 = Clients.get_by_id(clt1_id)
+        self.assertEqual(len(clt1.bills), 3, 'Wrong number of bills')
+
+    def test_new_bill_replaces_non_existing(self):
+        """ Replacing a non-existent bill fails  """
+
+        new_bill_dict = dict(client_id=str(self.clt1.id),
+                         billing_ccy='USD',
+                         date_sale='12-4-2020',
+                         bill_replaced=1,
+                         update=True)
+        rv=self.app.post('/bill/new', data=new_bill_dict,
+                             follow_redirects=True)
+        self.assertIn(b'replace', rv.data, 'Error message not correct')
+
+    #def test_change_bill(self):
+        #""" We can change a bill which has not been billed """
+
+        #bill1_id = self.bll1.bill_id
+        #bill_dict = dict(date_sale=self.bll1.date_sale,
+                        #bill_id=self.bll1.bill_id,
+                        #status='paid')
+        #rv = self.app.post('/bill/'+ str(self.bll1.bill_id),
+                            #data=bill_dict)
+        #self.assertEqual(200, rv.status_code, 'Unsuccessful change')
+        #bill1 = db.session.query(Bills).filter_by(bill_id=bill1_id).first()
+        #self.assertTrue(bill1, 'Bill not found')
+        #self.assertEqual(bill1.status, 'paid', 'Status not changed')
+
 
 class TestLineCreate(unittest.TestCase):
 
@@ -459,27 +513,27 @@ class TestBillLineFunctions(unittest.TestCase):
 def create_bills(instance):
     """ Create bills for test 'instance' """
 
+    instance.bills = []
     instance.bll1 = Bills(date_sale=datetime.now(), date_bill=None,
                           status='new')
     instance.clt1.bills.append(instance.bll1)
+    instance.bills.append(instance.bll1)
     instance.bll2 = Bills(date_sale=datetime.now(), date_bill=datetime.now(),
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
+    instance.bills.append(instance.bll2)
     instance.bll3 = Bills(date_sale=date(year=2019, month=11, day=18),
                           date_bill=None,
                           status='new')
     instance.clt3.bills.append(instance.bll3)
-
+    instance.bills.append(instance.bll3)
 
 def delete_test_bills(instance):
     """ Delete all the bills created for a test """
 
-    try:
-        for attribute in instance.vars():
-            if isinstance(attribute, Bills):
-                db.session.delete(attribute)
-    except AttributeError:
-        pass
+    bills = db.session.query(Bills).all()
+    for bill in bills:
+        db.session.delete(bill)
 
 
 if __name__ == '__main__' :

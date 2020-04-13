@@ -75,6 +75,16 @@ For each line we fill fields as follows:
     :a description of the measure: Supplied by data entry, but optional.
     :a unit price: Needs to be supplied by data entry.
 
+Debt inquiries
+--------------
+
+We can request information about the debt. The following inquiries are possible
+
+    :client debt: All outstanding (unpaid) bills are listed
+    :bill inquiry: A specific bill is shown with all lines included
+    :client history: All bills and payments are listed
+
+
 .. _notification:
 
 Notification of the client

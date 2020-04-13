@@ -6,7 +6,7 @@ The client subsystem
 Why this is part of debtors
 ---------------------------
 
-The debtors system needs a client system to keep information on clients, their addresses and their bank accounts. Normally a company has such a system in place and will not be interested in having another one. This system does not want replace existing systems, it is meant to be able to show and test all debtors functions. 
+The debtors system needs a client system to keep information on clients, their addresses and their bank accounts. Normally a company has such a system in place and will not be interested in having another one. This system does not want to replace existing systems, it is meant to be able to show and test all debtors functions. 
 
 Its public interface to the debtors system may also give you an idea how client systems (other than this one) can interface to debtors. If you build a facade modeling the interface of this system, changes to debtors will of course be minimized.
 

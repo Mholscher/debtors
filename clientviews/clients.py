@@ -134,6 +134,9 @@ class ClientListView(MethodView):
                                                     search_for=search_for)
         else:
             client_list = client_paginator.get_page(page)
+        
+        if search_for:
+            search_form.search_for.data = search_for
 
         return render_template('clientlist.html',
                         client_list=client_list,

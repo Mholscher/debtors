@@ -26,17 +26,17 @@ messages can be dispatched.
 """
 
 from flask import Blueprint, jsonify
-#from debtviews.bills import ClientBillsView, BillCreateView, BillView
-import debtviews.bills as view_bill
+#from debtviews.billsapi import ClientBillsView, BillCreateView, BillView
+import debtviews.billsapi as view_bill
 
 debtapi = Blueprint('debtapi', __name__, url_prefix='/api/10')
 
 debtapi.add_url_rule('/client/<int:client_number>/bills',
-                     view_func=view_bill.ClientBillsView.as_view('client_bills'))
+                     view_func=view_bill.ClientBillsView.as_view('api_client_bills'))
 debtapi.add_url_rule('/bill/<bill_id>',
-                     view_func=view_bill.BillView.as_view('bill'))
+                     view_func=view_bill.BillView.as_view('api_bill'))
 debtapi.add_url_rule('/bill/new',
-                     view_func=view_bill.BillCreateView.as_view('new_bill'))
+                     view_func=view_bill.BillCreateView.as_view('api_new_bill'))
 
 @debtapi.errorhandler(view_bill.InvalidDataError)
 def handle_invalid_data(ide):
