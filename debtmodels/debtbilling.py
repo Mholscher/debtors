@@ -44,7 +44,13 @@ class BillNotFoundError(ValueError):
     pass
 
 
-class BillStatusInvalidError(ValueError):
+class BillLineNotFoundError(ValueError):
+    """ A bill line requested by id was not found"""
+
+    pass
+
+
+class BillStatusInvalidError(InvalidDataError):
     """ A passed in bill status is not valid """
 
     pass
@@ -106,8 +112,8 @@ class Bills(db.Model):
     bankaccount_id = db.Column(db.Integer, db.ForeignKey('bankaccounts.id'),
                              index=True, nullable=True)
     billing_ccy = db.Column(db.String(3), default='EUR')
-    date_sale = db.Column(db.DateTime, nullable=False)
-    date_bill = db.Column(db.DateTime, nullable=True, default=None)
+    date_sale = db.Column(db.Date, nullable=False)
+    date_bill = db.Column(db.Date, nullable=True, default=None)
     prev_bill = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
                           nullable=True)
     status = db.Column(db.String(8), server_default='new')
@@ -271,6 +277,16 @@ class BillLines(db.Model):
         """ Calculate a total amount billed on this line """
 
         return self.number_of * self.unit_price
+
+    @staticmethod
+    def get_by_id(line_id):
+        """ Get a line by id """
+
+        line = db.session.query(BillLines).filter_by(line_id = line_id).first()
+        if line:
+            return line
+        raise BillLineNotFoundError("No line found for id")
+        
 
     @classmethod
     def create_line_from_dict(cls, bill, line_dict):

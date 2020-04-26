@@ -28,6 +28,7 @@ messages can be dispatched.
 from flask import Blueprint, jsonify
 #from debtviews.billsapi import ClientBillsView, BillCreateView, BillView
 import debtviews.billsapi as view_bill
+from debtmodels.debtbilling import InvalidDataError
 
 debtapi = Blueprint('debtapi', __name__, url_prefix='/api/10')
 
@@ -38,7 +39,7 @@ debtapi.add_url_rule('/bill/<bill_id>',
 debtapi.add_url_rule('/bill/new',
                      view_func=view_bill.BillCreateView.as_view('api_new_bill'))
 
-@debtapi.errorhandler(view_bill.InvalidDataError)
+@debtapi.errorhandler(InvalidDataError)
 def handle_invalid_data(ide):
     response_dict = ide.to_dict()
     response_dict['status'] = 'Bad Request'

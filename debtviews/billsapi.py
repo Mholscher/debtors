@@ -38,7 +38,7 @@ class ClientBillsView(MethodView):
 class BillView(MethodView):
     """ This view is for accessing a bill directly by id  
     
-    This is a logical exxtension, from creating a new bill we return the
+    This is a logical extension, from creating a new bill we return the
     bill_id as the information that will make it possible to access
     the bill.
     """

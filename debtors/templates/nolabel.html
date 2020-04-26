@@ -1,0 +1,5 @@
+{% macro nolabel(field, readonly=False) -%}
+{# This macro displays the field and any errors on the field. #}
+    {% if readonly %} {{field(readonly="true")}}{% else %}{{field}}{% endif %}{% if field.errors %} <div class="flash"> {% for error in field.errors %} {{ error }} </br>{% endfor %}</div>
+    {% endif %}
+{%- endmacro %}

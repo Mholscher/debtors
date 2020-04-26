@@ -23,7 +23,7 @@ holds these forms.
 
 from flask_wtf import FlaskForm
 from wtforms import HiddenField, StringField, DateField, SubmitField,\
-    IntegerField, SelectField
+    IntegerField, FieldList, FormField, SelectField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from flask_wtf.csrf import CSRFProtect
 from debtmodels.debtbilling import Bills, ReplacedBillError
@@ -36,9 +36,9 @@ class PrevBillMustExist(ValueError):
     that previous bill must denote an existing bill.
     """
 
-    def __init__(self, message=None):
+    message = 'No bill to replace'
 
-        message = 'No bill to replace'
+    def __init__(self, message=None):
 
         if message:
             self.message = message
@@ -51,6 +51,41 @@ class PrevBillMustExist(ValueError):
             raise ValidationError(str(rbe))
 
 
+class RequiredIfAny(ValueError):
+    """ WTForms validator for a required field
+    
+    It replaces a DataRequired validator, where we can only see
+    the field is required if any field is filled. We cannot pass the 
+    requirement into HTML through the "required" attribute.
+    """
+
+    message = 'This field is required'
+
+    def __init__(self, message=None):
+
+        if message:
+            self.message = message
+
+    def __call__(self, form, field):
+
+        if not field.data:
+            raise ValidationError(self.message)
+
+
+class BillLineForm(FlaskForm):
+    """ This class holds data for a line in the bill """
+
+    line_id = HiddenField('Line id')
+    bill_id = HiddenField('Bill id')
+    short_desc = StringField('Short description', validators=[RequiredIfAny()])
+    long_desc = StringField('Description')
+    number_of = IntegerField('Number of units', validators=[RequiredIfAny()])
+    measured_in = StringField('Measured in')
+    unit_price = IntegerField('Unit price', validators=[RequiredIfAny()])
+    total = IntegerField('Total amount')
+    
+
+
 class BillForm(FlaskForm):
     """ This holds parts of the form for creating and changing bills """
 
@@ -60,6 +95,7 @@ class BillForm(FlaskForm):
     billing_ccy = StringField('Billing currency', validators=[Length(max=3)])
     bill_replaced = IntegerField('Bill to be replaced',
                                  validators=[Optional(), PrevBillMustExist()])
+    lines = FieldList(FormField(BillLineForm))
 
 
 class BillCreateForm(BillForm):

@@ -17,6 +17,7 @@
 
 import logging
 import configparser
+import locale as locale_module
 from flask import Flask, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -25,6 +26,8 @@ app = Flask('debtors')
 app.config.from_pyfile('localdebtors.cfg')
 db = SQLAlchemy(app, {"session_options" : "READ_UNCOMMITTED"})
 CSRFProtect(app)
+locale = locale_module.localeconv()
+DECIMAL_CHAR = locale['decimal_point']
 
 #logging.basicConfig(filename='debtors.log', level=logging.INFO)
 #logging.debug('Debug logging')

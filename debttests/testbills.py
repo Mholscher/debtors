@@ -113,11 +113,11 @@ class TestBillFromMessage(unittest.TestCase):
                         "long-desc" : "A longer description",
                         "unit" : 25,
                         "unit-desc" : "kilos",
-                        "unit-price" : 1765},
+                        "unit_price" : 1765},
                         {"short-desc" : "Another", 
                         "long-desc" : "Another longer description",
                         "unit" : 1,
-                        "unit-price" : 2265}]
+                        "unit_price" : 2265}]
              }
 
     def tearDown(self):
@@ -295,6 +295,7 @@ class TestBillTransactions(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        add_lines_to_bills(self)
         db.session.flush()
         self.bill_dict =\
             {"client" : str(self.clt1.id),
@@ -415,6 +416,7 @@ class TestBillTransactions(unittest.TestCase):
 
         #bill1_id = self.bll1.bill_id
         #bill_dict = dict(date_sale=self.bll1.date_sale,
+                        #billing_ccy=self.bll1.billing_ccy, 
                         #bill_id=self.bll1.bill_id,
                         #status='paid')
         #rv = self.app.post('/bill/'+ str(self.bll1.bill_id),
@@ -423,6 +425,32 @@ class TestBillTransactions(unittest.TestCase):
         #bill1 = db.session.query(Bills).filter_by(bill_id=bill1_id).first()
         #self.assertTrue(bill1, 'Bill not found')
         #self.assertEqual(bill1.status, 'paid', 'Status not changed')
+
+    def test_bill_with_two_lines(self):
+        """ We can add a bill with 2 lines """
+
+        clt4_id = self.clt4.id
+        new_bill_dict = {"client_id":str(self.clt4.id),
+                         "billing_ccy":'USD',
+                         "date_sale":'12-4-2020',
+                         "update":True,
+                         "line-0-short_desc":'754',
+                         "line-0-long_desc":'Readable line description',
+                         "line-0-number_of":22,
+                         "line-0-unit_price":987,
+                         "line-1-short_desc":'desc',
+                         "line-1-long_desc":'Water solvable fat content',
+                         "line-1-number_of":5,
+                         "line-1-measured_in":'Kilo',
+                         "line-1-unit_price":1543}
+        rv=self.app.post('/bill/new', data=new_bill_dict,
+                             follow_redirects=False)
+        self.assertEqual(rv.status_code, 302, 'Transaction did not succeed')
+        bill = db.session.query(Bills).\
+            filter_by(client_id = clt4_id).first()
+        self.assertEqual(len(bill.lines), 2, 'Wrong no. of lines')
+        self.assertEqual(bill.lines[0].short_desc, '754',
+                         'Line 1 not correct ' + bill.lines[0].short_desc)
 
 
 class TestLineCreate(unittest.TestCase):
@@ -527,6 +555,58 @@ def create_bills(instance):
                           status='new')
     instance.clt3.bills.append(instance.bll3)
     instance.bills.append(instance.bll3)
+
+def add_lines_to_bills(instance):
+    """ Add lines to the bills in the instance
+    
+    The instance bills are in instance.bills 
+    """
+
+    bill = instance.bills[0]
+    bill_line = BillLines(short_desc='S1',
+                        long_desc='A longer description one',
+                        number_of=15,
+                        unit_price=115)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='S2',
+                        long_desc='A longer description two',
+                        number_of=12,
+                        measured_in='Kilo',
+                        unit_price=234)
+    bill.lines.append(bill_line)
+    bill = instance.bills[1]
+    bill_line = BillLines(short_desc='1276',
+                        long_desc='Outside business place',
+                        number_of=1,
+                        measured_in='unit',
+                        unit_price=128734)
+    bill.lines.append(bill_line)
+    bill = instance.bills[2]
+    bill_line = BillLines(short_desc='h0',
+                        long_desc='Grease',
+                        number_of=2,
+                        measured_in='tin',
+                        unit_price=12873)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h1',
+                        long_desc='Tin solder',
+                        number_of=15,
+                        measured_in='bottles',
+                        unit_price=1212)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h2',
+                        long_desc='Screw, flat head',
+                        number_of=5,
+                        measured_in='boxes',
+                        unit_price=2199)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h3',
+                        long_desc='Screw, round head',
+                        number_of=1,
+                        measured_in='box',
+                        unit_price=1876)
+    bill.lines.append(bill_line)
+
 
 def delete_test_bills(instance):
     """ Delete all the bills created for a test """

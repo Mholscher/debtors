@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'fields.html' import fld %}
+{% from 'nolabel.html' import nolabel %}
 
 {% block title %}
   <title>{% if form.bill_id.data %}Bill {{form.bill_id.data}} : {%endif %}Bills</title>
@@ -21,9 +22,18 @@
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
 <div class="inputline">{{fld(form.client_id, readonly=readonly)}} {% if form.client_id.data %}<a href="{{ url_for('client.clients', id=form.client_id.data)}}"> Client data </a>{% endif %}</div>
-<div class="inputline">{{fld(form.billing_ccy)}}</div>
-<div class="inputline">{{fld(form.date_sale)}}</div>
+<div class="inputline">{{fld(form.billing_ccy, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.date_sale, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.bill_replaced, readonly=readonly)}}</div>
+<table>
+<th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
+{% for line in form.lines.entries %}
+{% if line.unit_price.data and line.number_of.data  and line.total.data -%} 
+{% set total = line.total.data() %} 
+{%- endif %}
+<tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{total}}</td> </tr>
+{% endfor %}
+</table><br/><br/>
 {{form.update}} {{form.add_1}} {{form.add_more}}
 </form>
 {% endblock content %}
