@@ -254,7 +254,7 @@ class TestConvertToTagged(unittest.TestCase):
         """ We can convert a bill to a billdict """
 
         bld1 = BillDict(self.bll1) 
-        self.assertEqual(bld1["date-sale"], str(self.bll1.date_sale.date()),
+        self.assertEqual(bld1["date-sale"], str(self.bll1.date_sale),
                          'Date sale not set correctly')
 
     def test_bill_list(self):
@@ -411,20 +411,22 @@ class TestBillTransactions(unittest.TestCase):
                              follow_redirects=True)
         self.assertIn(b'replace', rv.data, 'Error message not correct')
 
-    #def test_change_bill(self):
-        #""" We can change a bill which has not been billed """
+    def test_change_bill(self):
+        """ We can change a bill which has not been billed """
 
-        #bill1_id = self.bll1.bill_id
-        #bill_dict = dict(date_sale=self.bll1.date_sale,
-                        #billing_ccy=self.bll1.billing_ccy, 
-                        #bill_id=self.bll1.bill_id,
-                        #status='paid')
-        #rv = self.app.post('/bill/'+ str(self.bll1.bill_id),
-                            #data=bill_dict)
-        #self.assertEqual(200, rv.status_code, 'Unsuccessful change')
-        #bill1 = db.session.query(Bills).filter_by(bill_id=bill1_id).first()
-        #self.assertTrue(bill1, 'Bill not found')
-        #self.assertEqual(bill1.status, 'paid', 'Status not changed')
+        bill1_id = self.bll1.bill_id
+        bill_dict = dict(date_sale=self.bll1.date_sale.strftime('%d-%m-%Y'),
+                        billing_ccy='USD', 
+                        bill_id=self.bll1.bill_id)
+
+        rv = self.app.post('/bill/'+ str(self.bll1.bill_id),
+                            data=bill_dict,
+                            follow_redirects=False)
+
+        self.assertEqual(302, rv.status_code, 'Unsuccessful change')
+        bill1 = db.session.query(Bills).filter_by(bill_id=bill1_id).first()
+        self.assertTrue(bill1, 'Bill not found')
+        self.assertEqual(bill1.billing_ccy, 'USD', 'Currency not changed')
 
     def test_bill_with_two_lines(self):
         """ We can add a bill with 2 lines """
@@ -542,11 +544,11 @@ def create_bills(instance):
     """ Create bills for test 'instance' """
 
     instance.bills = []
-    instance.bll1 = Bills(date_sale=datetime.now(), date_bill=None,
+    instance.bll1 = Bills(date_sale=datetime.now().date(), date_bill=None,
                           status='new')
     instance.clt1.bills.append(instance.bll1)
     instance.bills.append(instance.bll1)
-    instance.bll2 = Bills(date_sale=datetime.now(), date_bill=datetime.now(),
+    instance.bll2 = Bills(date_sale=datetime.now().date(), date_bill=datetime.now(),
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
     instance.bills.append(instance.bll2)

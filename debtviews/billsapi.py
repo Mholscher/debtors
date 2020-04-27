@@ -77,9 +77,9 @@ class BillDict(dict):
 
         self['bill-id'] = None if bill.bill_id is None\
             else int(bill.bill_id)
-        self['date-sale'] = str(bill.date_sale.date())
+        self['date-sale'] = str(bill.date_sale)
         self['date-billed'] = None if bill.date_bill is None\
-            else str(bill.date_bill.date()) 
+            else str(bill.date_bill) 
         if bill.prev_bill:
             self['bill-replaced'] = bill.prev_bill
         self['status'] = bill.STATUS_NAME[bill.status]

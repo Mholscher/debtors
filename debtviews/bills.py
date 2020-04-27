@@ -90,6 +90,7 @@ class BillView(MethodView):
                 client_id = bill_form.client_id.data
                 if client_id:
                     client = Clients.get_by_id(client_id)
+
             if bill_form.bill_replaced.data:
                 prev_bill = bill_form.bill_replaced.data
             else:
@@ -98,8 +99,11 @@ class BillView(MethodView):
                 billing_ccy = bill_form.billing_ccy.data.upper()
             if bill_form.date_sale.data:
                 date_sale = bill_form.date_sale.data
+
             if bill_id:
-                bill = query(Bills).filter_by(bill_id = bill_id).first()
+                bill.prev_bill = prev_bill
+                bill.date_sale = date_sale
+                bill.billing_ccy = billing_ccy
             else:
                 bill = Bills(billing_ccy=billing_ccy,
                             date_sale=date_sale,
