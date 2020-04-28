@@ -202,7 +202,7 @@ class Bills(db.Model):
 
     @classmethod
     def create_from_dict(cls, bill_dict):
-        """ Create a bill and bill lines from a dictiobnary
+        """ Create a bill and bill lines from a dictionary
         
         The dictionary is modeled after the message an external system
         may send to debtors. The bill may need to default some of the

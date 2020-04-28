@@ -25,6 +25,7 @@ from flask import render_template, redirect, url_for, request, flash
 from flask.views import MethodView
 from debtmodels.debtbilling import Bills, BillLines, db
 from clientmodels.clients import Clients, NoClientFoundError
+from clientviews.forms import ClientSearchForm
 from debtviews.forms import BillCreateForm, BillChangeForm
 
 
@@ -97,6 +98,8 @@ class BillView(MethodView):
                 prev_bill = None
             if bill_form.billing_ccy.data:
                 billing_ccy = bill_form.billing_ccy.data.upper()
+            else:
+                billing_ccy = None
             if bill_form.date_sale.data:
                 date_sale = bill_form.date_sale.data
 
@@ -122,4 +125,32 @@ class BillView(MethodView):
 
         flash('Validation error encountered')
         return render_template('bill.html', form=bill_form, bill=bill)
-            
+
+
+class ClientDebtView(MethodView):
+    """ This class is used to show all debt for a client.
+    
+    All debt means all bills that have not yet been paid, whether or not
+    the client has been notified.
+    """
+
+    def get(self, client_id=None):
+        """ Create the list of client debt """
+
+        search_form = ClientSearchForm()
+        if client_id is None:
+            raise NoClientFoundError('Client id is required')
+        client = Clients.get_by_id(client_id)
+        bills = Bills.get_outstanding_bills(client)
+
+        ccy_list = { bill.billing_ccy for bill in bills }
+        ccy_totals = dict()
+        for ccy in ccy_list:
+            total = sum([bill.total() if bill.billing_ccy == ccy else 0\
+                for bill in bills])
+            ccy_totals[ccy] = total
+        bills = {'bill_list': bills} 
+        if bills['bill_list']:
+            bills.update(ccy_totals)
+        return render_template('debtforclient.html', client=client, 
+                               bills=bills, search_form=search_form)

@@ -436,15 +436,15 @@ class TestBillTransactions(unittest.TestCase):
                          "billing_ccy":'USD',
                          "date_sale":'12-4-2020',
                          "update":True,
-                         "line-0-short_desc":'754',
-                         "line-0-long_desc":'Readable line description',
-                         "line-0-number_of":22,
-                         "line-0-unit_price":987,
-                         "line-1-short_desc":'desc',
-                         "line-1-long_desc":'Water solvable fat content',
-                         "line-1-number_of":5,
-                         "line-1-measured_in":'Kilo',
-                         "line-1-unit_price":1543}
+                         "lines-0-short_desc":'754',
+                         "lines-0-long_desc":'Readable line description',
+                         "lines-0-number_of":22,
+                         "lines-0-unit_price":987,
+                         "lines-1-short_desc":'desc',
+                         "lines-1-long_desc":'Water solvable fat content',
+                         "lines-1-number_of":5,
+                         "lines-1-measured_in":'Kilo',
+                         "lines-1-unit_price":1543}
         rv=self.app.post('/bill/new', data=new_bill_dict,
                              follow_redirects=False)
         self.assertEqual(rv.status_code, 302, 'Transaction did not succeed')
@@ -453,6 +453,80 @@ class TestBillTransactions(unittest.TestCase):
         self.assertEqual(len(bill.lines), 2, 'Wrong no. of lines')
         self.assertEqual(bill.lines[0].short_desc, '754',
                          'Line 1 not correct ' + bill.lines[0].short_desc)
+
+
+class TestDebtEnquiries(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_client_debt(self):
+        """ Debt is reported for a client """
+
+        bill_id = self.bll1.bill_id
+        rv = self.app.get('/debt/' + str(self.clt1.id))
+        self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
+        self.assertIn(str(bill_id).encode(), rv.data, 'Total debt not in response')
+        self.assertIn(b'debt is EUR 4533', rv.data, 'Total line incorrect')
+
+    def test_client_without_bills(self):
+        """ Debt reported for client without debt """
+
+        rv = self.app.get('/debt/' + str(self.clt2.id))
+        self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
+        self.assertIn(b'No debt', rv.data, 'Total line incorrect')
+
+    def test_client_debt_more_bills(self):
+        """ A client may have more than one bill in debt """
+
+        bll1 = Bills(date_sale=datetime.now().date(), date_bill=None,
+                     status='new')
+        self.clt1.bills.append(bll1)
+        bl09 = BillLines(short_desc='Waffle', unit_price=68,
+                              number_of=5)
+        bll1.lines.append(bl09)
+        db.session.flush()
+        bill_id = bll1.bill_id
+        rv = self.app.get('/debt/' + str(self.clt1.id))
+        self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
+        self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
+        self.assertIn(b'debt is EUR 4873', rv.data, 'Total line incorrect')
+
+    def test_more_bills_more_currencies(self):
+        """ We can handle more bills with different currencies """
+
+    def test_client_debt_more_bills(self):
+        """ A client may have more than one bill in debt """
+
+        bll2 = Bills(date_sale=datetime.now().date(), date_bill=None,
+                     billing_ccy='JPY',
+                     status='new')
+        self.clt1.bills.append(bll2)
+        bl11 = BillLines(short_desc='Waffle', unit_price=68,
+                              number_of=5)
+        bll2.lines.append(bl11)
+        db.session.flush()
+        bill_id = bll2.bill_id
+        rv = self.app.get('/debt/' + str(self.clt1.id))
+        self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
+        self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
+        self.assertIn(b'debt is EUR', rv.data, 'Total line incorrect')
+        self.assertIn(b'debt is JPY', rv.data, 'Total line incorrect')
+        
 
 
 class TestLineCreate(unittest.TestCase):

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}
+  <title>{{client.initials}} {{client.surname}} : Debt</title>
+{% endblock %}
+{% block searches %}
+    {% include "clientsearch.html"%}
+{% endblock searches %}
+{% block content %}
+<h2 class="inlineform"> Client {{client.initials}} {{client.surname}}</h2>
+<div class="inlineform">
+{% for bill in bills.bill_list %}
+<div>Bill {{bill.bill_id}} {{bill.billing_ccy}} {{bill.total()}}</div></br>
+{% endfor %}
+{% if bills.bill_list -%}
+{% for ccy_item in bills.items() %}
+{% if ccy_item[0] != 'bill_list' -%}
+</br><div> The currency debt is {{ccy_item[0]}} {{ ccy_item[1] }} </div>
+{% endif %}
+{% endfor %}
+{% else %}
+</br><div> No debt for client</div>
+{% endif %}
+</div>
+{% endblock content %}
