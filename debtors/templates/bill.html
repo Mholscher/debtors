@@ -5,9 +5,9 @@
 {% block title %}
   <title>{% if form.bill_id.data %}Bill {{form.bill_id.data}} : {%endif %}Bills</title>
 {% endblock %}
-{# {% block searches %}
-    
-{% endblock searches %} #}
+{% block searches %}
+    {% include 'clientsearch.html' %}
+{% endblock searches %} 
 {% block content %}
 {% if form.bill_id.data %}
     <h2 class="inlineform"> Bill {{form.bill_id.data}} </h2>
@@ -28,8 +28,9 @@
 <table>
 <th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
 {% for line in form.lines.entries %}
-{% if line.unit_price.data and line.number_of.data  and line.total.data -%} 
-{% set total = line.total.data() %} 
+{% if line.unit_price.data and line.number_of.data -%} 
+{% set total = line.unit_price.data * line.number_of.data %} 
+{% else -%} {% set total = 0 %}
 {%- endif %}
 <tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{total}}</td> </tr>
 {% endfor %}

@@ -46,7 +46,7 @@ class PrevBillMustExist(ValueError):
     def __call__(self, form, field):
 
         try:
-            Bills.check_prev_bill(field)
+            Bills.check_prev_bill(field.data)
         except ReplacedBillError as rbe:
             raise ValidationError(str(rbe))
 
@@ -82,7 +82,6 @@ class BillLineForm(FlaskForm):
     number_of = IntegerField('Number of units', validators=[RequiredIfAny()])
     measured_in = StringField('Measured in')
     unit_price = IntegerField('Unit price', validators=[RequiredIfAny()])
-    total = IntegerField('Total amount')
     
 
 

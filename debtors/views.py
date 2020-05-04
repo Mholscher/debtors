@@ -22,7 +22,7 @@ the url_rules pointing to the different views in the debtviews module.
 
 from debtors import app
 from flask import redirect, url_for
-from debtviews.bills import BillView, ClientDebtView
+from debtviews.bills import BillView, ClientDebtView, BillDetailView
 
 
 @app.route('/')
@@ -36,3 +36,5 @@ app.add_url_rule('/bill/new', view_func=BillView.as_view('bill_create'))
 app.add_url_rule('/bill/<int:bill_id>', view_func=BillView.as_view('bill_update'))
 app.add_url_rule('/debt/<int:client_id>',\
     view_func=ClientDebtView.as_view('client_debt'))
+app.add_url_rule('/bill/<int:bill_id>/details',\
+    view_func=BillDetailView.as_view('bill_detail'))

@@ -409,7 +409,7 @@ class TestBillTransactions(unittest.TestCase):
                          update=True)
         rv=self.app.post('/bill/new', data=new_bill_dict,
                              follow_redirects=True)
-        self.assertIn(b'replace', rv.data, 'Error message not correct')
+        self.assertIn(b'bill_replaced', rv.data, 'Error message not correct')
 
     def test_change_bill(self):
         """ We can change a bill which has not been billed """
@@ -526,7 +526,43 @@ class TestDebtEnquiries(unittest.TestCase):
         self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
         self.assertIn(b'debt is EUR', rv.data, 'Total line incorrect')
         self.assertIn(b'debt is JPY', rv.data, 'Total line incorrect')
-        
+
+
+class TestBillEnquiries(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_enquire_on_bill(self):
+        """ We can enquire upon a bill """
+
+        bill_id = self.bll1.bill_id
+        rv = self.app.get('/bill/' + str(self.bll1.bill_id) + '/details')
+        self.assertEqual(200, rv.status_code, 'Unsuccessful bill get')
+        self.assertIn(str(bill_id).encode(), rv.data, 'Bill id not in response') 
+
+    def test_status_in_response(self):
+        """ The status is in the response to a bill enquiry """
+
+        bill_id = self.bll2.bill_id
+        rv = self.app.get('/bill/' + str(self.bll2.bill_id) + '/details')
+        self.assertEqual(200, rv.status_code, 'Unsuccessful bill get')
+        self.assertIn(Bills.STATUS_NAME['paid'].encode(), rv.data,
+                          'Bill status not in response') 
 
 
 class TestLineCreate(unittest.TestCase):
@@ -634,7 +670,7 @@ def create_bills(instance):
 
 def add_lines_to_bills(instance):
     """ Add lines to the bills in the instance
-    
+
     The instance bills are in instance.bills 
     """
 

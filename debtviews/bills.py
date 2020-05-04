@@ -23,7 +23,7 @@ to do so.
 """
 from flask import render_template, redirect, url_for, request, flash
 from flask.views import MethodView
-from debtmodels.debtbilling import Bills, BillLines, db
+from debtmodels.debtbilling import Bills, BillLines, db, BillNotFoundError
 from clientmodels.clients import Clients, NoClientFoundError
 from clientviews.forms import ClientSearchForm
 from debtviews.forms import BillCreateForm, BillChangeForm
@@ -60,6 +60,7 @@ class BillView(MethodView):
     def get(self, bill_id=None):
         """ Get the empty page to create a bill or a bill by id """
 
+        client_search_form = ClientSearchForm()
         if bill_id:
             bill = Bills.get_bill_by_id(bill_id)
             bill_form = BillChangeForm(obj=bill)
@@ -70,7 +71,8 @@ class BillView(MethodView):
         for i in range(3):
             bill_form.lines.append_entry()
         
-        return render_template('bill.html', form=bill_form, bill=bill)
+        return render_template('bill.html', form=bill_form, bill=bill,
+                               search_form = client_search_form)
 
     def post(self, bill_id=None):
         """ Use the request form data to add a bill """
@@ -123,8 +125,11 @@ class BillView(MethodView):
             else:
                 return redirect(url_for('client.clients', id=client_id))
 
+        client_search_form = ClientSearchForm()
         flash('Validation error encountered')
-        return render_template('bill.html', form=bill_form, bill=bill)
+
+        return render_template('bill.html', form=bill_form, bill=bill,
+                               search_form=client_search_form)
 
 
 class ClientDebtView(MethodView):
@@ -137,7 +142,7 @@ class ClientDebtView(MethodView):
     def get(self, client_id=None):
         """ Create the list of client debt """
 
-        search_form = ClientSearchForm()
+        client_search_form = ClientSearchForm()
         if client_id is None:
             raise NoClientFoundError('Client id is required')
         client = Clients.get_by_id(client_id)
@@ -153,4 +158,22 @@ class ClientDebtView(MethodView):
         if bills['bill_list']:
             bills.update(ccy_totals)
         return render_template('debtforclient.html', client=client, 
-                               bills=bills, search_form=search_form)
+                               bills=bills, search_form=client_search_form)
+
+
+class BillDetailView(MethodView):
+    """ Show the details of a bill.
+    
+    The bill may be in any state. The only thing you can do here is
+    enquire upon it. To change the bill, other transactions are available.
+    """
+
+    def get(self, bill_id=None):
+        """ Create the data for showing bill details """
+
+        client_search_form = ClientSearchForm()
+        if bill_id is None:
+            raise BillNotFoundError('A bill id is required')
+        bill = Bills.get_bill_by_id(bill_id)
+        return render_template('billdetail.html', bill=bill,
+                               search_form=client_search_form)
