@@ -15,23 +15,24 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
-""" This module holds the form necessary to create and change bills 
+""" This module holds the form necessary to create and change bills
 
-The manual changes to and creation of bills needs forms. This module 
+The manual changes to and creation of bills needs forms. This module
 holds these forms.
 """
 
 from flask_wtf import FlaskForm
 from wtforms import HiddenField, StringField, DateField, SubmitField,\
-    IntegerField, FieldList, FormField, SelectField
+    IntegerField, FieldList, FormField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
-from flask_wtf.csrf import CSRFProtect
 from debtmodels.debtbilling import Bills, ReplacedBillError
+# For testing only!
+from debtviews.wtformsmonetary import AmountField
 
 
 class PrevBillMustExist(ValueError):
     """ WTForms validator for existence of a previous bill
-    
+
     If we want to replace an existing bill, the number passed in for
     that previous bill must denote an existing bill.
     """
@@ -53,9 +54,9 @@ class PrevBillMustExist(ValueError):
 
 class RequiredIfAny(ValueError):
     """ WTForms validator for a required field
-    
+
     It replaces a DataRequired validator, where we can only see
-    the field is required if any field is filled. We cannot pass the 
+    the field is required if any field is filled. We cannot pass the
     requirement into HTML through the "required" attribute.
     """
 
@@ -77,18 +78,17 @@ class BillLineForm(FlaskForm):
 
     line_id = HiddenField('Line id')
     bill_id = HiddenField('Bill id')
-    short_desc = StringField('Short description', validators=[RequiredIfAny()])
-    long_desc = StringField('Description')
+    short_desc = StringField('Short description', 
+                             validators=[RequiredIfAny(),                                                            Length(min=1, max=10)])
+    long_desc = StringField('Description', validators=[Length(max=40)])
     number_of = IntegerField('Number of units', validators=[RequiredIfAny()])
     measured_in = StringField('Measured in')
-    unit_price = IntegerField('Unit price', validators=[RequiredIfAny()])
-    
+    unit_price = AmountField('Unit price', validators=[RequiredIfAny()])
 
 
 class BillForm(FlaskForm):
     """ This holds parts of the form for creating and changing bills """
 
-    
     bill_id = HiddenField('bill id')
     csrf_token = HiddenField('csrf_token')
     billing_ccy = StringField('Billing currency', validators=[Length(max=3)])
@@ -101,11 +101,11 @@ class BillCreateForm(BillForm):
     """ This is the form for creating a new bill """
 
     client_id = StringField('Client number')
-    date_sale = DateField('Date of sale', format='%d-%m-%Y', 
+    date_sale = DateField('Date of sale', format='%d-%m-%Y',
                           validators=[DataRequired()])
     add_1 = SubmitField('Update & exit')
     add_more = SubmitField('Update & new')
-    
+
 
 class BillChangeForm(BillForm):
     """ This is the form for canging an existing bill """
@@ -113,5 +113,9 @@ class BillChangeForm(BillForm):
     client_id = StringField('Client number', validators=[Optional()])
     date_sale = DateField('Date of sale', format='%d-%m-%Y')
     update = SubmitField('Update')
-    
 
+
+class FormForAmount(FlaskForm):
+
+    amount = AmountField()
+    submitting = SubmitField('Submit')

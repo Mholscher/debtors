@@ -38,6 +38,15 @@ def edited_amount(amount, precision=2, currency=None):
     separation character if the server has a German locale...
     """
 
+    def thousand_separator_step(start, end, step):
+        """ Geef de posities terug waar we een duizendtalscheiding moeten
+        aanbrengen.
+        """
+
+        while start > end:
+            yield start
+            start += step
+
     ldb = localeconv()
     if currency:
         try:
@@ -51,6 +60,13 @@ def edited_amount(amount, precision=2, currency=None):
     edited = edited[:-1 * precision] + ldb['mon_decimal_point'] +\
         edited[-1 * precision:] if precision > 0\
             else edited
+
+    decimal_char_pos = edited.find(ldb['mon_decimal_point'])
+    if decimal_char_pos == -1:
+        decimal_char_pos = len(edited)
+    for pos in thousand_separator_step(decimal_char_pos - 3, 0, -3):
+        edited = edited[:pos] + ldb['mon_thousands_sep'] + edited[pos:]
+
     return edited
 
 def internal_amount(amount_string):
@@ -72,6 +88,11 @@ def validate_amount(amount_string, precision=2, currency=None):
     in case of failure.
     """
 
+    if currency:
+        try:
+            precision = int(raw_table[currency]['CcyMnrUnts'])
+        except KeyError as ke:
+            raise ValueError(currency + ' is not a valid currency')
     ldb = localeconv()
     if precision == 0 and ldb['mon_decimal_point'] in amount_string:
         raise ValueError('The amount cannot contain a decimal separator')

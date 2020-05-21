@@ -21,7 +21,7 @@
 <table class="narrowborder">
 <th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
 {% for line in bill.lines -%}
-<tr><td> {{ line.short_desc }} </td><td>{{ line.long_desc }} </td><td>{{ line.number_of }} {{ line.measured_in }}</td><td>{{ line.unit_price }}</td><td>{{ line.unit_price * line.number_of }} </td> </tr>
+<tr><td> {{ line.short_desc }} </td><td>{{ line.long_desc }} </td><td>{{ line.number_of }} {{ line.measured_in }}</td><td>{{ line.amount_edit(line.unit_price, currency=bill.billing_ccy) }}</td><td>{{ line.amount_edit(line.unit_price * line.number_of, currency=bill.billing_ccy) }} </td> </tr>
 {% endfor %}
 </table><br/><br/>
 </div>

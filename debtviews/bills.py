@@ -27,14 +27,21 @@ from debtmodels.debtbilling import Bills, BillLines, db, BillNotFoundError
 from clientmodels.clients import Clients, NoClientFoundError
 from clientviews.forms import ClientSearchForm
 from debtviews.forms import BillCreateForm, BillChangeForm
+from debtviews.monetary import edited_amount
+from debtviews.wtformsmonetary import AmountField
 
 
 query = db.session.query
 
+def get_currency(field):
+    """ The drop-in for currency retrieval by the AmountField """
+
+    return request.form.get('billing_ccy').upper()
+
 
 def create_bill_line(bill, line_dict):
     """ Create a line from the form in a bill
-    
+
     The bill contains a bill in process. The line is a part of a bill
     form that we transform into a bill line and add to the bill.
     """
@@ -44,13 +51,12 @@ def create_bill_line(bill, line_dict):
     else:
         line = BillLines()
 
-    
     line.short_desc = line_dict['short_desc']
     line.long_desc = line_dict['long_desc']
     line.number_of = line_dict['number_of']
     line.measured_in = line_dict['measured_in']
     line.unit_price = line_dict['unit_price']
-    
+
     bill.lines.append(line)
 
 
@@ -67,16 +73,23 @@ class BillView(MethodView):
         else:
             bill = None
             bill_form = BillCreateForm()
-        
+
         for i in range(3):
             bill_form.lines.append_entry()
-        
+
+        for line in bill_form.lines.entries:
+            if bill:
+                line.unit_price.currency = bill.billing_ccy
+            line.edited_amount = edited_amount
+
         return render_template('bill.html', form=bill_form, bill=bill,
                                search_form = client_search_form)
 
     def post(self, bill_id=None):
         """ Use the request form data to add a bill """
 
+        if request.form.get('billing_ccy'):
+            AmountField.get_currency = get_currency
         if bill_id:
             bill = Bills.get_bill_by_id(bill_id)
             bill_form = BillChangeForm(obj=bill)
@@ -84,9 +97,15 @@ class BillView(MethodView):
             bill = None
             bill_form = BillCreateForm()
 
+        if hasattr(AmountField, 'get_currency'):
+            del AmountField.get_currency
+
         while bill_form.lines.__len__() > 0\
             and not any(bill_form.lines.data[bill_form.lines.__len__() - 1].values()) :
             bill_form.lines.pop_entry()
+
+            for line in bill_form.lines:
+                line.edited_amount = edited_amount
 
         if bill_form.validate_on_submit():
             if bill_form.client_id.data:
@@ -117,6 +136,9 @@ class BillView(MethodView):
 
             for line in bill_form.lines.data:
                 create_bill_line(bill, line)
+
+            for line in bill.lines:
+                line.edited_amount = edited_amount
 
             db.session.commit()
 
@@ -153,10 +175,13 @@ class ClientDebtView(MethodView):
         for ccy in ccy_list:
             total = sum([bill.total() if bill.billing_ccy == ccy else 0\
                 for bill in bills])
-            ccy_totals[ccy] = total
+            ccy_totals[ccy] = (total, ccy)
         bills = {'bill_list': bills} 
         if bills['bill_list']:
             bills.update(ccy_totals)
+
+        bills['edit_amount'] = edited_amount
+
         return render_template('debtforclient.html', client=client, 
                                bills=bills, search_form=client_search_form)
 
@@ -175,5 +200,7 @@ class BillDetailView(MethodView):
         if bill_id is None:
             raise BillNotFoundError('A bill id is required')
         bill = Bills.get_bill_by_id(bill_id)
+        for line in bill.lines:
+            line.amount_edit = edited_amount
         return render_template('billdetail.html', bill=bill,
                                search_form=client_search_form)

@@ -21,11 +21,13 @@ import locale as locale_module
 from flask import Flask, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from jinja2 import Environment, PackageLoader, select_autoescape
 
 app = Flask('debtors')
 app.config.from_pyfile('localdebtors.cfg')
 db = SQLAlchemy(app, {"session_options" : "READ_UNCOMMITTED"})
 CSRFProtect(app)
+locale_module.setlocale(locale_module.LC_ALL, '')
 locale = locale_module.localeconv()
 DECIMAL_CHAR = locale['decimal_point']
 

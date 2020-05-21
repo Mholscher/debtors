@@ -32,7 +32,7 @@
 {% set total = line.unit_price.data * line.number_of.data %} 
 {% else -%} {% set total = 0 %}
 {%- endif %}
-<tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{total}}</td> </tr>
+<tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{line.edited_amount(total, currency=bill.billing_ccy)}}</td> </tr>
 {% endfor %}
 </table><br/><br/>
 {{form.update}} {{form.add_1}} {{form.add_more}}

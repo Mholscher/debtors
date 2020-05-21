@@ -145,7 +145,7 @@ class TestBillFromMessage(unittest.TestCase):
 
         bill17 = Bills.create_from_dict(self.bill_dict)
         self.assertEqual(len(bill17.lines), 2, 'Incorrect no of lines')
-        
+
 
 class TestBillFunctions(unittest.TestCase):
 
@@ -238,11 +238,11 @@ class TestConvertToTagged(unittest.TestCase):
     """
 
     def setUp(self):
-        
+
         create_clients(self)
         add_addresses(self)
         create_bills(self)
-    
+
     def tearDown(self):
 
         db.session.rollback()
@@ -361,7 +361,6 @@ class TestBillTransactions(unittest.TestCase):
         self.bill_dict["bill-replaced"] = 1
         rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
         self.assertEqual(400, rv.status_code, 'No 400 status returned')
-        
 
     def test_get_bill_by_id(self):
         """ We can get a bill by its bill id """
@@ -383,6 +382,7 @@ class TestBillTransactions(unittest.TestCase):
         self.assertEqual(200, rv.status_code, 'Cannot get page')
         self.assertIn(str(self.bll1.client_id).encode(), rv.data,
                       'Client id incorrect')
+        self.assertIn('1,15'.encode(), rv.data, 'Unit price not correct in response')
 
     def test_post_new_bill(self):
         """ Post a new bill for an existing client """
@@ -431,8 +431,8 @@ class TestBillTransactions(unittest.TestCase):
     def test_bill_with_two_lines(self):
         """ We can add a bill with 2 lines """
 
-        clt4_id = self.clt4.id
-        new_bill_dict = {"client_id":str(self.clt4.id),
+        clt6_id = self.clt6.id
+        new_bill_dict = {"client_id":str(self.clt6.id),
                          "billing_ccy":'USD',
                          "date_sale":'12-4-2020',
                          "update":True,
@@ -449,10 +449,40 @@ class TestBillTransactions(unittest.TestCase):
                              follow_redirects=False)
         self.assertEqual(rv.status_code, 302, 'Transaction did not succeed')
         bill = db.session.query(Bills).\
-            filter_by(client_id = clt4_id).first()
+            filter_by(client_id = clt6_id).first()
         self.assertEqual(len(bill.lines), 2, 'Wrong no. of lines')
         self.assertEqual(bill.lines[0].short_desc, '754',
                          'Line 1 not correct ' + bill.lines[0].short_desc)
+
+    def test_bill_ccy_no_precision(self):
+        """ Amounts are displayed for ccy without precision """
+
+        bill_id = self.bll4.bill_id
+        rv = self.app.get('/bill/' + str(self.bll4.bill_id))
+        self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
+        self.assertIn(b'376', rv.data, 'Individual bill not in response')
+        self.assertNotIn(b'376,00', rv.data, 'Wrong amount format')
+        self.assertNotIn(b'188000', rv.data, 'Wrong total amount')
+        self.assertIn(b'1 880', rv.data, 'Wrong/no total amount')
+
+    def test_create_bill_no_precision(self):
+        """ A bill created with no precision amount is correct """
+
+        clt6_id = self.clt6.id
+        new_bill_dict = {"client_id":str(self.clt6.id),
+                         "billing_ccy":'JPY',
+                         "date_sale":'12-4-2020',
+                         "update":True,
+                         "lines-0-short_desc":'154',
+                         "lines-0-long_desc":'Just description',
+                         "lines-0-number_of":5,
+                         "lines-0-unit_price":99}
+        rv=self.app.post('/bill/new', data=new_bill_dict,
+                             follow_redirects=False)
+        bill = db.session.query(Bills).\
+            filter_by(client_id = clt6_id).first()
+        self.assertEqual(99, bill.lines[0].unit_price,
+                         'Unit price incorrect')
 
 
 class TestDebtEnquiries(unittest.TestCase):
@@ -481,7 +511,7 @@ class TestDebtEnquiries(unittest.TestCase):
         rv = self.app.get('/debt/' + str(self.clt1.id))
         self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
         self.assertIn(str(bill_id).encode(), rv.data, 'Total debt not in response')
-        self.assertIn(b'debt is EUR 4533', rv.data, 'Total line incorrect')
+        self.assertIn(b'debt is EUR 45,33', rv.data, 'Total line incorrect')
 
     def test_client_without_bills(self):
         """ Debt reported for client without debt """
@@ -506,9 +536,6 @@ class TestDebtEnquiries(unittest.TestCase):
         self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
         self.assertIn(b'debt is EUR 4873', rv.data, 'Total line incorrect')
 
-    def test_more_bills_more_currencies(self):
-        """ We can handle more bills with different currencies """
-
     def test_client_debt_more_bills(self):
         """ A client may have more than one bill in debt """
 
@@ -526,6 +553,20 @@ class TestDebtEnquiries(unittest.TestCase):
         self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
         self.assertIn(b'debt is EUR', rv.data, 'Total line incorrect')
         self.assertIn(b'debt is JPY', rv.data, 'Total line incorrect')
+
+    def test_amount_edited_correct_precision_0(self):
+        """ Amount formatting in debt view correct for currency """
+
+        rv = self.app.get('debt/' + str(self.clt5.id))
+        self.assertIn(b'1 880', rv.data, 'Total wrongly formatted')
+        self.assertNotIn(b'1880', rv.data, 'Total wrongly formatted')
+
+    def test_amount_edited_correct_precision_2(self):
+        """ Amount formatting in debt view correct for currency """
+
+        rv = self.app.get('debt/' + str(self.clt3.id))
+        self.assertIn(b'567,97', rv.data, 'Total wrongly formatted')
+        self.assertNotIn(b'56797', rv.data, 'Total wrongly formatted')
 
 
 class TestBillEnquiries(unittest.TestCase):
@@ -667,6 +708,12 @@ def create_bills(instance):
                           status='new')
     instance.clt3.bills.append(instance.bll3)
     instance.bills.append(instance.bll3)
+    instance.bll4 = Bills(date_sale=date(year=2020, month=3, day=18),
+                          date_bill=None,
+                          billing_ccy='JPY',
+                          status='new')
+    instance.clt5.bills.append(instance.bll4)
+    instance.bills.append(instance.bll4)
 
 def add_lines_to_bills(instance):
     """ Add lines to the bills in the instance
@@ -717,6 +764,13 @@ def add_lines_to_bills(instance):
                         number_of=1,
                         measured_in='box',
                         unit_price=1876)
+    bill.lines.append(bill_line)
+    bill = instance.bills[3]
+    bill_line = BillLines(short_desc='765',
+                        long_desc='Nine inch nails',
+                        number_of=5,
+                        measured_in='box',
+                        unit_price=376)
     bill.lines.append(bill_line)
 
 

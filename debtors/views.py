@@ -21,8 +21,9 @@ the url_rules pointing to the different views in the debtviews module.
 """
 
 from debtors import app
-from flask import redirect, url_for
+from flask import redirect, url_for, render_template
 from debtviews.bills import BillView, ClientDebtView, BillDetailView
+from debtviews.forms import  FormForAmount
 
 
 @app.route('/')
@@ -38,3 +39,14 @@ app.add_url_rule('/debt/<int:client_id>',\
     view_func=ClientDebtView.as_view('client_debt'))
 app.add_url_rule('/bill/<int:bill_id>/details',\
     view_func=BillDetailView.as_view('bill_detail'))
+
+@app.route('/testamount/<amount>', methods=['GET', 'POST'])
+def amount_route(amount=3):
+
+    amount_form = FormForAmount(obj=[amount])
+    if amount_form.validate_on_submit():
+        print('Amount : ', str(amount_form.amount.data))
+        import pdb; pdb.set_trace()
+        return redirect(url_for("amount_route", amount=str(amount_form.amount.data)))
+    amount_form.amount.data = amount
+    return render_template('amountpage.html', form=amount_form)

@@ -10,12 +10,12 @@
 <h2 class="inlineform"> Client {{client.initials}} {{client.surname}}</h2>
 <div class="inlineform">
 {% for bill in bills.bill_list %}
-<div>Bill {{bill.bill_id}} {{bill.billing_ccy}} {{bill.total()}}</div></br>
+<div>Bill <a href={{url_for('bill_detail', bill_id=bill.bill_id)}}>{{bill.bill_id}}</a> {{bill.billing_ccy}} {{bills.edit_amount(bill.total(), currency=bill.billing_ccy)}}</div></br>
 {% endfor %}
 {% if bills.bill_list -%}
 {% for ccy_item in bills.items() %}
-{% if ccy_item[0] != 'bill_list' -%}
-</br><div> The currency debt is {{ccy_item[0]}} {{ ccy_item[1] }} </div>
+{% if ccy_item[0] != 'bill_list' and ccy_item[0] != 'edit_amount'-%}
+</br><div> The currency debt is {{ccy_item[0]}} {{ bills.edit_amount(ccy_item[1][0], currency=ccy_item[1][1]) }} </div>
 {% endif %}
 {% endfor %}
 {% else %}
