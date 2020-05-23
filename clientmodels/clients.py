@@ -117,7 +117,7 @@ class Clients(db.Model):
     in this table. Data that can be multiple (like addresses and
     bank accounts) will be held in separate tables.
     """
-    
+
     __tablename__ = 'clients'
     id = db.Column(db.Integer, db.Sequence('client_sequence'), primary_key=True)
     surname = db.Column(db.String(30), index=True, nullable=False)
@@ -170,7 +170,7 @@ class Clients(db.Model):
 
     def postal_address(self):
         """ Return the correct postal address for this client.
-        
+
         The algo is: return the address of type 'P', if none there ,
         return one of type ' ' (General). Neither one available,
         fail.
@@ -200,7 +200,7 @@ class Clients(db.Model):
     @staticmethod
     def get_client_by_iban(iban):
         """ Get a client by IBAN
-        
+
         If more than one client exists with this IBAN (Compte Jointe)
         we return an error, also when the IBAN does not occur in the
         database.
@@ -230,7 +230,7 @@ class Clients(db.Model):
         if list_for:
             client_list = client_list.limit(list_for)
         return client_list.all()
-            
+
 
 class Addresses(db.Model):
     """ Address records for a client. 
@@ -295,7 +295,7 @@ class Addresses(db.Model):
     @validates('address_use')
     def validate_address_use(self, key, address_use):
         """ Validate address useful
-        
+
             :Rule 1: Only valid values
             :Rule 2: A po_box address must be postal
 
@@ -327,13 +327,13 @@ class Addresses(db.Model):
     @staticmethod
     def residential_addres_for_client(client):
         """ Return one residential address for a client.
-        
+
         If the client has at least one address marked residential, return
         that. Otherwise return one general address.
         If no residential or general address is available,
         fail.
         """
-        
+
         residential_addresses = [x for x in client.addrs\
             if x.address_use == RESIDENTIAL_ADDRESS]
         if residential_addresses:
@@ -361,7 +361,7 @@ class Addresses(db.Model):
 
 class EMail(db.Model):
     """ Electronic mail addresses for a client
-    
+
     It is just an electronic mail address for the client, plus an
     indicator telling if an address is preferred to contact the client.
     """
@@ -390,7 +390,7 @@ class EMail(db.Model):
 
     def check_duplicates(self, session):
         """ The check searches for duplicates of this mail address.
-        
+
         It can only be executed after all changes in a transaction
         are completed, i.e. typically in the before_flush event.
         N.B. The passing of the session is a hack; you can get it also
@@ -470,14 +470,14 @@ class BankAccounts(db.Model):
     def check_account_name(self, session):
         """ Check that the account name is not empty. If it is empty,
         default to the initials and name of the client.
-        
+
         This should be done just before flushing, when everything is
         filled.
         """
 
         if self.client_name is None or self.client_name == '':
             self.client_name = self.owner.initials + ' ' + self.owner.surname
-        
+
     def check_before_flushing(self, session):
 
         self.check_account_name(session)
@@ -501,12 +501,11 @@ class BankAccounts(db.Model):
         if account is None:
             raise NoAccountFoundError('No account for this id')
         return account
-        
 
 @event.listens_for(Session, "before_flush")
 def before_flush(session, flush_context, instances):
     """ This is the place to do cross item edits.
-    
+
     All items are ready to be persisted and need no more
     updates.
     """

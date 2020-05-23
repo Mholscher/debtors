@@ -96,6 +96,24 @@ class TestCreateBill(unittest.TestCase):
         self.assertEqual(bill05.prev_bill, bill04.bill_id,
                          'Bill to replace not accepted')
 
+    def test_status_replaced_bill(self):
+        """ A bill that is replaced, gets appropriate status """
+
+
+        bill18 = Bills(date_sale=datetime.now(), date_bill=None,
+                      status=Bills.NEW)
+        bill18.add()
+        db.session.flush()
+        bill18 = db.session.query(Bills).filter_by(bill_id=bill18.bill_id).first()
+        bill19 = Bills(date_sale=datetime.now(), date_bill=None,
+                      prev_bill=bill18.bill_id, status=Bills.NEW)
+        bill19.add()
+        db.session.flush()
+        bill18 = db.session.query(Bills).filter_by(bill_id=bill18.bill_id).first()
+        self.assertEqual(bill18.status, 'replaced',
+                         'Replaced bill incorrect status')
+
+
 
 class TestBillFromMessage(unittest.TestCase):
 

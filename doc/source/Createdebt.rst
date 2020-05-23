@@ -75,13 +75,17 @@ For each line we fill fields as follows:
     :a description of the measure: Supplied by data entry, but optional.
     :a unit price: Needs to be supplied by data entry.
 
+To reach the creation of a new bill, go to <host>/bill/new.
+
+As long as the bill is not notified to the client, (status "New") you can change it by accessing <host>/bill/<bill_id>. This will be possible for a very short time. After that the way to change a bill is supplying a new bill that will replace the old one.
+
 Debt inquiries
 --------------
 
 We can request information about the debt. The following inquiries are possible
 
-    :client debt: All outstanding (unpaid) bills are listed
-    :bill inquiry: A specific bill is shown with all lines included
+    :client debt: All outstanding (unpaid) bills are listed. Go to <host>/debt/<client_id>
+    :bill inquiry: A specific bill is shown with all lines included.Go to <host>/bill/<bill_id>/details
     :client history: All bills and payments are listed
 
 

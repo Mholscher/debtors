@@ -86,7 +86,7 @@ The meaning of the fields is as follows:
         The client id of the client that will be billed
 
     currency
-        The currency that the bill will be in. It is the error code as found in ISO 2417
+        The currency that the bill will be in. It is the error code as found in ISO 4217
 
     date-sale
         The date the transaction was completed that created the debt

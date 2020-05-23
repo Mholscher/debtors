@@ -24,7 +24,8 @@
 """
 
 from dateutil.parser import parse
-from sqlalchemy.orm import validates
+from sqlalchemy import event
+from sqlalchemy.orm import validates, Session
 from iso4217 import raw_table  # This is the currency table
 from clientmodels.clients import Clients, db
 
@@ -102,8 +103,9 @@ class Bills(db.Model):
     NEW = 'new'
     ISSUED = 'issued'
     PAID = 'paid'
+    REPLACED = 'replaced'
     STATUS_NAME = { 'new' : 'New', 'issued' : 'Billed, unpaid',
-                           'paid' : 'Fully paid' }
+                    'paid' : 'Fully paid', 'replaced' : 'Bill replaced' }
 
     __tablename__ = 'bill'
     bill_id = db.Column(db.Integer, db.Sequence('bill_sequence'),
@@ -158,6 +160,12 @@ class Bills(db.Model):
             raise BillStatusInvalidError('Status {} is invalid'.format(status))
         return status
 
+    def set_replaced(self):
+        """ Set this bill's status to replaced """
+
+        self.status = self.REPLACED
+        return self
+
     def total(self):
         """ Return the total bill amount """
 
@@ -199,6 +207,19 @@ class Bills(db.Model):
         """ Return a list of outstanding bills for client """
 
         return Bills.get_bills_with_status(client, [Bills.NEW, Bills.ISSUED])
+
+    def set_bill_status_replaced(self, session):
+        """ Set the bill status of the bill with id bill_id to replaced
+
+        This is used when the new bill is created """
+
+        if not self.prev_bill:
+            return
+        old = Bills.get_bill_by_id(self.prev_bill)
+        if old:
+            old.set_replaced()
+            return
+        raise BillNotFoundError(f"The bill with id {bill_id} was not found")
 
     @classmethod
     def create_from_dict(cls, bill_dict):
@@ -307,3 +328,16 @@ class BillLines(db.Model):
         if line_dict.get("unit-price"):
             line.unit_price = line_dict["unit-price"]
         bill.lines.append(line)
+
+
+@event.listens_for(Session, "before_flush")
+def before_flush(session, flush_context, instances):
+    """ This is the place to do cross item edits and changes.
+
+    All items are ready to be persisted and need no more
+    updates.
+    """
+
+    for instance in session.dirty | session.new:
+        if isinstance(instance, Bills):
+            instance.set_bill_status_replaced(session)

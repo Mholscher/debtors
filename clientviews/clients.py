@@ -330,9 +330,9 @@ class BankAccountDeleteView(MethodView):
         """ Process the posting of the account delete form """
 
         client = get_client_by_id(self, id)
-        
+
         bank_account_form = ClientBankAccountForm()
-        
+
         if bank_account_form.validate_on_submit():
             if request.form.get("cancel", False):
                 return redirect(url_for('.clients', id=id))
