@@ -66,3 +66,9 @@ The module clientviews mixins
 
 .. automodule:: clientviews.mixins
    :members:
+
+The module debtviews physicalbill
+---------------------------------
+
+.. automodule:: debtviews.physicalbill
+   :members:

@@ -21,7 +21,7 @@ Systems outside debtors itself can communicate to the system by sending json\
 formatted messages to it. These messages are handled by the views in 
 this module.
 
-It also has the url_rules to add to the rule map of wekzeug, so incoming
+It also has the url_rules to add to the rule map of werkzeug, so incoming
 messages can be dispatched.
 """
 
@@ -41,6 +41,14 @@ debtapi.add_url_rule('/bill/new',
 
 @debtapi.errorhandler(InvalidDataError)
 def handle_invalid_data(ide):
+    """ Handle the case invalid data was received from another system. 
+
+    InvalidDataError is the error all validation errors are inheriting
+    from. Also errors like getting a bill_id that does not exist in the
+    database inherit from this error. The system that has delivered the
+    faulty data is notified that debtors could not process its message.
+    """
+
     response_dict = ide.to_dict()
     response_dict['status'] = 'Bad Request'
     response = jsonify(response_dict)

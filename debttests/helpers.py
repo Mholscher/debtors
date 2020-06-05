@@ -26,6 +26,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
+from debtmodels.debtbilling import Bills, BillLines
 from debtors import db
 
 
@@ -45,7 +46,7 @@ def create_clients(instance):
                             sex='F')
     instance.clt2.add()
     instance.client_list.append(instance.clt2.surname)
-    instance.clt3 = Clients(surname='Aquamarijn',
+    instance.clt3 = Clients(surname='Aq\u00f6amarijn\u0394',
                             initials='P.J.',
                             first_name='Peter',
                             birthdate=date(1998, 3, 17),
@@ -109,7 +110,13 @@ def add_addresses(instance):
                             house_number='52',
                             postcode='3812 DG', country_code='NLD',
                             address_use=GENERAL_ADDRESS)
-    instance.clt4.addrs.append(instance.adr23)
+    instance.clt2.addrs.append(instance.adr23)
+    instance.adr26 = Addresses(street='Generaal Spoorlaan',
+                            town_or_village='Driebergen',
+                            house_number='16',
+                            postcode='3865 AE', country_code='NLD',
+                            address_use=GENERAL_ADDRESS)
+    instance.clt3.addrs.append(instance.adr26)
     instance.adr24 = Addresses(street='Zeugnisstraße',
                             town_or_village='Neuenrath',
                             house_number='34',
@@ -164,4 +171,92 @@ def delete_test_clients(instance):
     for client in client_list:
         db.session.delete(client)
 
+def create_bills(instance):
+    """ Create bills for test 'instance' """
 
+    instance.bills = []
+    instance.bll1 = Bills(date_sale=datetime.now().date(), date_bill=None,
+                          status='new')
+    instance.clt1.bills.append(instance.bll1)
+    instance.bills.append(instance.bll1)
+    instance.bll2 = Bills(date_sale=datetime.now().date(), date_bill=datetime.now(),
+                          status='paid')
+    instance.clt1.bills.append(instance.bll2)
+    instance.bills.append(instance.bll2)
+    instance.bll3 = Bills(date_sale=date(year=2019, month=11, day=18),
+                          date_bill=None,
+                          status='new')
+    instance.clt3.bills.append(instance.bll3)
+    instance.bills.append(instance.bll3)
+    instance.bll4 = Bills(date_sale=date(year=2020, month=3, day=18),
+                          date_bill=None,
+                          billing_ccy='JPY',
+                          status='new')
+    instance.clt5.bills.append(instance.bll4)
+    instance.bills.append(instance.bll4)
+
+def add_lines_to_bills(instance):
+    """ Add lines to the bills in the instance
+
+    The instance bills are in instance.bills 
+    """
+
+    bill = instance.bills[0]
+    bill_line = BillLines(short_desc='S1',
+                        long_desc='A longer description one',
+                        number_of=15,
+                        unit_price=115)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='S2',
+                        long_desc='A longer description two',
+                        number_of=12,
+                        measured_in='Kilo',
+                        unit_price=234)
+    bill.lines.append(bill_line)
+    bill = instance.bills[1]
+    bill_line = BillLines(short_desc='1276',
+                        long_desc='Outside business place',
+                        number_of=1,
+                        measured_in='unit',
+                        unit_price=128734)
+    bill.lines.append(bill_line)
+    bill = instance.bills[2]
+    bill_line = BillLines(short_desc='h0',
+                        long_desc='Grease',
+                        number_of=2,
+                        measured_in='tin',
+                        unit_price=12873)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h1',
+                        long_desc='Tin solder',
+                        number_of=15,
+                        measured_in='bottles',
+                        unit_price=1212)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h2',
+                        long_desc='Screw, flat head',
+                        number_of=5,
+                        measured_in='boxes',
+                        unit_price=2199)
+    bill.lines.append(bill_line)
+    bill_line = BillLines(short_desc='h3',
+                        long_desc='Screw, round head',
+                        number_of=1,
+                        measured_in='box',
+                        unit_price=1876)
+    bill.lines.append(bill_line)
+    bill = instance.bills[3]
+    bill_line = BillLines(short_desc='765',
+                        long_desc='Nine inch nails',
+                        number_of=5,
+                        measured_in='box',
+                        unit_price=376)
+    bill.lines.append(bill_line)
+
+
+def delete_test_bills(instance):
+    """ Delete all the bills created for a test """
+
+    bills = db.session.query(Bills).all()
+    for bill in bills:
+        db.session.delete(bill)

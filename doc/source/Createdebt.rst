@@ -94,8 +94,8 @@ We can request information about the debt. The following inquiries are possible
 Notification of the client
 --------------------------------
 
-The client will be notified of the debt. The client administration needs to supply the data for how to notify. The simple system supplied for testing supports electronic mail as well as traditional mail. Notifications are kept simple on purpose, because they of course need adjusting for each individual installation. **TODO link to tech docs.**
+The client will be notified of the debt. The client administration needs to supply the data for how to notify. The simple system supplied for testing supports electronic mail as well as traditional mail. Notifications are kept simple on purpose, because they of course need adjusting for each individual installation. See :ref:`physicalbill`
 
 Notification starts the overdue processing. A client is supposed to be paying within a number of days from the notification. However, it may be the date of the sale as passed by the system that has processed the sale, depending on configuration. 
 
-The debt is recognized at this moment, so we need to reflect that in the financial administration, so now do the accounting as described in :ref:`accountingrules` on "amount becomes due".
+The debt is recognized at this moment, so we need to reflect that in the financial administration, we now do the accounting as described in :ref:`accountingrules` on "amount becomes due".

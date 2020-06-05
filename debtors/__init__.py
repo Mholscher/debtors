@@ -1,4 +1,4 @@
-#    Copyright 2015 Menno Hölscher
+#    Copyright 2015-2020 Menno Hölscher
 #
 #    This file is part of debtors.
 
@@ -18,10 +18,9 @@
 import logging
 import configparser
 import locale as locale_module
-from flask import Flask, Blueprint
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
-from jinja2 import Environment, PackageLoader, select_autoescape
 
 app = Flask('debtors')
 app.config.from_pyfile('localdebtors.cfg')

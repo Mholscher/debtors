@@ -12,6 +12,7 @@ Welcome to Debtors Management's documentation!
    Overview
    Createdebt
    Processpayment
+   InsideDebtors
    Clients
    ExternalAPI
    DebtAPI
