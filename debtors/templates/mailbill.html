@@ -1,0 +1,49 @@
+{% extends "printbase.html" %}
+
+{% block content %}
+<br/><br/>
+<table>
+
+<tr><td>To: </td><td>{{client.initials}} {{client.surname}}</td></tr>
+<tr><td></td><td>{% if client.po_box -%}	Po box {{ client.po_box }}{%- else %}        {{ client.street}} {{client.house_number}}{%- endif %} </td></tr>
+<tr><td></td><td>{{ client.postcode }} {{ client.town_or_village }} </td></tr>
+<tr><td></td><td>{{ client.country }} </td></tr>
+</table>
+<br/><br/>
+
+<div class="just_right">Wommeveen,{{date}}</div><br/><br/>
+
+Referring to : Your order {{bill.bill_id}}<br/><br/>
+
+Thank you for shopping with Debtors Testcompany!  Below is what you purchased
+at {{ bill.date_sale }} with us and the payment conditions. We hope you will
+ enjoy your purchases.<br/><br/>
+
+All amounts are in {{bill.billing_ccy}}.<br/><br/>
+
+<table>
+<tbody>
+<tr><th class="order">Productcode</th><th class="order">Description</th><th class="order">Number of and Unit price </th><th class="order">Total</th></tr>
+{%- for line in bill.lines %}
+<tr>
+<td class="order">{{line.short_desc}} </td>
+<td class="order">{{line.long_desc}}</td>
+<td class="order">{{ line.number_of }} {{ line.measured_in }}   {{ line.unit_price }}</td>
+<td class="order">{{ line.total }}</td>
+</tr>
+{% endfor -%}
+
+</tbody>
+</table><br/><br/>
+
+Total for bill {{ bill.total }} <br/><br/>
+
+Please pay within 30 days of the date of this bill. According to our conditions,
+we will charge cost for late payment.<br/><br/>
+
+Debtors Testcompany,<br/><br/><br/><br/>
+
+
+J.F. Wallybun, sales manager<br/>
+
+{% endblock content %}

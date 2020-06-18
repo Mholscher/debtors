@@ -15,12 +15,14 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
+from os.path import exists
 import unittest
 from debtors import db
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
     delete_test_bills
-from debtviews.physicalbill import rtfenvironment, BillDictView
+from debtviews.physicalbill import rtfenvironment, BillDictView, PaperBill,\
+    HTMLMailBill
 
 class TestPaperBillCreate(unittest.TestCase):
 
@@ -102,6 +104,109 @@ class TestPaperBillCreate(unittest.TestCase):
         rv = bill_template.render(view)
         self.assertIn('\\u916', rv, 'Delta not found')
         self.assertIn('\\u246', rv, 'ö not found')
-        with open('bill16', 'w') as f:
-            f.write(rv)
+        #with open('bill16', 'w') as f:
+            #f.write(rv)
 
+    def test_invalid_bill_id_fails(self):
+        """ When an invalid bill_id is supplied, a graceful failure """
+
+        with self.assertRaises(ValueError):
+            view = BillDictView(bill_id=1)
+
+
+
+class TestPaperBillProcess(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_bill_text(self):
+        """ Create a bill from a supplied bill_id """
+
+        bill_doc = PaperBill(self.bll3.bill_id)
+        self.assertIn(str(self.bll3.bill_id), bill_doc.text,
+                      "Id not in bill text")
+
+    def test_write_bill_to_file(self):
+        """ We can write the RTF to a file """
+
+        bill_doc = PaperBill(self.bll3.bill_id)
+        bill_doc.write_file()
+        self.assertTrue(exists("output/bill" + str(self.bll3.bill_id)),
+                               "Output file does not exist")
+
+class TestMailBill(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_can_create_text_document(self):
+        """ We can create a text document """
+
+        bill_mail = HTMLMailBill(self.bll4.bill_id)
+        self.assertIn('Aubergine', bill_mail.text, 'Client name not correct')
+        #with open('output/mail' + str(self.bll4.bill_id), 'w') as f:
+            #f.write(bill_mail.text)
+
+    def test_can_create_html_document(self):
+        """ We can ceeate a HTML document """
+
+        bill_html = HTMLMailBill(self.bll4.bill_id)
+        self.assertIn('Aubergine', bill_html.html, 'Client name not correct')
+        #with open('output/htmlmail' + str(self.bll4.bill_id) + '.html', 'w') as f:
+            #f.write(bill_html.html)
+
+    #def test_create_email_part_plain(self):
+        #""" Create an email message part for the plaintext bit """
+
+        #bill_mail = HTMLMailBill(self.bll4.bill_id)
+        #self.assertIn('text/plain', bill_mail.text_message['Content-type'])
+
+    def test_create_email_multipart(self):
+        """ Create a multipart message with the text and html """
+
+        bill_mail = HTMLMailBill(self.bll4.bill_id)
+        self.assertIn('multipart/alternative',
+                      bill_mail.multipart_message['Content-type'])
+        #with open('output/mail' + str(self.bll4.bill_id), 'w') as f:
+            #f.write(bill_mail.multipart_message.as_string())
+
+    def test_sender_recipient_subject(self):
+        """ An email contains sender, recipient and subject """
+
+        bill_mail = HTMLMailBill(self.bll4.bill_id)
+        self.assertIn('debtorscompany',
+                      bill_mail.multipart_message['From'])
+        self.assertIn(self.bll4.client.preferred_mail().mail_address,
+                      bill_mail.multipart_message['To'])
+        self.assertIn(str(self.bll4.bill_id),
+                      bill_mail.multipart_message['Subject'])
+
+
+
+if __name__ == '__main__':
+    unittest.main()

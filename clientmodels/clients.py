@@ -386,7 +386,7 @@ class EMail(db.Model):
         mail_address = [x for x in client.emails if x.preferred]
         if mail_address:
             return mail_address[0]
-        return client.emails[0]
+        return client.emails[0] if client.emails else None
 
     def check_duplicates(self, session):
         """ The check searches for duplicates of this mail address.

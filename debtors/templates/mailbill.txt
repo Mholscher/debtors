@@ -1,0 +1,41 @@
+Debtors Testcompany
+The meadows 12
+1202 NG Wommeveen
+Telephone : 088 -1234567
+
+To: 	{{client.initials}} {{client.surname}}
+{% if client.po_box -%}	Po box {{ client.po_box }}{%- else %}        {{ client.street}} {{client.house_number}}{%- endif %}
+	{{ client.postcode }} {{ client.town_or_village }}
+	{{ client.country }}
+
+
+                                                       Wommeveen,{{date}}
+
+Referring to : Your order {{bill.bill_id}}
+
+Thank you for shopping with Debtors Testcompany!  Below is what you purchased
+at {{ bill.date_sale }} with us and the payment conditions. We hope you will
+ enjoy your purchases.
+
+All amounts are in {{bill.billing_ccy}}.
+
+{%- for line in bill.lines %}
+
+Productcode {{line.short_desc}} 
+Description {{line.long_desc}}
+Number of and Unit price  {{ line.number_of }} {{ line.measured_in }}   {{ line.unit_price }}
+Total  {{ line.total }}
+
+{% endfor -%}
+
+
+Total for bill {{ bill.total }}
+
+Please pay within 30 days of the date of this bill. According to our conditions,
+we will charge cost for late payment.
+
+Debtors Testcompany,
+
+
+J.F. Wallybun, sales manager
+

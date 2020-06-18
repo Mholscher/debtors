@@ -17,13 +17,14 @@
 
 """ This module takes care of converting model entities to view entities.
 
-The models fields are conmverted to something the templating environment can
+The models fields are converted to something the templating environment can
 relate to. In this case Jinja2, it knows how to translate numbers to a string,
-so we don't bother replacing those, but dates etc. are translated
+so we don't bother replacing those, but dates, amounts etc. are translated
 into printable data.
 """
 
 from datetime import date
+from email.message import EmailMessage
 from jinja2 import Environment, PackageLoader
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
@@ -36,16 +37,20 @@ rtfenvironment = Environment(
     trim_blocks=True, lstrip_blocks=True,
     autoescape=False)
 
+htmlenvironment = Environment(
+    loader=PackageLoader('debtors', 'templates'),
+    autoescape=True)
+
 def rtf(to_encode):
     """ This routine transcripts unicode strings to be usable in
     rtf (rich text format) files.
-    
-    According to the documentation rtf supports unicode, but not so nice. You 
-    can enter codepoints in decimal (e.g. \\u233 is é), and after that you have
-    to insert a replacement character. The replacement character is simply
-    the question mark.
+
+    rtf supports unicode, but not so nice. 
+    You can enter codepoints in decimal (e.g. \\u233 is é), and after that 
+    you have to insert a replacement character. The replacement character is simply the question mark for debtors.
+    TODO Get clients preferred mail address
     """
-    
+
     result = ""
     if not to_encode:
         return to_encode
@@ -105,6 +110,9 @@ class BillDictView(dict):
                 client_dict["house_number"] = address.house_number
             client_dict["postcode"] = address.postcode
             client_dict["town_or_village"] = address.town_or_village
+        email = self.client.preferred_mail()
+        if email:
+            client_dict['email'] = email
         return client_dict
 
     def _create_line_dict(self, line):
@@ -122,3 +130,51 @@ class BillDictView(dict):
         if line.measured_in:
             line_dict["measured_in"] = rtf(str(line.measured_in))
         return line_dict
+
+
+class PaperBill(object):
+
+    """ This class makes a paper bill and stores it on the file system
+
+    The paper bill is a Rich Text Format (RTF) document. A template
+    is retrived and filled wioth data from a view dictionary that
+    is produced from the Bills model.
+    """
+
+    def __init__(self, bill_id):
+
+        self.bill_id = bill_id
+        bill_dict = BillDictView(bill_id)
+        bill_template = rtfenvironment.get_template("paperbill.rtf")
+        self.text = bill_template.render(bill_dict)
+
+    def write_file(self):
+        """ Writes the text of the bill to a file """
+
+        with open("output/bill" + str(self.bill_id), 'w') as f:
+            f.write(self.text)
+
+class HTMLMailBill(object):
+    """ This class creates a HTML mail bill.
+
+    The bill can be stored as text on the file system and be sent 
+    immediately to an SMTP server to be sent to the client.
+    TODO Create the link to the SMTP server
+    """
+
+    def __init__(self, bill_id):
+
+        self.bill_id = bill_id
+        bill_dict = BillDictView(bill_id)
+        bill_template = htmlenvironment.get_template('mailbill.txt')
+        self.text = bill_template.render(bill_dict)
+        html_template = htmlenvironment.get_template('mailbill.html')
+        self.html = html_template.render(bill_dict)
+        self.multipart_message = EmailMessage()
+        self.multipart_message['From'] = 'billing@debtorscompany.com'
+        self.multipart_message['To'] = bill_dict['client']['email']
+        self.multipart_message['Subject'] = 'Your bill ' + str(bill_dict['bill']['bill_id'])
+        self.multipart_message.set_content(self.text)
+        self.html_message = EmailMessage()
+        self.html_message.set_content(self.html)
+        self.multipart_message.add_alternative(self.html)
