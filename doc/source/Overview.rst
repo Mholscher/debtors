@@ -90,6 +90,12 @@ For each of the steps accounting is done.
     
     The split into different kinds of amounts (like tax, commission etc.) is made by the delivering system. Debtors Management is only interested in what is due.
 
+**Bill is removed or replaced**
+    When a bill that was billed previously is removed or replaced by a new one, we reverse the accounting done when it became due.
+    
+        * unbilled sales - debit for the total amount of the invoice 
+        * ordinary debt - credit for the total amount of the invoice 
+
 **Payment comes in**
     When an invoice is paid and reconciled, the following postings are made:
     

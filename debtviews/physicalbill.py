@@ -25,6 +25,7 @@ into printable data.
 
 from datetime import date
 from email.message import EmailMessage
+from json import dumps
 from jinja2 import Environment, PackageLoader
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
@@ -48,7 +49,6 @@ def rtf(to_encode):
     rtf supports unicode, but not so nice. 
     You can enter codepoints in decimal (e.g. \\u233 is é), and after that 
     you have to insert a replacement character. The replacement character is simply the question mark for debtors.
-    TODO Get clients preferred mail address
     """
 
     result = ""
@@ -174,7 +174,77 @@ class HTMLMailBill(object):
         self.multipart_message['From'] = 'billing@debtorscompany.com'
         self.multipart_message['To'] = bill_dict['client']['email']
         self.multipart_message['Subject'] = 'Your bill ' + str(bill_dict['bill']['bill_id'])
-        self.multipart_message.set_content(self.text)
+        self.multipart_message.set_content(self.html)
+        self.multipart_message.replace_header('Content-type', 'text/html ; charset = "UTF-8"')
         self.html_message = EmailMessage()
-        self.html_message.set_content(self.html)
-        self.multipart_message.add_alternative(self.html)
+        self.html_message.set_content(self.text)
+        self.multipart_message.add_alternative(self.text)
+
+class BillAccounting(dict):
+    """ This class models the accounting to be done for a bill
+
+    The accounting is created for use in the GLedger package.
+    Changing this should not be very hard, as the accounting for
+    another accounting system will be very similar.
+    """
+
+    def __init__(self, bill):
+
+        super().__init__()
+        self. bill = bill
+        self["journal"] = self.create_journal()
+
+    def create_journal(self):
+        """ Create the journal for the bill.
+
+        The journal consists of a header that contains the 
+        information to identify the actions and journal itself.
+        The next bit are the postings that are made in this journal.
+        """
+        journal = dict()
+        journal["function"] = "insert"
+        journal["extkey"] = "bill" + str(self.bill.bill_id) 
+        if self.bill.total() == 0:
+            raise ValueError("Do not account for zero debt")
+        posting_list = []
+        posting_sales = {"account" : "sales", "currency" : 
+                             self.bill.billing_ccy,
+                             "amount" : str(self.bill.total()),
+                             "debitcredit" : "Cr",
+                             "valuedate" : self.bill.date_sale.strftime("%Y-%m-%d")}
+        posting_list.append(posting_sales)
+        posting_debt = {"account" : "debt", "currency" : 
+                             self.bill.billing_ccy,
+                             "amount" : str(self.bill.total()),
+                             "debitcredit" : "Db",
+                             "valuedate" : self.bill.date_sale.strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        journal["postings"] = posting_list
+        return journal
+
+    def as_json(self):
+        """ Return myself as a json string """
+
+        return dumps(self)
+ 
+
+class BillReplaceAccounting(BillAccounting):
+    """ This class creates an accounting transaction for a replaced bill
+
+    It does so by generating the positive accounting and changing any
+    necessary field to make it a reversal of the original postings
+    """
+
+    def create_journal(self):
+        """ Create the journal and reverse the postings and
+        change the external key on the journal.
+        """
+
+        journal = super().create_journal()
+        journal["extkey"] = "billr" + str(self.bill.bill_id) 
+        for posting in journal["postings"]:
+            if posting["debitcredit"] == 'Db':
+                posting["debitcredit"] = 'Cr'
+            else:
+                posting["debitcredit"] = 'Db'
+        return journal

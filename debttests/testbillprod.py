@@ -16,13 +16,15 @@
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
 from os.path import exists
+from datetime import datetime
 import unittest
 from debtors import db
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
     delete_test_bills
+from debtmodels.debtbilling import Bills, BillLines
 from debtviews.physicalbill import rtfenvironment, BillDictView, PaperBill,\
-    HTMLMailBill
+    HTMLMailBill, BillAccounting, BillReplaceAccounting
 
 class TestPaperBillCreate(unittest.TestCase):
 
@@ -206,6 +208,99 @@ class TestMailBill(unittest.TestCase):
         self.assertIn(str(self.bll4.bill_id),
                       bill_mail.multipart_message['Subject'])
 
+
+class TestCreateAccounting(unittest.TestCase):
+
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_accounting(self):
+        """ We can create an accounting transaction """
+
+        bac1 = BillAccounting(self.bll3)
+        posting_list = bac1['journal']['postings']
+        accounts = [account for posting in posting_list for k, account in posting.items() if k == 'account' ]
+        self.assertIn('sales', accounts, 'No sales posting')
+        self.assertIn('debt', accounts, 'No debt posting')
+        self.assertEqual(self.bll3.date_sale.strftime("%Y-%m-%d"),
+                         posting_list[0]["valuedate"], 'Incorrect date')
+
+    def test_posts_headers(self):
+        """ Headers are presesent in the journal """
+
+        bac2 = BillAccounting(self.bll3)
+        self.assertIn("function", bac2["journal"], 'No function')
+        self.assertEqual(bac2["journal"]["function"], "insert", 'Function incorrect')
+        self.assertIn("extkey", bac2["journal"], 'No journal key')
+        self.assertEqual(bac2["journal"]["extkey"], "bill" + str(self.bll3.bill_id), 'Journal key incorrect')
+
+    def test_do_not_post_zero(self):
+        """ Trying to post a zero debt fails """
+
+        with self.assertRaises(ValueError):
+            bac3 = BillAccounting(self.bll5)
+
+    def test_can_return_json(self):
+        """ We can return a JSON version of the post  """
+
+        bac4 = BillAccounting(self.bll4)
+        bac4_json = bac4.as_json()
+        self.assertIn('JPY', bac4_json, 'Currency not in json')
+        self.assertIn('sales', bac4_json, 'Account not in json')
+        self.assertIn('{"', bac4_json, 'General json problem')
+
+
+class TestReversalAccounting(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_accounting_replaced_bill(self):
+        """ We create accounting for a replaced bill """
+
+        self.bill01 = Bills(date_sale=datetime.now(), date_bill=None,
+                            prev_bill=self.bll3.bill_id, status=Bills.NEW)
+        self.bill01.add()
+        self.bl01 = BillLines(short_desc='Lumpy', unit_price=18)
+        self.bill01.lines.append(self.bl01)
+        self.bl02 = BillLines(short_desc='Gravy', unit_price=45,
+                              number_of=5)
+        self.bill01.lines.append(self.bl02)
+        self.bill01.client = self.clt1
+        db.session.flush()
+        bac5 = BillReplaceAccounting(self.bll3)
+        posting_list = bac5['journal']['postings']
+        accounts = [(posting['account'], posting['debitcredit'])
+                    for posting in posting_list ]
+        self.assertIn(('sales', 'Db'), accounts, 'No sales posting/wrong sign')
+        self.assertIn(('debt', 'Cr'), accounts, 'No debt posting/wrong sign')
+        self.assertEqual('billr' + str(self.bll3.bill_id),
+                         bac5['journal']['extkey'], "Wrong extkey")
 
 
 if __name__ == '__main__':

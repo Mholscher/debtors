@@ -194,6 +194,12 @@ def create_bills(instance):
                           status='new')
     instance.clt5.bills.append(instance.bll4)
     instance.bills.append(instance.bll4)
+    instance.bll5 = Bills(date_sale=date(year=2020, month=3, day=2),
+                          date_bill=None,
+                          billing_ccy='JPY',
+                          status='new')
+    instance.clt5.bills.append(instance.bll5)
+    instance.bills.append(instance.bll5)
 
 def add_lines_to_bills(instance):
     """ Add lines to the bills in the instance

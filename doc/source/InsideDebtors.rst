@@ -12,7 +12,12 @@ In the description we refer to the physical bill production as an example. It is
 
 However, part of the code is reusable. The physicalbill module in debtviews has code to convert the model entities into usable human-readable data. This is re-usable, as whatever the medium (paper, mail), we need the conversion of numbers, amounts etc., into something a human can understand.
 
-To check the use of the module and as an example, a template to create an RTF document is supplied (paperbill.rtf) and a HTML mail message (tba).
+To check the use of the module and as an example, a template to create an RTF document is supplied (paperbill.rtf) and a HTML mail message (printbase.html, mailbill.html and mailbill.txt).
+
+Sending the mail bill
+---------------------
+
+I have left out the code to send the bill. Any SMTP sending code should work.
 
 Document storage
 ----------------

@@ -69,7 +69,7 @@ class NoSaleDateError(InvalidDataError):
 
 
 class ReplacedBillError(InvalidDataError):
-    """ A bill which will be replaced does not exist """
+    """ A bill cannot be replaced or does not exist """
 
     pass
 
