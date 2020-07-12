@@ -77,7 +77,9 @@ The content of the payload is as follows::
                      {"short-desc" : "Another description", 
                      "long-desc" : "Another longer description",
                      "unit" : 1,
-                     "unit-price" : 2265}]
+                     "unit-price" : 2265}],
+     "debtor-preferences" : {"bill-medium" : "mail",
+                             "letter-medium" : "post"}
      }
 
 The meaning of the fields is as follows:
@@ -111,7 +113,16 @@ The meaning of the fields is as follows:
 
     unit-price
         The price per unit. The total for the line is unit * unit-price
-    
+
+    debtor-preferences
+        The preferences of the client for the debtor system, currently how the debtor is contacted for the communication detailed below
+
+    bill-medium
+        The way the client receives bills. It can be mail for e-mail and post for postal
+
+    letter medium
+        The way the client receives bills. It can be mail for e-mail and post for postal
+
 
 The debtor system will answer a success message (:ref:`successmessage`). This successmessage wil have the format::
 

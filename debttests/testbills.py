@@ -17,14 +17,16 @@
 
 import unittest
 from json import dumps
+from datetime import datetime, date
+from sqlalchemy.exc import IntegrityError
 from debtors import app, db
 from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
-from debtmodels.debtbilling import Bills, BillLines
+from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
 from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at , create_bills, add_lines_to_bills,\
-    delete_test_bills
-from datetime import datetime, date
+    delete_test_bills, delete_test_prefs
+
 
 class TestCreateBill(unittest.TestCase):
 
@@ -143,6 +145,7 @@ class TestBillFromMessage(unittest.TestCase):
 
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -186,6 +189,7 @@ class TestBillFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -266,6 +270,7 @@ class TestConvertToTagged(unittest.TestCase):
 
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -328,7 +333,9 @@ class TestBillTransactions(unittest.TestCase):
                         {"short-desc" : "Another", 
                         "long-desc" : "Another longer description",
                         "unit" : 1,
-                        "unit-price" : 2265}]
+                        "unit-price" : 2265}],
+             "debtor-preferences" : {"bill-medium" : "mail",
+                                    "letter-medium": "post"}
              }
         self.app = app.test_client()
         self.app.testing = True
@@ -337,6 +344,7 @@ class TestBillTransactions(unittest.TestCase):
 
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -365,6 +373,16 @@ class TestBillTransactions(unittest.TestCase):
         rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
         self.assertEqual(rv.status_code, 200, 'Failure')
         self.assertIn(b'bill-id', rv.data, 'No bill id returned')
+
+    def test_add_preferences(self):
+        """ We can add debtor preferences to the database """
+
+        clt1_id = self.clt1.id
+        rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
+        self.assertEqual(rv.status_code, 200, 'Failure')
+        debtor_preferences = db.session.query(DebtorPreferences).\
+            filter_by(client_id=clt1_id).first()
+        self.assertIn(debtor_preferences.bill_medium, 'mail', 'Incorrect preference returned')
 
     def test_missing_date_fails(self):
         """ Sending a json with a missing date-sale causes 400 """
@@ -520,6 +538,7 @@ class TestDebtEnquiries(unittest.TestCase):
 
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -604,6 +623,7 @@ class TestBillEnquiries(unittest.TestCase):
 
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -703,12 +723,71 @@ class TestBillLineFunctions(unittest.TestCase):
 
     def test_line_totals(self):
         """ A line must have a total amount """
-        
+
         totals = []
         for line in self.bill07.lines:
             totals.append(line.total())
         self.assertIn(75, totals, 'Line not correctly calculated')
         self.assertIn(340, totals, 'Line not correctly calculated')
+
+
+class TestDebtPreferences(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_preferences(self):
+        """ We can create debt preferences """
+
+        prfs1 = DebtorPreferences(client_id=self.clt1.id, 
+                                  bill_medium='mail',
+                                  letter_medium='post')
+        db.session.flush()
+        self.assertTrue(prfs1.client_id, 'No client_id')
+
+    def test_add_client_to_preferences(self):
+        """ We can also add the client to the preferences """
+
+        prfs3 = DebtorPreferences(bill_medium='post',
+                                  letter_medium='post')
+        prfs3.client = self.clt1
+        db.session.flush()
+        self.assertEqual(self.clt1.id, prfs3.client_id,
+                         'Client not added correctly')
+
+    def test_no_client_no_cigar(self):
+        """ A missing client raises """
+
+        with self.assertRaises(ValueError):
+            prfs4 = DebtorPreferences(bill_medium='post',
+                                      letter_medium='post')
+            prfs4.add()
+            db.session.flush()
+
+    def test_invalid_mediums(self):
+        """ An invalid medium raises """
+
+        with self.assertRaises(ValueError):
+            prfs5 = DebtorPreferences(bill_medium='qt',
+                                      letter_medium='qt')
+            db.session.flush()
+
+        with self.assertRaises(ValueError):
+            prfs5 = DebtorPreferences(bill_medium='mail',
+                                      letter_medium='qt')
+            db.session.flush()
 
 
 if __name__ == '__main__' :

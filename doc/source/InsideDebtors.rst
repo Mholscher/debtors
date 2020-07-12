@@ -14,6 +14,11 @@ However, part of the code is reusable. The physicalbill module in debtviews has 
 
 To check the use of the module and as an example, a template to create an RTF document is supplied (paperbill.rtf) and a HTML mail message (printbase.html, mailbill.html and mailbill.txt).
 
+Overriding a preference
+-----------------------
+
+A postal address is assumed to be present always. So, if a preference of mail is set for a client bill or letter and the client has no known mail address, a postal letter is created.
+
 Sending the mail bill
 ---------------------
 
@@ -22,4 +27,4 @@ I have left out the code to send the bill. Any SMTP sending code should work.
 Document storage
 ----------------
 
-Printing letters is not done by the system itself, it produces RTF documents. These documents are saved in the output directory of debtors. This is currently hardcoded, but can be changed easily (of course). To print these, you need a document processing program that can print RTF documents, it has been tested with LibreOffice (works) and Calligra (fails, it misinterprets some commands).
+Printing letters is not done by the system itself, it produces RTF documents. These documents are saved in the output directory of debtors. This is currently hardcoded, but can be changed easily (of course). To print these, you need a document processing program that can print RTF documents, it has been tested with LibreOffice (works) and Calligra (fails, it misinterprets some RTF commands).

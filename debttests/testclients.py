@@ -430,7 +430,7 @@ class TestMailAddress(unittest.TestCase):
         mad12 = EMail(mail_address='verydescrip@gmail.com')
         self.clt10.emails.append(mad12)
         db.session.flush()
-        self.assertEqual(self.clt10.preferred_mail(), mad11,
+        self.assertEqual(self.clt10.preferred_mail(), mad11.mail_address,
                          'Client did not return preferred address')
 
     def test_no_preferred_any_will_do(self):
@@ -441,7 +441,8 @@ class TestMailAddress(unittest.TestCase):
         mad14 = EMail(mail_address='any2@gmail.com')
         self.clt10.emails.append(mad14)
         db.session.flush()
-        self.assertIn(self.clt10.preferred_mail(), {mad13, mad14},
+        self.assertIn(self.clt10.preferred_mail(), {mad13.mail_address,
+                                                    mad14.mail_address},
                       'Invalid/no mail returned')
         
 

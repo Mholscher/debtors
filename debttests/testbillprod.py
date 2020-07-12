@@ -15,16 +15,17 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 from os.path import exists
-from datetime import datetime
+from datetime import datetime, date
 import unittest
 from debtors import db
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
-    delete_test_bills
+    delete_test_bills, add_debtor_preferences
 from debtmodels.debtbilling import Bills, BillLines
 from debtviews.physicalbill import rtfenvironment, BillDictView, PaperBill,\
-    HTMLMailBill, BillAccounting, BillReplaceAccounting
+    HTMLMailBill, BillAccounting, BillReplaceAccounting, create_physical_bill
 
 class TestPaperBillCreate(unittest.TestCase):
 
@@ -203,7 +204,7 @@ class TestMailBill(unittest.TestCase):
         bill_mail = HTMLMailBill(self.bll4.bill_id)
         self.assertIn('debtorscompany',
                       bill_mail.multipart_message['From'])
-        self.assertIn(self.bll4.client.preferred_mail().mail_address,
+        self.assertIn(self.bll4.client.preferred_mail(),
                       bill_mail.multipart_message['To'])
         self.assertIn(str(self.bll4.bill_id),
                       bill_mail.multipart_message['Subject'])
@@ -301,6 +302,85 @@ class TestReversalAccounting(unittest.TestCase):
         self.assertIn(('debt', 'Cr'), accounts, 'No debt posting/wrong sign')
         self.assertEqual('billr' + str(self.bll3.bill_id),
                          bac5['journal']['extkey'], "Wrong extkey")
+
+
+class TestCreateAnyBill(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        add_debtor_preferences(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_bill_on_paper(self):
+        """ We can create a paper bill through the any bill interface """
+
+        create_physical_bill(self.bll3.bill_id, print_it=True)
+        try:
+            file_status = os.stat('output/bill' + str(self.bll3.bill_id))
+        except FileNotFoundError:
+            self.assertTrue(False, 'No file created')
+        self.assertNotEqual(file_status.st_size, 0, 'Empty file')
+
+    def test_email_physical_bill(self):
+        """ We can create an email bill through the any bill interface """
+
+        create_physical_bill(self.bll1.bill_id, print_it=True)
+        try:
+            file_status = os.stat('output/mail' + str(self.bll1.bill_id))
+        except FileNotFoundError:
+            self.assertTrue(False, 'No file created')
+        self.assertNotEqual(file_status.st_size, 0, 'Empty file')
+
+    def test_create_accounting(self):
+        """ When producing a bill, accounting is done  """
+
+        create_physical_bill(self.bll1.bill_id, print_acc=True)
+        try:
+            file_status = os.stat('output/accounting' + str(self.bll1.bill_id))
+        except FileNotFoundError:
+            self.assertTrue(False, 'No file created')
+        self.assertNotEqual(file_status.st_size, 0, 'Empty file')
+
+    def test_reverse_accounting(self):
+        """ When a bill is replaced, also accounting is reversed """
+
+        new = Bills(client=self.clt3, date_sale=date(year=2019,
+                                                     month=11,
+                                                     day=21),
+                    prev_bill=self.bll3.bill_id)
+        bill_line = BillLines(short_desc='Grater',
+                        long_desc='A grater for cheese and vegetables',
+                        number_of=1,
+                        unit_price=1294)
+        new.lines.append(bill_line)
+        db.session.flush()
+        create_physical_bill(new.bill_id, print_acc=True)
+        try:
+            file_status = os.stat('output/accounting' + str(self.bll3.bill_id))
+        except FileNotFoundError:
+            self.assertTrue(False, 'No file created')
+        self.assertNotEqual(file_status.st_size, 0, 'Empty file')
+        self.assertEqual(Bills.REPLACED, self.bll3.status,
+                         'Status replaced bill incorrect')
+
+    def test_bill_status_update(self):
+        """ After billing bill status is updated. """
+
+        create_physical_bill(self.bll1.bill_id)
+
+        db.session.flush()
+        self.assertEqual(Bills.ISSUED, self.bll1.status, 'Status not correct')
 
 
 if __name__ == '__main__':

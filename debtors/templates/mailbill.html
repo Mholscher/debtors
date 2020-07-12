@@ -28,7 +28,7 @@ All amounts are in {{bill.billing_ccy}}.<br/><br/>
 <tr>
 <td class="order">{{line.short_desc}} </td>
 <td class="order">{{line.long_desc}}</td>
-<td class="order">{{ line.number_of }} {{ line.measured_in }}   {{ line.unit_price }}</td>
+<td class="order">{{ line.number_of }} {{ line.measured_in }} @ {{ line.unit_price }}</td>
 <td class="order">{{ line.total }}</td>
 </tr>
 {% endfor -%}

@@ -26,7 +26,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
-from debtmodels.debtbilling import Bills, BillLines
+from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
 from debtors import db
 
 
@@ -191,7 +191,7 @@ def create_bills(instance):
     instance.bll4 = Bills(date_sale=date(year=2020, month=3, day=18),
                           date_bill=None,
                           billing_ccy='JPY',
-                          status='new')
+                          status='issued')
     instance.clt5.bills.append(instance.bll4)
     instance.bills.append(instance.bll4)
     instance.bll5 = Bills(date_sale=date(year=2020, month=3, day=2),
@@ -259,6 +259,14 @@ def add_lines_to_bills(instance):
                         unit_price=376)
     bill.lines.append(bill_line)
 
+def add_debtor_preferences(instance):
+    """ Add preferences to some of the clients """
+
+    instance.clt1.debtor_prefs.append(DebtorPreferences(bill_medium='mail',
+                                                   letter_medium='mail'))
+    instance.clt3.debtor_prefs.append(DebtorPreferences(bill_medium='mail',
+                                                   letter_medium='post'))
+
 
 def delete_test_bills(instance):
     """ Delete all the bills created for a test """
@@ -266,3 +274,11 @@ def delete_test_bills(instance):
     bills = db.session.query(Bills).all()
     for bill in bills:
         db.session.delete(bill)
+
+def delete_test_prefs(instance):
+    """ Delete all preferences created for a test """
+
+    prefs = db.session.query(DebtorPreferences).all()
+    for pref in prefs:
+        db.session.delete(pref)
+    

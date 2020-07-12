@@ -29,7 +29,7 @@ from json import dumps
 from jinja2 import Environment, PackageLoader
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
-from debtmodels.debtbilling import Bills
+from debtmodels.debtbilling import Bills, DebtorPreferences
 
 rtfenvironment = Environment(
     loader=PackageLoader('debtors', 'templates'),
@@ -180,6 +180,13 @@ class HTMLMailBill(object):
         self.html_message.set_content(self.text)
         self.multipart_message.add_alternative(self.text)
 
+    def write_file(self):
+        """ Writes the text of the bill to a file """
+
+        with open("output/mail" + str(self.bill_id), 'w') as f:
+            f.write(self.multipart_message.as_string())
+
+
 class BillAccounting(dict):
     """ This class models the accounting to be done for a bill
 
@@ -226,6 +233,13 @@ class BillAccounting(dict):
         """ Return myself as a json string """
 
         return dumps(self)
+
+    def write_file(self):
+        """ Write the json for the accounting to a file """
+
+        with open("output/accounting" + str(self.bill.bill_id), 'w') as f:
+            f.write(self.as_json())
+
  
 
 class BillReplaceAccounting(BillAccounting):
@@ -248,3 +262,30 @@ class BillReplaceAccounting(BillAccounting):
             else:
                 posting["debitcredit"] = 'Db'
         return journal
+
+
+def create_physical_bill(bill_id, print_it=False, print_acc=False):
+    """ Perform physical billing for bill_id
+
+    The bill for the id is produced and accounting is done.
+    At the end update the bill
+    """
+
+    bill = Bills.get_bill_by_id(bill_id)
+    if bill and bill.client.debtor_prefs and\
+        bill.client.debtor_prefs[0].bill_medium ==\
+            DebtorPreferences.PREF_MAIL:
+        physical_bill = HTMLMailBill(bill_id)
+    else:
+        physical_bill = PaperBill(bill_id)
+    if print_it:
+        physical_bill.write_file()
+    accounting = BillAccounting(bill)
+    if print_acc:
+        accounting.write_file()
+    if bill.prev_bill:
+        reversal_accounting =\
+            BillReplaceAccounting(Bills.get_bill_by_id(bill.prev_bill))
+        if print_acc:
+            reversal_accounting.write_file()
+    bill.update_for_bill_production()

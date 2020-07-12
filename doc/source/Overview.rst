@@ -15,7 +15,7 @@ The notifications in this day and age should include paper invoices, mail commun
 The debtor pays: debt reconciliation
 ------------------------------------
 
-Most debtors pay what is due. That means that at that time the debt is reconciled with the payment and the debt is no longer there. Debt history and payment information is kept for a configurable period. This will enable information to the debtor and will give you insight into how over time you debt position evolved.
+Most debtors pay what is due. That means that at that time the debt is reconciled with the payment and the debt is no longer there. Debt history and payment information is kept for a configurable period. This will enable information to the debtor and will give you insight into how over time your debt position evolved.
 
 Sometimes money paid into the account used to receive the moneys, can not be reconciled automatically. These amounts will be available 
 

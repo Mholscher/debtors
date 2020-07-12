@@ -281,7 +281,7 @@ class Addresses(db.Model):
         """ Validate po_box """
 
         if po_box and (self.street or self.house_number):
-            raise ValueError('Fill either a po_box or po box')
+            raise ValueError('Fill either a po_box or house number')
         return po_box
 
     @validates('town_or_village')
@@ -383,10 +383,10 @@ class EMail(db.Model):
     def preferred_mail_for_client(client):
         """ Return the preferred mail address for client """
 
-        mail_address = [x for x in client.emails if x.preferred]
+        mail_address = [x.mail_address for x in client.emails if x.preferred]
         if mail_address:
             return mail_address[0]
-        return client.emails[0] if client.emails else None
+        return client.emails[0].mail_address if client.emails else None
 
     def check_duplicates(self, session):
         """ The check searches for duplicates of this mail address.

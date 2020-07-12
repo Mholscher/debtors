@@ -79,10 +79,21 @@ class ShortDescRequiredError(InvalidDataError):
 
     pass
 
+
 class UnitPriceRequiredError(InvalidDataError):
     """ On a bill line a unit price is required """
 
     pass
+
+
+class NoClientInPreferenceError(ValueError):
+    """ A preference must be for a client """
+
+    pass
+
+
+class InvalidMediumError(ValueError):
+    """ Invalid value in a bill medium """
 
 
 class Bills(db.Model):
@@ -123,7 +134,7 @@ class Bills(db.Model):
                             cascade='all, delete')
     client = db.relationship('Clients', backref='bills')
     bank_account = db.relationship('BankAccounts', backref='used_in_bills')
-    
+
     def add(self):
         """ Add the bill to the session """
 
@@ -166,6 +177,11 @@ class Bills(db.Model):
         self.status = self.REPLACED
         return self
 
+    def update_for_bill_production(self):
+        """ A physical bill was produced for this bill """
+
+        self.status = self.ISSUED
+
     def total(self):
         """ Return the total bill amount """
 
@@ -186,7 +202,9 @@ class Bills(db.Model):
 
     @staticmethod
     def check_prev_bill(prev_bill):
-        """ Check if a bill id passed in prev_bill exists """
+        """ Check if a bill id passed in prev_bill exists 
+        TODO Can a paid or reversed bill be reversed? Don't think so...
+        """
 
         if not prev_bill:
             return prev_bill
@@ -242,12 +260,15 @@ class Bills(db.Model):
             bill.prev_bill = bill_dict['bill-replaced']
         for bill_line in bill_dict["bill-lines"]:
             BillLines.create_line_from_dict(bill, bill_line)
+        if bill_dict.get("debtor-preferences", None):
+            DebtorPreferences.create_from_dict(bill_dict["debtor-preferences"],
+                                               bill.client)
         return bill
 
 
 class BillLines(db.Model):
     """ A line on the bill.
-    
+
     The lines explain to the client what she is paying for.
     Each line is e.g. for a product purchased, or a period
     of a subscription.
@@ -307,12 +328,12 @@ class BillLines(db.Model):
         if line:
             return line
         raise BillLineNotFoundError("No line found for id")
-        
+
 
     @classmethod
     def create_line_from_dict(cls, bill, line_dict):
         """ This creates a bill line from a dictionary for a bill
-        
+
         The bill is a Bills instance, used to attach the created line to.
         The line_dict is defining a line for the bill
         """
@@ -330,6 +351,81 @@ class BillLines(db.Model):
         bill.lines.append(line)
 
 
+class DebtorPreferences(db.Model):
+    """ This class holds the preferences of the client for the debtors
+    transactions.
+
+        :bill medium: What kind of bill (mail, paper etc.) is to be sent
+        :letter medium: What kind of letters (e-mail, paper) is preferred
+
+    """
+
+    PREF_MAIL = 'mail'
+    PREF_POSTAL = 'post'
+    PREF_DEBIT = 'dd'
+    BILL_MEDIA = {PREF_MAIL, PREF_POSTAL, PREF_DEBIT}
+    LETTER_MEDIA =  {PREF_MAIL, PREF_POSTAL}
+
+    __table_name__ = 'debtprefs'
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
+                        nullable=False, primary_key=True)
+    bill_medium = db.Column(db.String(5), default='mail')
+    letter_medium = db.Column(db.String(5), server_default='post')
+    client = db.relationship('Clients', backref='debtor_prefs')
+
+    @validates('bill_medium')
+    def validate_bill_medium(self, key, bill_medium):
+
+        if bill_medium is None:
+            return bill_medium
+        if bill_medium in self.BILL_MEDIA:
+            return bill_medium
+        raise InvalidMediumError('{} is not a valid bill medium'.format(bill_medium))
+
+    @validates('letter_medium')
+    def validate_letter_medium(self, key, letter_medium):
+
+        if letter_medium is None:
+            return letter_medium
+        if letter_medium in self.BILL_MEDIA:
+            return letter_medium
+        raise InvalidMediumError('{} is not a valid letter medium'.format(letter_medium))
+
+    def check_media(self, session):
+        """ Check if the chosen media for the client are available.
+
+        If a medium is not available, default to postal.
+        """
+
+        if not self.client:
+            raise NoClientInPreferenceError('A preference must be for a client')
+
+        if not self.client.preferred_mail():
+            if self.bill_medium == self.PREF_MAIL:
+                self.bill_medium = self.PREF_POSTAL
+            if self.letter_medium == self.PREF_MAIL:
+                self.letter_medium = self.PREF_POSTAL
+
+    @staticmethod
+    def create_from_dict(preference_dict, client):
+        """ Create preferences from a dictionary """
+
+        prefs = client.debtor_prefs
+        if prefs:
+            prefs.bill_medium = preference_dict["bill-medium"]
+            prefs.letter_medium = preference_dict["letter-medium"]
+            return
+        prefs = DebtorPreferences(client=client,
+                                bill_medium=preference_dict["bill-medium"],
+                                letter_medium=preference_dict["letter-medium"]
+                                )
+
+    def add(self):
+        """ Add these preferences to the session """
+
+        db.session.add(self)
+
+
 @event.listens_for(Session, "before_flush")
 def before_flush(session, flush_context, instances):
     """ This is the place to do cross item edits and changes.
@@ -341,3 +437,5 @@ def before_flush(session, flush_context, instances):
     for instance in session.dirty | session.new:
         if isinstance(instance, Bills):
             instance.set_bill_status_replaced(session)
+        if isinstance(instance, DebtorPreferences):
+            instance.check_media(session)

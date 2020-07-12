@@ -96,6 +96,8 @@ Notification of the client
 
 The client will be notified of the debt. The client administration needs to supply the data for how to notify. The simple system supplied for testing supports electronic mail as well as traditional mail. Notifications are kept simple on purpose, because they of course need adjusting for each individual installation. See :ref:`physicalbill`
 
-Notification starts the overdue processing. A client is supposed to be paying within a number of days from the notification. However, it may be the date of the sale as passed by the system that has processed the sale, depending on configuration. 
+Notification starts the overdue processing. A client is supposed to be paying within a number of days from the notification. However, it may be the date of the sale as passed by the system that has processed the sale, depending on configuration.
+
+Notifications are sent by mail or e-mail. The client can have a preference, that is mutable through the API only. Preferences are not mutable when accessing the web transactions of the debtors system. 
 
 The debt is recognized at this moment, so we need to reflect that in the financial administration, we now do the accounting as described in :ref:`accountingrules` on "amount becomes due".
