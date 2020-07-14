@@ -116,6 +116,35 @@ class TestCreateBill(unittest.TestCase):
         self.assertEqual(bill18.status, 'replaced',
                          'Replaced bill incorrect status')
 
+    def test_replaced_bill_cannot_be_paid(self):
+        """ Replacing a paid bill fails """
+
+        bill20 = Bills(date_sale=datetime.now(), date_bill=None,
+                    status=Bills.PAID)
+        bill20.add()
+        db.session.flush()
+        bill20_id = bill20.bill_id
+        with self.assertRaises(ValueError):
+            bill21 = Bills(date_sale=datetime.now(), date_bill=None,
+                           prev_bill=bill20_id,
+                            status=Bills.NEW)
+            bill21.add()
+            db.session.flush()
+
+    def test_replaced_bill_cannot_be_replaced(self):
+        """ Replacing a replaced bill fails """
+
+        bill22 = Bills(date_sale=datetime.now(), date_bill=None,
+                    status=Bills.REPLACED)
+        bill22.add()
+        db.session.flush()
+        bill22_id = bill22.bill_id
+        with self.assertRaises(ValueError):
+            bill23 = Bills(date_sale=datetime.now(), date_bill=None,
+                           prev_bill=bill22_id,
+                            status=Bills.NEW)
+            bill23.add()
+            db.session.flush()
 
 
 class TestBillFromMessage(unittest.TestCase):

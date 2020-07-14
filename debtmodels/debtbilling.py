@@ -202,8 +202,8 @@ class Bills(db.Model):
 
     @staticmethod
     def check_prev_bill(prev_bill):
-        """ Check if a bill id passed in prev_bill exists 
-        TODO Can a paid or reversed bill be reversed? Don't think so...
+        """ Check if a bill id passed in prev_bill exists
+        and has a valid status.
         """
 
         if not prev_bill:
@@ -212,6 +212,8 @@ class Bills(db.Model):
             old = Bills.get_bill_by_id(prev_bill)
         except BillNotFoundError:
             raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
+        if not old.status in {Bills.NEW, Bills.ISSUED}:
+            raise ReplacedBillError('Bill to replace {0} has invalid status {1}'.format(prev_bill, old.status))
         return prev_bill
 
     @staticmethod
