@@ -28,3 +28,12 @@ Document storage
 ----------------
 
 Printing letters is not done by the system itself, it produces RTF documents. These documents are saved in the output directory of debtors. This is currently hardcoded, but can be changed easily (of course). To print these, you need a document processing program that can print RTF documents, it has been tested with LibreOffice (works) and Calligra (fails, it misinterprets some RTF commands).
+
+The bank statement
+------------------
+
+Process payments is restricted to the processing of individual transactions from the statement. If you want to reconcile the bank account balance in your organization with the data from the bank, use another application.
+
+Only incoming payments are processed. If you need to process outgoing payments, another system is called for.
+
+Debtors does not supply code to process MT940 style statements. If you want to process those, replace or extend some of the incoming amounts code.

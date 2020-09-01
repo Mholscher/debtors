@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<Ntry>
+<NtryRef>011111333306999888000000008</NtryRef>
+<Amt Ccy="EUR">350.00</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<Sts>BOOK</Sts>
+ <BookgDt>
+<Dt>2014-01-03</Dt>
+</BookgDt>
+ <ValDt>
+<Dt>2014-01-03</Dt>
+</ValDt>
+<AcctSvcrRef>59999208N9</AcctSvcrRef>
+ <BkTxCd>
+ <Domn>
+<Cd>PMNT</Cd>
+ <Fmly>
+<Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly>
+</Domn>
+ <Prtry>
+<Cd>00100</Cd>
+<Issr>ING Group</Issr>
+</Prtry>
+</BkTxCd>
+ <NtryDtls>
+ <TxDtls>
+ <RltdPties>
+ <Dbtr>
+<Nm>ING Testrekening</Nm>
+</Dbtr>
+ <DbtrAcct>
+ <Id>
+<IBAN>NL20INGB0001234567</IBAN>
+</Id>
+ <Tp>
+<Prtry>General</Prtry>
+</Tp>
+</DbtrAcct>
+</RltdPties>
+ <RltdAgts>
+ <DbtrAgt>
+ <FinInstnId>
+<BIC>INGBNL2A</BIC>
+</FinInstnId>
+</DbtrAgt>
+</RltdAgts>
+ <RmtInf>
+ <Strd>
+ <CdtrRefInf>
+ <Tp>
+ <CdOrPrtry>
+<Cd>SCOR</Cd>
+</CdOrPrtry>
+<Issr>CUR</Issr>
+</Tp>
+<Ref>0010008346912014</Ref>
+</CdtrRefInf>
+</Strd>
+</RmtInf>
+ <RltdDts>
+     <TxDtTm>2014-01-03T19:07:37</TxDtTm>
+</RltdDts>
+</TxDtls>
+</NtryDtls>
+</Ntry>

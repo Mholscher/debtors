@@ -39,4 +39,5 @@ from debtors.debtapibp import debtapi
 app.register_blueprint(debtapi)
 import clientmodels.clients
 import debtmodels.debtbilling
+import debtmodels.payments
 from . import views

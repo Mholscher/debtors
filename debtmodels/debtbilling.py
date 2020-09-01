@@ -119,7 +119,7 @@ class Bills(db.Model):
                     'paid' : 'Fully paid', 'replaced' : 'Bill replaced' }
 
     __tablename__ = 'bill'
-    bill_id = db.Column(db.Integer, db.Sequence('bill_sequence'),
+    bill_id = db.Column(db.Integer,  db.Sequence('bill_sequence'),
                         primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), index=True)
     bankaccount_id = db.Column(db.Integer, db.ForeignKey('bankaccounts.id'),

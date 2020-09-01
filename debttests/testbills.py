@@ -25,7 +25,7 @@ from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
 from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at , create_bills, add_lines_to_bills,\
-    delete_test_bills, delete_test_prefs
+    delete_test_bills, delete_test_prefs, add_debtor_preferences
 
 
 class TestCreateBill(unittest.TestCase):
@@ -413,6 +413,22 @@ class TestBillTransactions(unittest.TestCase):
             filter_by(client_id=clt1_id).first()
         self.assertIn(debtor_preferences.bill_medium, 'mail', 'Incorrect preference returned')
 
+    def test_replace_preferences(self):
+        """ We can replace debtor preferences to the database """
+
+        clt1_id = self.clt1.id
+        prfs7 = DebtorPreferences(client=self.clt1,
+                                  bill_medium='mail',
+                                  letter_medium='mail')
+        db.session.commit()
+        rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
+        self.assertEqual(rv.status_code, 200, 'Failure')
+        debtor_preferences = db.session.query(DebtorPreferences).\
+            filter_by(client_id=clt1_id).first()
+        self.assertIn(debtor_preferences.letter_medium, 'mail', 'Incorrect preference returned')
+        self.assertEqual(len(debtor_preferences.client.debtor_prefs), 1,
+                             'Invalid no of prefs')
+
     def test_missing_date_fails(self):
         """ Sending a json with a missing date-sale causes 400 """
 
@@ -767,6 +783,7 @@ class TestDebtPreferences(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        add_debtor_preferences(self)
         db.session.flush()
 
     def tearDown(self):
@@ -791,9 +808,9 @@ class TestDebtPreferences(unittest.TestCase):
 
         prfs3 = DebtorPreferences(bill_medium='post',
                                   letter_medium='post')
-        prfs3.client = self.clt1
+        prfs3.client = self.clt2
         db.session.flush()
-        self.assertEqual(self.clt1.id, prfs3.client_id,
+        self.assertEqual(self.clt2.id, prfs3.client_id,
                          'Client not added correctly')
 
     def test_no_client_no_cigar(self):
@@ -817,6 +834,14 @@ class TestDebtPreferences(unittest.TestCase):
             prfs5 = DebtorPreferences(bill_medium='mail',
                                       letter_medium='qt')
             db.session.flush()
+
+    def test_update_preference(self):
+        """ we can change preferences with new preferences """
+
+        prfs6 = self.clt3.debtor_prefs[0]
+        prfs6.bill_medium = 'post'
+        db.session.flush()
+        self.assertEqual('post', prfs6.bill_medium, 'Not updated')
 
 
 if __name__ == '__main__' :

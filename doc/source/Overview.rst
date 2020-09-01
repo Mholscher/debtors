@@ -65,7 +65,7 @@ The debtor is blacklisted. *This may have legal consequences or impediments; ver
 Changing and removing bills
 ---------------------------
 
-In exceptional cases bills may be erroneous. If that is the case, bills can be removed. Removing bills will take out of the debt. Optionally a credit note may be sent to the client to inform the client of the dismissal. Accounting for the bill is reversed.
+In exceptional cases bills may be erroneous. If that is the case, bills can be removed. Removing bills will take them out of the debt. Optionally a credit note may be sent to the client to inform the client of the dismissal. Accounting for the bill is reversed.
 
 Changing a bill is done by invalidating the previous bill and generating a new bill:
 
