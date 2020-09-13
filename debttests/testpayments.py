@@ -17,6 +17,7 @@
 
 import unittest
 from datetime import datetime
+from dateutil import parser
 from debtors import db
 from debtmodels.payments import IncomingAmounts
 from debttests.helpers import delete_test_clients, add_addresses,\
@@ -67,6 +68,9 @@ class TestCAMTEntryHandler(unittest.TestCase):
     def setUp(self):
 
         self.camthandler = CAMT53Handler()
+        self.camthandler.entries = []
+        self.camthandler.creation_timestamp =\
+            parser.parse(timestr="2014-01-08T02:55:04.378+01:00")
         self.parser = make_parser()
         self.parser.setContentHandler(self.camthandler)
 
@@ -137,4 +141,58 @@ class TestCAMTEntryHandler(unittest.TestCase):
                             'NL20INGB0001234567', 
                             'Wrong IBAN  parsed')
 
-    
+    def test_our_reference(self):
+        """ We can extract our reference """
+
+        with open('debttests/SEPA credit entry.xml') as sce:
+            parse(sce, self.camthandler)
+            unassigned = self.camthandler.unassigned_amount
+            self.assertEqual(unassigned.our_ref, 
+                            None, 
+                            f'Our reference incorrect: {unassigned.our_ref}')
+
+
+class TestMoreTransactions(unittest.TestCase):
+
+    def setUp(self):
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/ING transactievoorbeelden.xml', 'r')
+
+    def tearDown(self):
+
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+
+    def test_multiple_entries(self):
+        """ We can parse more than one entry """
+
+        parse(self.infile, self.camthandler)
+        self.assertTrue(len(self.camthandler.entries) > 1,
+                        'Too little entries found')
+        
+    def test_file_timestamp(self):
+        """ The timestamp of the statement is in the entries """
+
+        parse(self.infile, self.camthandler)
+        self.assertEqual(self.camthandler.entries[2].file_timestamp,
+                        parser.parse("2014-01-04T01:55:04.378+01:00"),
+                        'Wrong/no timestamp')
+
+    def test_nr_of_processed_entries(self):
+        """ We process the right no of transactions """
+
+        parse(self.infile, self.camthandler)
+        self.assertEqual(len(self.camthandler.entries),
+                        9, 'Too many/little entries')
+
+    def test_statement_for_wrong_account(self):
+        """ A statement for a wrong account fails """
+
+        self.camthandler.accounts = ['NL21INGB0001234568']
+        parse(self.infile, self.camthandler)
+        self.assertEqual(len(self.camthandler.entries),
+                        0, 'Too many entries')
+        

@@ -37,3 +37,5 @@ Process payments is restricted to the processing of individual transactions from
 Only incoming payments are processed. If you need to process outgoing payments, another system is called for.
 
 Debtors does not supply code to process MT940 style statements. If you want to process those, replace or extend some of the incoming amounts code.
+
+If you use the CAMT53Handler for a CAMT053 message that contains more than one statement, you can specify which accounts to process by supplying the handler with a list/set/tuple of IBAN numbers. It will only process these numbers and ignore any account numbers not in the list. No list is taken as you wanting to process all accounts found in the message.
