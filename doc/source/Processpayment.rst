@@ -27,6 +27,8 @@ If payments are being made into our bank account, these appear on our daily stat
 +------------------------+--------------------+-----------+----------+
 | amount received        | the bank statement | mandatory | n/a      |              
 +------------------------+--------------------+-----------+----------+
+| debit/credit indicator | the bank statement | mandatory | credit   |              
++------------------------+--------------------+-----------+----------+
 
 The payments from the statement are assigned to a debt by finding out:
 
@@ -36,7 +38,9 @@ The payments from the statement are assigned to a debt by finding out:
 
 If no bill is found to assign to, we keep the amount at the client level, or at the unassigned level. If we only know the client who paid or the amount is not enough to pay the bill or the client overpaid, the amount paid or the overpaid amount is kept as an amount at the client level.
 
-If the amount recieved is in a different currency from the bill, the system will not assign the amount to a bill. See :ref:`multicurrency`
+If the amount received is in a different currency from the bill, the system will not assign the amount to a bill. See :ref:`multicurrency`
+
+The debit/credit indicator is used to be able to process reversals.
 
 .. _manualpaymentinput:
 
@@ -63,6 +67,8 @@ Payments done by other means than bank payment may be input to the system throug
 | amount currency        | user input         | mandatory | n/a      |
 +------------------------+--------------------+-----------+----------+
 | amount received        | user input         | mandatory | n/a      |
++------------------------+--------------------+-----------+----------+
+| debit/credit indicator | the bank statement | mandatory | credit   |              
 +------------------------+--------------------+-----------+----------+
 
 The role of our reference is to point the user to any document that details the source of the data. If e.g. the amount is paid in cash, you refer to a copy of the receipt by its number.
@@ -122,6 +128,6 @@ Payments may also be assigned to another payment. For an example of how to use t
 Payments in a different currency from the bill
 ----------------------------------------------
 
-As the debtors system does not have currency rates, it is not possible to convert amounts between currencies. So, if an amount is reported by the bank in a different currency than the amount on the bill, we cannot directlyt use that amount to pay the bill.
+As the debtors system does not have currency rates, it is not possible to convert amounts between currencies. So, if an amount is reported by the bank in a different currency than the amount on the bill, we cannot directly use that amount to pay the bill.
 
-We will make use of the manual input facility mentioned in :ref:`manualpaymentinput`. The amount of the original input can be assigned to the newly created user payment. This will assign all of the money on the orginal payment and make the new amount available for assigning to the bill. 
+We will make use of the manual input facility mentioned in :ref:`manualpaymentinput`. The amount of the original input can be assigned to the newly created user payment. This will assign all of the money on the original payment and make the new amount available for assigning to the bill. 

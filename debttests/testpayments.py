@@ -115,7 +115,7 @@ class TestCAMTEntryHandler(unittest.TestCase):
             parse(sce, self.camthandler)
             unassigned = self.camthandler.unassigned_amount
             self.assertEqual(unassigned.bank_ref, 
-                            '59999208N9', 
+                            '011111333306999888000000008', 
                             'Wrong bank reference  parsed')
 
     def test_user_reference(self):
@@ -186,7 +186,7 @@ class TestMoreTransactions(unittest.TestCase):
 
         parse(self.infile, self.camthandler)
         self.assertEqual(len(self.camthandler.entries),
-                        9, 'Too many/little entries')
+                        6, 'Too many/little entries')
 
     def test_statement_for_wrong_account(self):
         """ A statement for a wrong account fails """
@@ -195,4 +195,27 @@ class TestMoreTransactions(unittest.TestCase):
         parse(self.infile, self.camthandler)
         self.assertEqual(len(self.camthandler.entries),
                         0, 'Too many entries')
-        
+
+    def test_transaction_type(self):
+        """ Invalid transaction type is refused """
+
+        parse(self.infile, self.camthandler)
+        ref_list = [entry.bank_ref for entry in self.camthandler.entries\
+                    if entry.bank_ref == '012222333306999888111100002']
+        self.assertEqual(len(ref_list),
+                        0, 'Entry not ignored')
+
+    def test_debit_credit(self):
+        """ Debit and credit are correctly set """
+
+        parse(self.infile, self.camthandler)
+        ref_list = [(entry.debcred, entry.bank_ref) for entry in self.camthandler.entries\
+                    if entry.bank_ref == '011111333306999888000000008'\
+                        or entry.bank_ref == '021514017743280167000000001']
+        for entry in ref_list:
+            if entry[1] == '011111333306999888000000008':
+                self.assertEqual(entry[0], 'Cr',
+                                 'Credit entry not booked as credit')
+            elif entry[1] == '021514017743280167000000001':
+                self.assertEqual(entry[0], 'Db',
+                                 'Debit entry not booked as debit')

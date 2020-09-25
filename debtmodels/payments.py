@@ -40,6 +40,7 @@ class IncomingAmounts(db.Model):
         :file_timestamp: The date time the paymetn was processed
         :payment_ccy: The currency of the payment
         :payment_amount: The amount in the smallest unit (cents for $ and €)
+        :debcred: To be able to process reversal we need to know debit or credit
         :client_id: After the client has been found, (s)he is coupled to the             amount; this is the assignming process.
         :value_date: The date that the amount was added to our bank balkance
         :our_ref: If a reference that we produced is on the payment, this is it
@@ -56,6 +57,7 @@ class IncomingAmounts(db.Model):
                                default=datetime.now)
     payment_ccy = db.Column(db.String(3), nullable=False)
     payment_amount = db.Column(db.Integer, default=0)
+    debcred = db.Column(db.String(2), default='Cr')
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
                           index=True, nullable=True)
     value_date = db.Column(db.DateTime, default=datetime.now,

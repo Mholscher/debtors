@@ -50,11 +50,13 @@ class CAMT53Handler(ContentHandler):
             self.in_amount = True
         elif name == 'ValDt':
             self.in_valuedate = True
+        elif name == 'CdtDbtInd':
+            self.in_credit_debit = True
         elif name == 'Dt' or name == 'DtTm'\
             and hasattr(self, ".in_valuedate"):
             self.in_date = True
-        elif name == 'AcctSvcrRef':
-            self.in_acct_svcr_ref = True
+        elif name == 'NtryRef':
+            self.in_entry_ref = True
         elif name == 'Ref':
             self.in_ref = True
         elif name == 'RltdPties':
@@ -63,6 +65,12 @@ class CAMT53Handler(ContentHandler):
             self.in_client_name = True
         elif name == 'IBAN' and hasattr(self, "in_creditor"):
             self.in_creditor_IBAN = True
+        elif name == "Fmly":
+            self.in_family = True
+        elif name == "Cd" and hasattr(self, "in_family"):
+            self.in_family_code = True
+        elif name == "SubFmlyCd" and hasattr(self, "in_family"):
+            self.in_sub_family_code = True
         else:
             super().startElement(name, attrs)
 
@@ -75,12 +83,14 @@ class CAMT53Handler(ContentHandler):
 
         if name == 'Amt':
             del(self.in_amount)
+        elif name == 'CdtDbtInd':
+            del(self.in_credit_debit)
         elif name == 'ValDt':
             del(self.in_valuedate)
         elif name == 'Dt' and hasattr(self, "in_date"):
             del(self.in_date)
-        elif name == 'AcctSvcrRef':
-            del(self.in_acct_svcr_ref)
+        elif name == 'NtryRef':
+            del(self.in_entry_ref)
         elif name == 'Ref':
             del(self.in_ref)
         elif name == 'RltdPties':
@@ -89,6 +99,14 @@ class CAMT53Handler(ContentHandler):
             del(self.in_client_name)
         elif name == 'IBAN' and hasattr(self, "in_creditor"):
             del(self.in_creditor_IBAN)
+        elif name == "Cd" and hasattr(self, "in_family_code"):
+            del(self.in_family_code)
+        elif name == "Fmly" and hasattr(self, "in_family"):
+            del(self.in_family)
+            del(self.family)
+            del(self.process)
+        elif name == "SubFmlyCd" and hasattr(self, "in_sub_family_code"):
+            del(self.in_sub_family_code)
         else:
             super().endElement(name)
 
@@ -126,7 +144,10 @@ class CAMT53Handler(ContentHandler):
         """
 
         if name== 'Ntry' and hasattr(self, "in_entry"):
-            self.entries.append(self.unassigned_amount)
+            if hasattr(self, "ignore_entry"):
+                del(self.ignore_entry)
+            else:
+                self.entries.append(self.unassigned_amount)
             del(self.in_entry) 
         elif name == 'Stmt':
             if hasattr(self, "ignore_statement"):
@@ -156,14 +177,19 @@ class CAMT53Handler(ContentHandler):
             and hasattr(self, "accounts"):
                 if content not in self.accounts:
                     self.ignore_statement = True
+        elif hasattr(self, 'in_credit_debit') and self.in_credit_debit:
+            if content == 'DBIT':
+                self.unassigned_amount.debcred = 'Db'
+            else:
+                self.unassigned_amount.debcred = 'Cr'
         elif hasattr(self, 'in_amount')\
             and self.in_amount:
             self.unassigned_amount.payment_amount = internal_amount(content)
         elif hasattr(self, 'in_date')\
             and self.in_date:
             self.unassigned_amount.value_date = dt_parse(timestr=content)
-        elif hasattr(self, 'in_acct_svcr_ref')\
-            and self.in_acct_svcr_ref:
+        elif hasattr(self, 'in_entry_ref')\
+            and self.in_entry_ref:
             self.unassigned_amount.bank_ref = content
         elif hasattr(self, 'in_ref')\
             and self.in_ref:
@@ -177,5 +203,11 @@ class CAMT53Handler(ContentHandler):
         elif hasattr(self, 'in_create_timestamp')\
             and hasattr(self, 'in_statement'):
             self.creation_timestamp = dt_parse(timestr=content)
+        elif hasattr(self, "in_family_code"):
+            self.family = content
+        elif hasattr(self, "in_sub_family_code"):
+            self.process = (self.family, content)
+            if self.process not in self.PROCESS_FAMILIES:
+                self.ignore_entry = True
         else:
             super().characters(content)
