@@ -74,3 +74,10 @@ class IncomingAmounts(db.Model):
 
         db.session.add(self)
 
+class IncomingAmountsList(list):
+    ''' A list of incoming amounts to be processed  '''
+    
+    def store_all(self):
+        """ Store all entries on the database """
+
+        db.session.commit()

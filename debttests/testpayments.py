@@ -18,6 +18,7 @@
 import unittest
 from datetime import datetime
 from dateutil import parser
+from dateutil.tz import tzoffset
 from debtors import db
 from debtmodels.payments import IncomingAmounts
 from debttests.helpers import delete_test_clients, add_addresses,\
@@ -165,6 +166,8 @@ class TestMoreTransactions(unittest.TestCase):
         self.camthandler = None
         parser = None
         self.infile.close()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
 
     def test_multiple_entries(self):
         """ We can parse more than one entry """
@@ -178,7 +181,7 @@ class TestMoreTransactions(unittest.TestCase):
 
         parse(self.infile, self.camthandler)
         self.assertEqual(self.camthandler.entries[2].file_timestamp,
-                        parser.parse("2014-01-04T01:55:04.378+01:00"),
+                        parser.parse("2014-01-04T01:55:04"),
                         'Wrong/no timestamp')
 
     def test_nr_of_processed_entries(self):
@@ -219,3 +222,10 @@ class TestMoreTransactions(unittest.TestCase):
             elif entry[1] == '021514017743280167000000001':
                 self.assertEqual(entry[0], 'Db',
                                  'Debit entry not booked as debit')
+
+    def test_store_entries(self):
+        """ We can store all entries at the end of a statement """
+
+        parse(self.infile, self.camthandler)
+        one_amount = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000008').first()
+        self.assertTrue(one_amount, "No entry for bank reference")

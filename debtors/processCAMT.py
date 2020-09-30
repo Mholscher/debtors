@@ -18,7 +18,7 @@
 from xml.sax import ContentHandler, make_parser, parse
 from dateutil.parser import parse as dt_parse
 from debtviews.monetary import internal_amount
-from debtmodels.payments import IncomingAmounts
+from debtmodels.payments import IncomingAmounts, IncomingAmountsList
 
 """ Module to hold the contenthandler to process a camt message """
 
@@ -125,7 +125,7 @@ class CAMT53Handler(ContentHandler):
             self.unassigned_amount.file_timestamp = self.creation_timestamp
         elif name == 'Stmt':
             self.in_statement = True
-            self.entries = []
+            self.entries = IncomingAmountsList()
         elif name == 'CreDtTm' and hasattr(self, 'in_statement'):
             self.in_create_timestamp = True
         elif name == 'Acct':
@@ -147,11 +147,14 @@ class CAMT53Handler(ContentHandler):
             if hasattr(self, "ignore_entry"):
                 del(self.ignore_entry)
             else:
+                self.unassigned_amount.add()
                 self.entries.append(self.unassigned_amount)
             del(self.in_entry) 
         elif name == 'Stmt':
             if hasattr(self, "ignore_statement"):
                 del(self.ignore_statement)
+            else:
+                self.entries.store_all()
             del(self.in_statement)
         elif name == 'CreDtTm' and hasattr(self, 'in_statement'):
             del(self.in_create_timestamp)
