@@ -17,7 +17,7 @@
 
 """ This module contains a Blueprint for the api access to the debtors system.
 
-Systems outside debtors itself can communicate to the system by sending json\
+Systems outside debtors itself can communicate to the system by sending json
 formatted messages to it. These messages are handled by the views in 
 this module.
 

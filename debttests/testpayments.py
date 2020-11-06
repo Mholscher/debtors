@@ -20,10 +20,11 @@ from datetime import datetime
 from dateutil import parser
 from dateutil.tz import tzoffset
 from debtors import db
-from debtmodels.payments import IncomingAmounts
+from debtmodels.payments import IncomingAmounts, AmountQueued
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
-    delete_test_bills, add_debtor_preferences
+    delete_test_bills, add_debtor_preferences, delete_amountq,\
+    delete_test_prefs
 from debtors.processCAMT import CAMT53Handler
 from xml.sax import ContentHandler, make_parser, parse
 
@@ -166,6 +167,7 @@ class TestMoreTransactions(unittest.TestCase):
         self.camthandler = None
         parser = None
         self.infile.close()
+        delete_amountq(self)
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
 
@@ -224,8 +226,91 @@ class TestMoreTransactions(unittest.TestCase):
                                  'Debit entry not booked as debit')
 
     def test_store_entries(self):
-        """ We can store all entries at the end of a statement """
+        """ We can store entries at the end of a statement """
 
         parse(self.infile, self.camthandler)
         one_amount = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000008').first()
         self.assertTrue(one_amount, "No entry for bank reference")
+
+
+class TestAssignAmounts(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+       
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_assigning_tried(self):
+        """ Adding a payment triggers assigning attempt """
+
+        self.camthandler.entries = []
+        self.camthandler.creation_timestamp =\
+            parser.parse(timestr="2014-01-08T02:55:04.378+01:00")
+        with open('debttests/SEPA credit entry.xml') as sce:
+            parse(sce, self.camthandler)
+        ce1 = db.session.query(AmountQueued).first()
+        self.assertTrue(ce1, 'No first entry in queue')
+
+    def test_is_queued(self):
+        """ We can ask if an assigned amount is queued """
+
+        self.camthandler.entries = []
+        self.camthandler.creation_timestamp =\
+            parser.parse(timestr="2014-01-08T02:55:04.378+01:00")
+        with open('debttests/SEPA credit entry.xml') as sce:
+            parse(sce, self.camthandler)
+        ce1 = db.session.query(IncomingAmounts).first()
+        self.assertTrue(AmountQueued.is_queued(ce1.id),
+                        "Is queued doesn't answer") 
+
+class TestAssignment(unittest.TestCase):
+
+    def setUp(self):
+        
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+        #delete_amountq(self)
+        db.session.flush()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_assign_thru_account(self):
+        """ We can assign if we know the other account """
+
+        parse(self.infile, self.camthandler)
+        ia03 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        ial01 = ia03.find_assignment_target()
+        self.assertIn(self.bll4, ial01)

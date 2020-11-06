@@ -18,7 +18,8 @@
 from xml.sax import ContentHandler, make_parser, parse
 from dateutil.parser import parse as dt_parse
 from debtviews.monetary import internal_amount
-from debtmodels.payments import IncomingAmounts, IncomingAmountsList
+from debtmodels.payments import IncomingAmounts, IncomingAmountsList,\
+    AmountQueued
 
 """ Module to hold the contenthandler to process a camt message """
 
@@ -149,6 +150,10 @@ class CAMT53Handler(ContentHandler):
             else:
                 self.unassigned_amount.add()
                 self.entries.append(self.unassigned_amount)
+                # queue this for assignment
+                amount_queued = AmountQueued(incoming_amount =\
+                    self.unassigned_amount)
+                amount_queued.add()
             del(self.in_entry) 
         elif name == 'Stmt':
             if hasattr(self, "ignore_statement"):

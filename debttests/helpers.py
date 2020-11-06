@@ -27,6 +27,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
 from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
+from debtmodels.payments import AmountQueued
 from debtors import db
 
 
@@ -267,6 +268,13 @@ def add_debtor_preferences(instance):
     instance.clt3.debtor_prefs.append(DebtorPreferences(bill_medium='mail',
                                                    letter_medium='post'))
 
+
+def delete_amountq(instance):
+    """ Empty the amounts queue for assignment """
+
+    amounts = db.session.query(AmountQueued).all()
+    for amount in amounts:
+        db.session.delete(amount)
 
 def delete_test_bills(instance):
     """ Delete all the bills created for a test """

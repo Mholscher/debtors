@@ -27,6 +27,7 @@ of the amount retained for further processing.
 
 from datetime import datetime
 from debtors import db
+from debtmodels.debtbilling import Bills
 
 
 class IncomingAmounts(db.Model):
@@ -68,16 +69,102 @@ class IncomingAmounts(db.Model):
     client_name = db.Column(db.String(30))
     creditor_IBAN = db.Column(db.String(40), nullable=True, index=True)
     client = db.relationship('Clients', backref='payments')
+    amount_queued = db.relationship('AmountQueued', uselist=False,
+                                    backref='incoming_amount',
+                                    cascade='all, delete')
+
 
     def add(self):
         """ Add this amount to the session. """
 
         db.session.add(self)
 
+    def find_assignment_target(self):
+        """ Finds a target for assignments
+
+        First method: find account
+        """
+        bills_with_account = Bills.bills_for_IBAN(self.creditor_IBAN)
+        return bills_with_account
+
 class IncomingAmountsList(list):
     ''' A list of incoming amounts to be processed  '''
-    
+
     def store_all(self):
         """ Store all entries on the database """
 
         db.session.commit()
+
+
+class AmountQueued(db.Model):
+    """ Amounts incoming waiting to be assigned
+
+    An amount that comes in needs to be assigned to a debt. This happens 
+    in an asynchronous way, so as to not slow other transactions down.
+    This is a queued amount.
+
+        :id: The generated sequence number
+        :amount_id: The id of the queued IncomingAmount
+
+    """
+
+    __tablename__ = 'amountq'
+    id = db.Column(db.Integer, db.Sequence('amtq_seq'),
+                   primary_key=True)
+    amount_id = db.Column(db.Integer, db.ForeignKey('payments.id'))
+
+    def add(self):
+        '''
+        Add the amount to the database
+        '''
+
+        db.session.add(self)
+
+    @staticmethod
+    def is_queued(amount_requested):
+        """ Is the amount amount_requested queued? """
+
+        aq = db.session.query(AmountQueued).\
+            filter_by(amount_id=amount_requested).first()
+        return aq is not None
+
+
+class AssignedAmounts(db.Model):
+    """ These are the amounts that are assigned to a bill or payment
+    
+    When (part of) an amount is used to pay a bill, an assigned amount is
+    created for the amount used and the source. Assigned amounts are only
+    created if a bill can be paid in full; we do not assign amounts to
+    partially pay a bill.
+
+    Payments may also be assigned to another payment. Se the documentation for an example.
+
+        :id: The generated sequence number
+        :amount_id: The id of the incoming amount that is assigned from
+        :ccy: The amount of the assigned ccy
+        :amount_assigned: How much of the incoming amount is assigned here
+        :bill_id: If assigned to a bill (the standard action) the bill assigned to
+        :amount_id_to: If assigned to another incoming amount, the id of the amount to which we assigned it
+        :amount_to: The amount (in new ccy if applicable) on the new amount
+
+    """
+
+    __table_name__ = 'assignedamts'
+    id = db.Column(db.Integer, db.Sequence('assgn_seq'),
+                   primary_key=True)
+    amount_id = db.Column(db.Integer, db.ForeignKey('payments.id'))
+    ccy = db.Column(db.String(3), nullable=False)
+    amount_assigned = db.Column(db.Integer, default=0)
+    bill_id = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
+                        nullable=True)
+    amount_id_to = db.Column(db.Integer, db.ForeignKey('payments.id'),
+                            nullable=True)
+    amount_to = db.Column(db.Integer, default=0)
+    bill = db.relationship('Bills', backref='assignments')
+    from_amount = db.relationship('IncomingAmounts',uselist=False, 
+                                    foreign_keys=[amount_id],
+                                    backref='used_in')
+    to_amount = db.relationship('IncomingAmounts', 
+                                foreign_keys=[amount_id_to],
+                                backref='from_amt')
+        

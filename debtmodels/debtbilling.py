@@ -27,7 +27,7 @@ from dateutil.parser import parse
 from sqlalchemy import event
 from sqlalchemy.orm import validates, Session
 from iso4217 import raw_table  # This is the currency table
-from clientmodels.clients import Clients, db
+from clientmodels.clients import Clients, BankAccounts, db
 
 
 class InvalidDataError(ValueError):
@@ -122,8 +122,6 @@ class Bills(db.Model):
     bill_id = db.Column(db.Integer,  db.Sequence('bill_sequence'),
                         primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), index=True)
-    bankaccount_id = db.Column(db.Integer, db.ForeignKey('bankaccounts.id'),
-                             index=True, nullable=True)
     billing_ccy = db.Column(db.String(3), default='EUR')
     date_sale = db.Column(db.Date, nullable=False)
     date_bill = db.Column(db.Date, nullable=True, default=None)
@@ -133,7 +131,6 @@ class Bills(db.Model):
     lines = db.relationship('BillLines', backref='bill',
                             cascade='all, delete')
     client = db.relationship('Clients', backref='bills')
-    bank_account = db.relationship('BankAccounts', backref='used_in_bills')
 
     def add(self):
         """ Add the bill to the session """
@@ -213,7 +210,9 @@ class Bills(db.Model):
         except BillNotFoundError:
             raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
         if not old.status in {Bills.NEW, Bills.ISSUED}:
-            raise ReplacedBillError('Bill to replace {0} has invalid status {1}'.format(prev_bill, old.status))
+            msg = 'Bill to replace {0} has invalid status {1}'.\
+                format(prev_bill, old.status)
+            raise ReplacedBillError(msg)
         return prev_bill
 
     @staticmethod
@@ -227,6 +226,16 @@ class Bills(db.Model):
         """ Return a list of outstanding bills for client """
 
         return Bills.get_bills_with_status(client, [Bills.NEW, Bills.ISSUED])
+    
+    @staticmethod
+    def bills_for_IBAN(IBAN):
+        """ Get a list of bills with the IBAN passed in """
+
+        accounts =  db.session.query(BankAccounts).filter_by(iban=IBAN).\
+            all()
+        clients = [account.owner for account in accounts] 
+        return [bill for client in clients for bill in client.bills\
+            if bill.status == Bills.ISSUED]
 
     def set_bill_status_replaced(self, session):
         """ Set the bill status of the bill with id bill_id to replaced
