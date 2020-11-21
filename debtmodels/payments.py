@@ -28,6 +28,7 @@ of the amount retained for further processing.
 from datetime import datetime
 from debtors import db
 from debtmodels.debtbilling import Bills
+from clientmodels.clients import Clients
 
 
 class IncomingAmounts(db.Model):
@@ -48,7 +49,7 @@ class IncomingAmounts(db.Model):
         :bank_ref: The reference from the clients bank
         :client_ref: The clients reference if (s)he has added one
         :client_name: The name on the statement or document that documents the payment
-        :creditor_IBAN: The IBAN the payment was made from
+        :creditor_iban: The IBAN the payment was made from
         """
 
     __tablename__ = 'payments'
@@ -67,7 +68,7 @@ class IncomingAmounts(db.Model):
     bank_ref = db.Column(db.String(35))
     client_ref = db.Column(db.String(35))
     client_name = db.Column(db.String(30))
-    creditor_IBAN = db.Column(db.String(40), nullable=True, index=True)
+    creditor_iban = db.Column(db.String(40), nullable=True, index=True)
     client = db.relationship('Clients', backref='payments')
     amount_queued = db.relationship('AmountQueued', uselist=False,
                                     backref='incoming_amount',
@@ -79,13 +80,43 @@ class IncomingAmounts(db.Model):
 
         db.session.add(self)
 
-    def find_assignment_target(self):
-        """ Finds a target for assignments
+    def find_client_to_attach(self):
+        """ We try to find the client that made the payment """
 
-        First method: find account
-        """
-        bills_with_account = Bills.bills_for_IBAN(self.creditor_IBAN)
-        return bills_with_account
+        try:
+            client = Clients.get_client_by_iban(self.creditor_iban)
+        except ValueError:
+            return None
+        return client
+
+    def find_assignment_target(self):
+        """ Finds a target for assignments """
+
+        bills_with_account = Bills.bills_for_IBAN(self.creditor_iban)
+        usable_bills = [bill for bill in bills_with_account 
+                        if bill.total() <= self.payment_amount
+                        and bill.billing_ccy == self.payment_ccy]
+        usable_bills.sort(key=lambda bill: bill.total(), reverse=True)
+        return usable_bills
+
+    def assign_amount(self):
+        """ Assing this amount to an outstanding bill """
+
+        client = self.find_client_to_attach()
+        if client:
+            self.client = client
+        usable_bills = self.find_assignment_target()
+        assigned_until_now = 0
+        for bill in usable_bills:
+            if bill.total() <= self.payment_amount - assigned_until_now:
+                assignment =\
+                    AssignedAmounts(amount_id=self.id,
+                                   ccy=self.payment_ccy,
+                                   amount_assigned=bill.total())
+                assignment.bill = bill
+                assigned_until_now += assignment.amount_assigned
+                bill.status = Bills.PAID
+                assignment.add()
 
 class IncomingAmountsList(list):
     ''' A list of incoming amounts to be processed  '''
@@ -167,4 +198,8 @@ class AssignedAmounts(db.Model):
     to_amount = db.relationship('IncomingAmounts', 
                                 foreign_keys=[amount_id_to],
                                 backref='from_amt')
-        
+
+    def add(self):
+        """ Add self to session """
+
+        db.session.add(self)

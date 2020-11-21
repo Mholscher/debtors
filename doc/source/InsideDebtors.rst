@@ -39,3 +39,8 @@ Only incoming payments are processed. If you need to process outgoing payments, 
 Debtors does not supply code to process MT940 style statements. If you want to process those, replace or extend some of the incoming amounts code.
 
 If you use the CAMT53Handler for a CAMT053 message that contains more than one statement, you can specify which accounts to process by supplying the handler with a list/set/tuple of IBAN numbers. It will only process these numbers and ignore any account numbers not in the list. No list is taken as you wanting to process all accounts found in the message.
+
+Test CAMT053 files are not fully standards conform
+--------------------------------------------------
+
+The delivered files for testing the CAMT053 files are not meant to be standards conform. We test several aspects of the translation into IncomingAmounts (amounts ready to assign to bills) and these files reflect what we are testing. E.g. a CAMT053 can contain statements for different accounts, but the postings for each account must always be in the currency of the account. This is not the case in "SEPA transactions test assignment".

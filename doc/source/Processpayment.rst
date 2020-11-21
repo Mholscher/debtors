@@ -80,7 +80,13 @@ Assigned amounts
 
 When (part of) an amount is used to pay a bill, an assigned amount is created for the amount used and the source. Assigned amounts are only created if a bill can be paid in full; we do not assign amounts to partially pay a bill.
 
-If an assignment is to another "payment" which is manually input, we can assign part of an amount. The new amount constructed may be coming from more than one source. It would be limiting to not allow that.
+If an assignment is to another "payment" which is manually input, we can assign to part of an amount. The new amount constructed may be coming from more than one source. It would be limiting to not allow that.
+
+*   a client pays 34 Euro to a bill for 44 Euro
+
+*   after a while he pays the missing 10 Euro
+
+*   we create an amount of 44 Euro from the 2 amounts, which makes it possible to pay the bill
 
 When a bill can be paid in full, but the amount was greater than the amount due on the bill, a remainder of the payment is still usable to assign to another bill or even bills. This looks as follows:
 
@@ -89,6 +95,8 @@ When a bill can be paid in full, but the amount was greater than the amount due 
 *   EUR 1500,- was used to pay bill 15, so bill 15 is set paid, an assigned amount for EUR 1500,- created. When inquiring, an outstanding amount of EUR 1900,- (3400 - 1500) is showing on the receipt.
 
 *   if a bill of EUR 800,- is then written for the client, this bill is set paid, an assigned amount for EUR 800,- created. When inquiring, an available amount of EUR 1100,- (3400 - 1500 - 800) is shown on the receipt.
+
+Amounts are assigned in date and time order. So a client will not be put through the debt process after missing one payment. This has the following exception: A client gets a bill for JPY 540 and after that for JPY 100. Client pays the JPY 100 bill, but that is insufficient for paying the first bill. The second one though will be paid, because the money is enough.
 
 The fields on the assigned amount are:
 

@@ -65,7 +65,7 @@ class CAMT53Handler(ContentHandler):
         elif name == 'Nm' and hasattr(self, "in_creditor"):
             self.in_client_name = True
         elif name == 'IBAN' and hasattr(self, "in_creditor"):
-            self.in_creditor_IBAN = True
+            self.in_creditor_iban = True
         elif name == "Fmly":
             self.in_family = True
         elif name == "Cd" and hasattr(self, "in_family"):
@@ -99,7 +99,7 @@ class CAMT53Handler(ContentHandler):
         elif name == 'Nm' and hasattr(self, "in_creditor"):
             del(self.in_client_name)
         elif name == 'IBAN' and hasattr(self, "in_creditor"):
-            del(self.in_creditor_IBAN)
+            del(self.in_creditor_iban)
         elif name == "Cd" and hasattr(self, "in_family_code"):
             del(self.in_family_code)
         elif name == "Fmly" and hasattr(self, "in_family"):
@@ -205,9 +205,9 @@ class CAMT53Handler(ContentHandler):
         elif hasattr(self, 'in_client_name')\
             and self.in_client_name:
             self.unassigned_amount.client_name = content
-        elif hasattr(self, 'in_creditor_IBAN')\
-            and self.in_creditor_IBAN:
-            self.unassigned_amount.creditor_IBAN = content
+        elif hasattr(self, 'in_creditor_iban')\
+            and self.in_creditor_iban:
+            self.unassigned_amount.creditor_iban = content
         elif hasattr(self, 'in_create_timestamp')\
             and hasattr(self, 'in_statement'):
             self.creation_timestamp = dt_parse(timestr=content)

@@ -180,7 +180,8 @@ def create_bills(instance):
                           status='new')
     instance.clt1.bills.append(instance.bll1)
     instance.bills.append(instance.bll1)
-    instance.bll2 = Bills(date_sale=datetime.now().date(), date_bill=datetime.now(),
+    instance.bll2 = Bills(date_sale=datetime.now().date(),
+                          date_bill=datetime.now(),
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
     instance.bills.append(instance.bll2)
@@ -259,6 +260,7 @@ def add_lines_to_bills(instance):
                         measured_in='box',
                         unit_price=376)
     bill.lines.append(bill_line)
+
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """
