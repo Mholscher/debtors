@@ -28,15 +28,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import validates, Session
 from iso4217 import raw_table  # This is the currency table
 from clientmodels.clients import Clients, BankAccounts, db
-
-
-class InvalidDataError(ValueError):
-    """ The data passed in is invalid """
-
-    def to_dict(self):
-        """ Return a dictionary with interesting info """
-
-        return {"message" : str(self) }
+from debtors import InvalidDataError
 
 
 class BillNotFoundError(ValueError):

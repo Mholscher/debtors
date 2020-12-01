@@ -15,13 +15,14 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
+""" Module to hold the contenthandler to process a camt message """
+
 from xml.sax import ContentHandler, make_parser, parse
 from dateutil.parser import parse as dt_parse
 from debtviews.monetary import internal_amount
 from debtmodels.payments import IncomingAmounts, IncomingAmountsList,\
     AmountQueued
 
-""" Module to hold the contenthandler to process a camt message """
 
 class CAMT53Handler(ContentHandler):
     """ Contains all code to handle a CAMT053 message.

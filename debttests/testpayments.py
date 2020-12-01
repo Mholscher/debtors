@@ -65,6 +65,20 @@ class TestCreatePayment(unittest.TestCase):
         db.session.flush()
         self.assertEqual(self.clt1.id, ia02.client_id, 'Not attached')
 
+    def test_get_payment_by_id(self):
+        """ We can get a bill by its id """
+
+        ia10 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=48556,
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='F.K. Pieterse')
+        ia10.client = self.clt2
+        ia10.add()
+        db.session.flush()
+        ia10_id = ia10.id
+        self.assertEqual(IncomingAmounts.get_payment_by_id(ia10_id).id,
+                         ia10_id, 'Wrong/no payment retrieved by id')
+
 
 class TestCAMTEntryHandler(unittest.TestCase):
 
@@ -436,3 +450,4 @@ class TestAssignment(unittest.TestCase):
         ia09 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='022221333306999888222200112').first()
         self.assertEqual(ia09.debcred, 'Db', 'No debit entry')
+

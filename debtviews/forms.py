@@ -108,7 +108,7 @@ class BillCreateForm(BillForm):
 
 
 class BillChangeForm(BillForm):
-    """ This is the form for canging an existing bill """
+    """ This is the form for changing an existing bill """
 
     client_id = StringField('Client number', validators=[Optional()])
     date_sale = DateField('Date of sale', format='%d-%m-%Y')
@@ -119,3 +119,18 @@ class FormForAmount(FlaskForm):
 
     amount = AmountField()
     submitting = SubmitField('Submit')
+
+
+class PaymentForm(FlaskForm):
+    """ This is the form for showing payment data """
+
+    id = HiddenField('Payment sequence')
+    csrf_token = HiddenField('csrf_token')
+    payment_ccy = StringField('Currency', validators=[Length(max=3)])
+    payment_amount = AmountField('Amount paid')
+    debcred = StringField('Debit/credit', validators=[Length(max=2)])
+    value_date = DateField('Paid at', format='%d-%m-%Y')
+    our_ref = StringField('Our reference')
+    bank_ref = StringField('Bank reference')
+    creditor_iban = StringField('Creditors IBAN')
+    client_name = StringField('Client name (from bank)')

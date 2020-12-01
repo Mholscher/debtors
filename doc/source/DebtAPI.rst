@@ -79,6 +79,12 @@ The module debtviews physicalbill
 .. automodule:: debtviews.physicalbill
    :members:
 
+The module debtviews payments
+---------------------------------
+
+.. automodule:: debtviews.payments
+   :members:
+
 The module debtors processCAMT
 ------------------------------
 

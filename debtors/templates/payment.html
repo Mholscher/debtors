@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from 'fields.html' import fld %}
+{% from 'nolabel.html' import nolabel %}
+
+{% block title %}
+  <title>{% if client.id %}Payment from {{client.initials}} {{client.surname}} {% else %} Payment {%endif %}</title>
+{% endblock %}
+{% block searches %}
+    {% include 'clientsearch.html' %}
+{% endblock searches %} 
+{% block content %}
+{% if form.id.data %}
+    <h2 class="inlineform"> Payment {{form.id.data}} </h2>
+    <form action="/payment/{{form.id.data}}" method="POST" class="inlineform">
+{% else %}
+    <h2 class="inlineform"> New payment </h2>
+    <form action={{ url_for('.payment_create') }} method="POST" class="inlineform">
+{% endif %}
+{%  if form.id.data %}{% set readonly = true %} {% endif %}
+{{ form.csrf_token }}
+{% if form.csrf_token.errors %}
+    <div class="warning">You have submitted an invalid CSRF token</div>
+{% endif %}
+<div>{% if client.id %}Client {{client.initials}} {{client.surname}} <br/><a href="{{ url_for('client.clients', id=client.id)}}"> Client data </a>{% endif %}</div>
+<div class="inputline">{{fld(form.payment_ccy, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.payment_amount, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.debcred, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.value_date, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.our_ref, readonly=readonly)}}</div>
+<div class="inputline">{{fld(form.bank_ref, readonly="true")}}</div>
+<div class="inputline">{{fld(form.creditor_iban, readonly="true")}}</div>
+<div class="inputline">{{fld(form.client_name, readonly="true")}}</div>
+
+{{form.update}}
+</form>
+{% endblock content %}

@@ -33,6 +33,14 @@ DECIMAL_CHAR = locale['decimal_point']
 #logging.basicConfig(filename='debtors.log', level=logging.INFO)
 #logging.debug('Debug logging')
 
+class InvalidDataError(ValueError):
+    """ The data passed in is invalid """
+
+    def to_dict(self):
+        """ Return a dictionary with interesting info """
+
+        return {"message" : str(self) }
+
 from clients.clientbp import client_pages
 app.register_blueprint(client_pages)
 from debtors.debtapibp import debtapi

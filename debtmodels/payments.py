@@ -27,8 +27,17 @@ of the amount retained for further processing.
 
 from datetime import datetime
 from debtors import db
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+from debtors import InvalidDataError
 from debtmodels.debtbilling import Bills
 from clientmodels.clients import Clients
+
+
+class IncomingAmountNotFoundError(InvalidDataError):
+    """ An amount requested by id was not found """
+
+    pass
 
 
 class IncomingAmounts(db.Model):
@@ -80,6 +89,16 @@ class IncomingAmounts(db.Model):
 
         db.session.add(self)
 
+    @staticmethod
+    def get_payment_by_id(payment_id):
+        """ Get an Incoming amount for id payment_id """
+
+        payment = db.session.query(IncomingAmounts).filter_by(id=payment_id).\
+            first()
+        if payment:
+            return payment
+        raise IncomingAmountNotFoundError('No payment for id {}'.format(payment_id))
+
     def find_client_to_attach(self):
         """ We try to find the client that made the payment """
 
@@ -100,7 +119,7 @@ class IncomingAmounts(db.Model):
         return usable_bills
 
     def assign_amount(self):
-        """ Assing this amount to an outstanding bill """
+        """ Assign this amount to an outstanding bill """
 
         client = self.find_client_to_attach()
         if client:
