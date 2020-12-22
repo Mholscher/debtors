@@ -238,7 +238,7 @@ class Addresses(db.Model):
     These are the snail-mail addresses that we keep for the clients
     plus (if required) their residential address. These addresses
     are distinguished by a code, where space equals a 
-    "general" address, residential and postal.filter
+    "general" address, residential and postal.
     """
 
     __tablename__ = 'addresses'

@@ -77,6 +77,7 @@ class IncomingAmounts(db.Model):
     bank_ref = db.Column(db.String(35))
     client_ref = db.Column(db.String(35))
     client_name = db.Column(db.String(30))
+    fully_assigned = db.Column(db.Boolean(), default=False)
     creditor_iban = db.Column(db.String(40), nullable=True, index=True)
     client = db.relationship('Clients', backref='payments')
     amount_queued = db.relationship('AmountQueued', uselist=False,
@@ -108,13 +109,19 @@ class IncomingAmounts(db.Model):
             return None
         return client
 
-    def find_assignment_target(self):
+    def find_assignment_targets(self):
         """ Finds a target for assignments """
 
         bills_with_account = Bills.bills_for_IBAN(self.creditor_iban)
         usable_bills = [bill for bill in bills_with_account 
                         if bill.total() <= self.payment_amount
                         and bill.billing_ccy == self.payment_ccy]
+        if self.client_ref:
+            bills_having_id = Bills.bills_having_id(self.client_ref)
+            usable_bills.extend([bill for bill in bills_having_id 
+                            if bill.total() <= self.payment_amount
+                            and bill.billing_ccy == self.payment_ccy
+                            and bill not in usable_bills])
         usable_bills.sort(key=lambda bill: bill.total(), reverse=True)
         return usable_bills
 
@@ -124,7 +131,7 @@ class IncomingAmounts(db.Model):
         client = self.find_client_to_attach()
         if client:
             self.client = client
-        usable_bills = self.find_assignment_target()
+        usable_bills = self.find_assignment_targets()
         assigned_until_now = 0
         for bill in usable_bills:
             if bill.total() <= self.payment_amount - assigned_until_now:
@@ -135,6 +142,8 @@ class IncomingAmounts(db.Model):
                 assignment.bill = bill
                 assigned_until_now += assignment.amount_assigned
                 bill.status = Bills.PAID
+                if self.payment_amount == assigned_until_now:
+                    self.fully_assigned = True
                 assignment.add()
 
 class IncomingAmountsList(list):

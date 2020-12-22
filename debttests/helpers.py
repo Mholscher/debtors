@@ -182,10 +182,12 @@ def create_bills(instance):
     instance.bills.append(instance.bll1)
     instance.bll2 = Bills(date_sale=datetime.now().date(),
                           date_bill=datetime.now(),
+                          billing_ccy = 'EUR',
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
     instance.bills.append(instance.bll2)
     instance.bll3 = Bills(date_sale=date(year=2019, month=11, day=18),
+                          billing_ccy='EUR',
                           date_bill=None,
                           status='new')
     instance.clt3.bills.append(instance.bll3)

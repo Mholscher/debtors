@@ -19,7 +19,7 @@ import unittest
 from datetime import datetime, date
 from dateutil import parser
 from dateutil.tz import tzoffset
-from debtors import db
+from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
 from debttests.helpers import delete_test_clients, add_addresses,\
@@ -295,7 +295,7 @@ class TestAssignAmounts(unittest.TestCase):
 class TestAssignment(unittest.TestCase):
 
     def setUp(self):
-        
+
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -328,7 +328,7 @@ class TestAssignment(unittest.TestCase):
         parse(self.infile, self.camthandler)
         ia03 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
-        ial01 = ia03.find_assignment_target()
+        ial01 = ia03.find_assignment_targets()
         self.assertIn(self.bll4, ial01)
 
     def test_rule_out_large_debt(self):
@@ -347,7 +347,7 @@ class TestAssignment(unittest.TestCase):
         parse(self.infile, self.camthandler)
         ia03 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
-        ial01 = ia03.find_assignment_target()
+        ial01 = ia03.find_assignment_targets()
         self.assertNotIn(bll5, ial01)
 
     def test_no_other_ccy(self):
@@ -366,7 +366,7 @@ class TestAssignment(unittest.TestCase):
         parse(self.infile, self.camthandler)
         ia04 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
-        ial02 = ia04.find_assignment_target()
+        ial02 = ia04.find_assignment_targets()
         self.assertNotIn(bll6, ial02)
 
     def test_order_of_bills(self):
@@ -385,7 +385,7 @@ class TestAssignment(unittest.TestCase):
         parse(self.infile, self.camthandler)
         ia05 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
-        ial03 = ia05.find_assignment_target()
+        ial03 = ia05.find_assignment_targets()
         self.assertGreater(ial03[0].total(), ial03[1].total(),
                            'Bills not in descending order')
 
@@ -400,6 +400,7 @@ class TestAssignment(unittest.TestCase):
             filter_by(from_amount=ia06).first()
         self.assertEqual(aa01.from_amount.id, ia06.id, 'Not assigned')
         self.assertEqual(aa01.bill.status, 'paid', 'Status not set to paid')
+        self.assertTrue(ia06.fully_assigned, 'Fully assigned not set')
 
     def test_assign_more_bills(self):
         """ We can assign to more bills """
@@ -451,3 +452,64 @@ class TestAssignment(unittest.TestCase):
             filter_by(bank_ref='022221333306999888222200112').first()
         self.assertEqual(ia09.debcred, 'Db', 'No debit entry')
 
+    def test_assign_by_client_ref(self):
+        """ If the client reference holds the bill id, we assign """
+
+        parse(self.infile, self.camthandler)
+        ia10 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000755').first()
+        #print("Bill number " + str(self.bll3.bill_id))
+        ia10.client_ref = "Bill number " + str(self.bll3.bill_id)
+        db.session.flush()
+        ial04 = ia10.find_assignment_targets()
+        self.assertIn(self.bll3, ial04, 'Bill is not in targets')
+
+    def test_assign_only_unpaid_by_ref(self):
+        """ We only return unpaid assignment candidates """
+
+        parse(self.infile, self.camthandler)
+        ia11 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000187763').first()
+        ia11.client_ref = "Bill number " + str(self.bll2.bill_id)
+        db.session.flush()
+        ial05 = ia11.find_assignment_targets()
+        self.assertNotIn(self.bll2, ial05, 'Bill is in targets')
+
+
+class TestPaymentTransactions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.ia11 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=1330)
+        self.ia11.add()
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_get_payment(self):
+        """ We can retrieve a payment """
+
+        ia12 = db.session.query(IncomingAmounts).first()
+        rv = self.app.get('/payment/' + str(ia12.id))
+        self.assertEqual(rv.status_code, 200, 'Not OK: find payment')
+
+    def test_get_invalid_fails(self):
+        """ Get a Not Found when retrieving non-existent payment """
+
+        rv = self.app.get('/payment/1')
+        self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')

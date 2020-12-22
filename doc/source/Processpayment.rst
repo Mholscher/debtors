@@ -32,15 +32,16 @@ If payments are being made into our bank account, these appear on our daily stat
 
 The payments from the statement are assigned to a debt by finding out:
 
-    :our reference: The reference to a bill will be mentioned on the statement, enabling the program to directly find the bill. This may be the bill id or the payment
+    :our reference: The reference to a bill will be mentioned on the statement, enabling the program to directly find the bill. This may be the bill id
     :the account of the client: if the account the payment is made from is known to us, we may know whose bill to assign to. Then we assign the amount to the oldest bill
-    :the name of the client: if we have an exact match with the name of the client, we assign the amount to the oldest bill in the administration
 
 If no bill is found to assign to, we keep the amount at the client level, or at the unassigned level. If we only know the client who paid or the amount is not enough to pay the bill or the client overpaid, the amount paid or the overpaid amount is kept as an amount at the client level.
 
 If the amount received is in a different currency from the bill, the system will not assign the amount to a bill. See :ref:`multicurrency`
 
 The debit/credit indicator is used to be able to process reversals.
+
+To see a paid amount, go to <host>/payment/<payment-id>
 
 .. _manualpaymentinput:
 
@@ -68,7 +69,7 @@ Payments done by other means than bank payment may be input to the system throug
 +------------------------+--------------------+-----------+----------+
 | amount received        | user input         | mandatory | n/a      |
 +------------------------+--------------------+-----------+----------+
-| debit/credit indicator | the bank statement | mandatory | credit   |              
+| debit/credit indicator | user input         | mandatory | credit   |              
 +------------------------+--------------------+-----------+----------+
 
 The role of our reference is to point the user to any document that details the source of the data. If e.g. the amount is paid in cash, you refer to a copy of the receipt by its number.
@@ -130,6 +131,23 @@ Some comments on fields:
     :amount in new currency: links to the new amount. This is either the full new amount, or a part of it. If part, there must be another part to supply the rest.
 
 Payments may also be assigned to another payment. For an example of how to use this, see :ref:`multicurrency`.
+
+Assigned amounts are only visible in the payments that are assigned by the amount.
+
+Assigning amounts to a bill manually
+------------------------------------
+
+When the system has not assigned an amount to a bill, we can do that manually. The system will find bills that may be (part of) what the money should be assigned to. The user can choose the bill(s) to assign to, and the system will assign money to the bills.
+
+Rules for finding the bills:
+
+* The bill amount must be smaller than the unassigned amount
+* Bill currency must be the same as the incoming payment currency
+* The client that paid (if known) must be the client having been billed
+*  If the client is not  known, look if the name on the payment is "like" the name of a client
+* The operator can select a client whose bills are used when looking for unpaid bills
+
+One or more of the bills may be selected, however, the total of all bill amounts may not exceed the unassigned amount on the payment.
 
 .. _multicurrency:
 

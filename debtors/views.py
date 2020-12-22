@@ -20,8 +20,8 @@ the code for views (with the exception of the root view), but contains
 the url_rules pointing to the different views in the debtviews module.
 """
 
-from debtors import app
-from flask import redirect, url_for, render_template
+from debtors import app, InvalidDataError
+from flask import redirect, url_for, render_template, abort
 from debtviews.bills import BillView, ClientDebtView, BillDetailView
 from debtviews.payments import PaymentView
 from debtviews.forms import  FormForAmount
@@ -40,6 +40,8 @@ app.add_url_rule('/debt/<int:client_id>',\
     view_func=ClientDebtView.as_view('client_debt'))
 app.add_url_rule('/bill/<int:bill_id>/details',\
     view_func=BillDetailView.as_view('bill_detail'))
+app.add_url_rule('/payment/new',\
+    view_func=PaymentView.as_view('payment_create'))
 app.add_url_rule('/payment/<int:payment_id>',\
     view_func=PaymentView.as_view('payment_update'))
 

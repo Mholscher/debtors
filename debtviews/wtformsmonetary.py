@@ -45,15 +45,19 @@ class AmountField(Field):
     def _value(self):
         """ Set the value to the external value """
 
+        if self.raw_data:
+            return self.raw_data[0]
         if self.data is None:
             return ''
         return edited_amount(self.data, currency=self.currency)
-
     def process_formdata(self, valuelist):
         """ Set the data to the value retrieved from the form data """
 
         if valuelist and valuelist[0]:
-            self.data = self.internal_amount(valuelist[0])
+            try:
+                self.data = self.internal_amount(valuelist[0])
+            except ValueError as ve:
+                raise
         elif self.data is None:
             self.data = ''
 

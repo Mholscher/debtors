@@ -21,7 +21,7 @@ Bills may be delivered to debtors by external systems, but can also be
 created and changed by users through web transactions. This module has the views 
 to do so.
 """
-from flask import render_template, redirect, url_for, request, flash
+from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from debtmodels.debtbilling import Bills, BillLines, db, BillNotFoundError
 from clientmodels.clients import Clients, NoClientFoundError
@@ -68,7 +68,10 @@ class BillView(MethodView):
 
         client_search_form = ClientSearchForm()
         if bill_id:
-            bill = Bills.get_bill_by_id(bill_id)
+            try:
+                bill = Bills.get_bill_by_id(bill_id)
+            except BillNotFoundError as bnfe:
+                abort(404, str(bnfe))
             bill_form = BillChangeForm(obj=bill)
         else:
             bill = None
@@ -104,8 +107,8 @@ class BillView(MethodView):
             and not any(bill_form.lines.data[bill_form.lines.__len__() - 1].values()) :
             bill_form.lines.pop_entry()
 
-            for line in bill_form.lines:
-                line.edited_amount = edited_amount
+        for line in bill_form.lines:
+            line.edited_amount = edited_amount
 
         if bill_form.validate_on_submit():
             if bill_form.client_id.data:
@@ -198,7 +201,7 @@ class BillDetailView(MethodView):
 
         client_search_form = ClientSearchForm()
         if bill_id is None:
-            raise BillNotFoundError('A bill id is required')
+            abort(404, 'A bill id is required')
         bill = Bills.get_bill_by_id(bill_id)
         for line in bill.lines:
             line.amount_edit = edited_amount

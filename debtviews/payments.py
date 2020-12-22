@@ -22,10 +22,10 @@ can also be created and changed by users through web transactions. This
 module has the views to do the latter.
 """
 
-from flask import render_template, redirect, url_for, request, flash
+from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
-from debtviews.forms import PaymentForm
+from debtviews.forms import PaymentForm, PaymentCreateForm
 from clientviews.forms import ClientSearchForm
 
 
@@ -38,10 +38,14 @@ class PaymentView(MethodView):
         client_search_form = ClientSearchForm()
 
         if payment_id:
-            payment = IncomingAmounts.get_payment_by_id(payment_id)
+            try:
+                payment = IncomingAmounts.get_payment_by_id(payment_id)
+            except IncomingAmountNotFoundError as ianfe:
+                abort(404, str(ianfe))
             payment_form = PaymentForm(obj=payment)
         else:
-            raise IncomingAmountNotFoundError('Cannot find amount without id')
+            payment = IncomingAmounts()
+            payment_form = PaymentCreateForm()
 
         return render_template('payment.html', form=payment_form,
                                payment=payment, client=payment.client, 

@@ -123,6 +123,7 @@ class Bills(db.Model):
     lines = db.relationship('BillLines', backref='bill',
                             cascade='all, delete')
     client = db.relationship('Clients', backref='bills')
+    __table_args__ = (db.Index('bystatus', 'status'),)
 
     def add(self):
         """ Add the bill to the session """
@@ -228,6 +229,24 @@ class Bills(db.Model):
         clients = [account.owner for account in accounts] 
         return [bill for client in clients for bill in client.bills\
             if bill.status == Bills.ISSUED]
+
+    @staticmethod
+    def bills_having_id(reference):
+        """ Collect bills having an id which is in the reference """
+
+        if not reference:
+            raise ValueError('A reference is required')
+        word_list = reference.split()
+        search_for = None
+        for word in word_list:
+            if word.isnumeric():
+                search_for = int(word)
+                break
+        if not search_for:
+            return []
+        bills = Bills.query.filter_by(bill_id=search_for)
+        bills = bills.filter(Bills.status.in_([Bills.ISSUED, Bills.NEW])).all()
+        return bills
 
     def set_bill_status_replaced(self, session):
         """ Set the bill status of the bill with id bill_id to replaced

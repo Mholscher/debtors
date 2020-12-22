@@ -134,3 +134,8 @@ class PaymentForm(FlaskForm):
     bank_ref = StringField('Bank reference')
     creditor_iban = StringField('Creditors IBAN')
     client_name = StringField('Client name (from bank)')
+
+class PaymentCreateForm(PaymentForm):
+    """ The part of the form for creating a payment """
+
+    submit = SubmitField('Create payment')

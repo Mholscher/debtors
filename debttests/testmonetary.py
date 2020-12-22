@@ -345,6 +345,16 @@ class TestWTFormsAmountField(unittest.TestCase):
         self.assertNotEqual('0,00', amount_form.amount._value(),
                             'Amount is zero, not space')
 
+    @unittest.skipIf(not wtforms_present, 'No wtforms amountfield found')
+    def test_amount_invalid_fails(self):
+        """ An empty amount is not shown as zeroes """
+
+        holder = AmountHolder('23a55')
+        with self.assertRaises(ValueError):
+            amount_form = FormWithAmount(obj=holder)
+            #print(holder.amount)
+            amount_form.amount.process_formdata([holder.amount])
+
 
 if __name__ == '__main__' :
     unittest.main()

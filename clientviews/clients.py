@@ -70,7 +70,7 @@ class ClientView(MethodView):
                 abort(404, str(ncf))
         else:
             client = Clients()
-                
+
         client_form = ClientForm()
 
         if client_form.validate_on_submit():

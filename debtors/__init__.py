@@ -40,7 +40,7 @@ class InvalidDataError(ValueError):
         """ Return a dictionary with interesting info """
 
         return {"message" : str(self) }
-
+ 
 from clients.clientbp import client_pages
 app.register_blueprint(client_pages)
 from debtors.debtapibp import debtapi

@@ -105,7 +105,10 @@ def validate_amount(amount_string, precision=2, currency=None):
         or amount_string[-1] == ldb['positive_sign'] :
         sign = amount_string[-1]
         amount_string = amount_string[:-1]
-    internal =  internal_amount(amount_string)
+    try:
+        internal =  internal_amount(amount_string)
+    except ValueError as ve:
+        raise ValueError('Value is not a valid amount')
     if sign == ldb['negative_sign']:
         internal = internal * -1
     if no_of_decimal_separators == 0:
