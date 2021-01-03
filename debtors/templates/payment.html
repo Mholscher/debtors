@@ -33,4 +33,9 @@
 
 {{form.submit}}
 </form>
+<form action={{ url_for('.payment_attach') }} method="POST" class="inlineform">
+{{ form2.payment_id }}
+<div class="inputline">{{fld(form2.client_id)}}</div>
+{{form2.attach}}
+</form>
 {% endblock content %}

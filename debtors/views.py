@@ -23,7 +23,7 @@ the url_rules pointing to the different views in the debtviews module.
 from debtors import app, InvalidDataError
 from flask import redirect, url_for, render_template, abort
 from debtviews.bills import BillView, ClientDebtView, BillDetailView
-from debtviews.payments import PaymentView
+from debtviews.payments import PaymentView, PaymentUpdateView
 from debtviews.forms import  FormForAmount
 
 
@@ -44,6 +44,8 @@ app.add_url_rule('/payment/new',\
     view_func=PaymentView.as_view('payment_create'))
 app.add_url_rule('/payment/<int:payment_id>',\
     view_func=PaymentView.as_view('payment_update'))
+app.add_url_rule('/payment/attach',\
+    view_func=PaymentUpdateView.as_view('payment_attach'))
 
 @app.route('/testamount/<amount>', methods=['GET', 'POST'])
 def amount_route(amount=3):

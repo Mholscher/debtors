@@ -168,7 +168,6 @@ class TestCAMTEntryHandler(unittest.TestCase):
                             None, 
                             f'Our reference incorrect: {unassigned.our_ref}')
 
-
 class TestMoreTransactions(unittest.TestCase):
 
     def setUp(self):
@@ -291,6 +290,18 @@ class TestAssignAmounts(unittest.TestCase):
         ce1 = db.session.query(IncomingAmounts).first()
         self.assertTrue(AmountQueued.is_queued(ce1.id),
                         "Is queued doesn't answer") 
+
+    def test_attach_client(self):
+        """ We can attach a client to a payment """
+
+        incoming_amount = IncomingAmounts(payment_ccy='USD',
+                                payment_amount=48876,
+                                debcred = 'Cr')
+        incoming_amount.client = self.clt4
+        db.session.flush()
+        self.assertIn(incoming_amount, self.clt4.payments,
+                      'Payment not in clients payments')
+
 
 class TestAssignment(unittest.TestCase):
 
@@ -488,17 +499,24 @@ class TestPaymentTransactions(unittest.TestCase):
                                payment_amount=1330)
         self.ia11.add()
         db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        db.session.commit()
         self.app = app.test_client()
         self.app.testing = True
 
     def tearDown(self):
 
         db.session.rollback()
+        self.infile.close()
         delete_test_bills(self)
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.query(AmountQueued).delete()
         db.session.query(IncomingAmounts).delete()
+        db.session.query(AssignedAmounts).delete()
         db.session.commit()
 
     def test_get_payment(self):
@@ -513,3 +531,54 @@ class TestPaymentTransactions(unittest.TestCase):
 
         rv = self.app.get('/payment/1')
         self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')
+
+    #def test_put_payment(self):
+        """ Create a new payment """
+
+        #self.app.put('/payment/new', data={'payment_ccy':'EUR',
+                                           #'payment_amount':'567,99',
+                                           #'debcred':'Cr',
+                                           #'value_date':'17-12-2020'})
+        #ia13 = db.session.query(IncomingAmounts).\
+            #filter_by(payment_amount=56799).first()
+        #self.assertEqual(ia13.value_date, parser.parse('17-12-2020'),
+                         #'Incorrect date')
+        #self.assertEqual(ia13.payment_ccy, 'EUR', 'Currency incorrect')
+
+
+    def test_attach_client(self):
+        """ Attach a client to a payment """
+
+        ia11_id = self.ia11.id
+        clt3_id = self.clt3.id
+        rv = self.app.post('/payment/attach', data={'payment_id':
+                                                    str(self.ia11.id),
+                                                    'client_id':
+                                                    str(clt3_id)},
+                            follow_redirects=True)
+        ia14 = db.session.query(IncomingAmounts).filter_by(id=ia11_id)\
+            .first()
+        #print(rv.status_code)
+        self.assertEqual(ia14.client.id, clt3_id, "Client not attached")
+
+    def test_attach_client_no_payment_fails(self):
+        """ When we try attaching a client to no payment, it fails """
+
+        clt3_id = self.clt3.id
+        rv = self.app.post('/payment/attach', data={'payment_id':
+                                                    None,
+                                                    'client_id':
+                                                    str(clt3_id)},
+                            follow_redirects=True)
+        self.assertIn(b'No payment', rv.data, 'Message missing')
+
+    def test_attach_invalid_client_fails(self):
+        """ When we try attaching a client to no payment, it fails """
+
+        ia11_id = self.ia11.id
+        rv = self.app.post('/payment/attach', data={'payment_id':
+                                                    ia11_id,
+                                                    'client_id':
+                                                    1},
+                            follow_redirects=True)
+        self.assertIn(b'No client', rv.data, 'Message missing')

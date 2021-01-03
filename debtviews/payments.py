@@ -24,8 +24,10 @@ module has the views to do the latter.
 
 from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
+from clientmodels.clients import Clients
+from debtors import db
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
-from debtviews.forms import PaymentForm, PaymentCreateForm
+from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm
 from clientviews.forms import ClientSearchForm
 
 
@@ -37,7 +39,10 @@ class PaymentView(MethodView):
 
         client_search_form = ClientSearchForm()
 
+        payment_update_form = ClientAttachForm()
+
         if payment_id:
+            payment_update_form.payment_id.data = payment_id
             try:
                 payment = IncomingAmounts.get_payment_by_id(payment_id)
             except IncomingAmountNotFoundError as ianfe:
@@ -48,6 +53,30 @@ class PaymentView(MethodView):
             payment_form = PaymentCreateForm()
 
         return render_template('payment.html', form=payment_form,
+                               form2=payment_update_form,
                                payment=payment, client=payment.client, 
                                search_form=client_search_form)
+
+class PaymentUpdateView(MethodView):
+    """ Update an existing payment from the web """
+
+    def post(self):
+        """ Attach a client to the payment """
+
+        update_form = ClientAttachForm()
+        payment_id = update_form.payment_id.data
+        if not payment_id:
+            flash('No payment to attach client to')
+            return redirect(url_for('.payment_create'))
+        payment = IncomingAmounts.query.filter_by(id=payment_id).first()
+        client_id = update_form.client_id.data
+        client = Clients.query.filter_by(id=client_id).first()
+        if client:
+            payment.client = client
+        else:
+            flash('No client {} to attach'.format(client_id))
+            return redirect(url_for('.payment_update', payment_id=payment_id))
+        db.session.commit()
+
+        return redirect(url_for('.payment_update', payment_id=payment_id))
 

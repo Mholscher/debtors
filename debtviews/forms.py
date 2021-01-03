@@ -139,3 +139,11 @@ class PaymentCreateForm(PaymentForm):
     """ The part of the form for creating a payment """
 
     submit = SubmitField('Create payment')
+
+
+class ClientAttachForm(FlaskForm):
+    """ The form to attach a client to a payment """
+
+    payment_id = HiddenField('Payment sequence')
+    client_id = StringField('Client number')
+    attach = SubmitField('Attach client')
