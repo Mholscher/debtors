@@ -68,6 +68,8 @@ class TestMoneyConversions(unittest.TestCase):
         amount_cents = 27
         edited = edited_amount(amount_cents, precision=4)
         self.assertEqual('0,0027', edited, 'Incorrect conversion')
+    
+        
 
 
 class TestConvertToInternal(unittest.TestCase):
@@ -165,6 +167,20 @@ class TestWithCurrency(unittest.TestCase):
         amount_string = '8 875,90'
         with self.assertRaises(ValueError):
             internal = validate_amount(amount_string, currency='JPY')
+
+    def test_precision_larger_than_ccy_fails(self):
+        """ Do not accept more precision than the currency allows """
+
+        amount_string = '8845,9876'
+        with self.assertRaises(ValueError):
+            internal = validate_amount(amount_string, currency='EUR')
+
+    def test_amount_is_right_padding_precision(self):
+        """ If the decimal portion of an amount is too small, it is padded """
+
+        amount_string = '8675,9'
+        internal = validate_amount(amount_string, currency='EUR')
+        self.assertEqual(internal, 867590, 'Not correctly padded to the right')
 
 
 class TestAmountFormat(unittest.TestCase):

@@ -56,6 +56,45 @@ class TestCreatePayment(unittest.TestCase):
         db.session.flush()
         self.assertEqual('EUR', ia01.payment_ccy, 'Failure creating')
 
+    def test_create_payment_currency(self):
+        """ An incoming amount has a valid currency """
+
+        ia15 = IncomingAmounts(payment_ccy='jpy',
+                               payment_amount=1330)
+        ia15.add()
+        db.session.flush()
+        self.assertEqual('JPY', ia15.payment_ccy, 'Currency not uppercased')
+
+    def test_nonexisting_currency_fails(self):
+        """ An incoming amount has a valid currency """
+
+        with self.assertRaises(ValueError):
+            ia16 = IncomingAmounts(payment_ccy='CBY',
+                                payment_amount=17830)
+            ia16.add()
+            db.session.flush()
+
+    def test_nonexisting_debcred_fails(self):
+        """ An incoming amount has a debit/credit indicator """
+
+        with self.assertRaises(ValueError):
+            ia17 = IncomingAmounts(payment_ccy='GBP',
+                                payment_amount=17830,
+                                debcred='Ag')
+            ia17.add()
+            db.session.flush()
+
+    def test_reference_too_long(self):
+        """ A reference is max 35 positions """
+
+        with self.assertRaises(ValueError):
+            ia17 = IncomingAmounts(payment_ccy='EUR',
+                                payment_amount=10090,
+                                debcred='Cr',
+                                our_ref='123456789012345678901234567890123456')
+            ia17.add()
+            db.session.flush()
+
     def test_create_with_client(self):
         """ Add a payment with a client """
 
@@ -453,7 +492,7 @@ class TestAssignment(unittest.TestCase):
 
         ia08 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=12500,
-                               debcred='CR',
+                               debcred='Cr',
                                bank_ref='Bankref 11129',
                                creditor_iban='NL08INGB0212952803')
         ia08.client = self.clt2
@@ -582,3 +621,31 @@ class TestPaymentTransactions(unittest.TestCase):
                                                     1},
                             follow_redirects=True)
         self.assertIn(b'No client', rv.data, 'Message missing')
+
+    def test_cannot_attach_client_to_assigned(self):
+        """ If a payment is assigned to, we cannot change client """
+
+        bll3_id = self.bll3.bill_id
+        ia11_id = self.ia11.id
+        client_id = self.clt3.id
+        aa03 = AssignedAmounts(ccy='EUR', amount_assigned=3)
+        aa03.from_amount=self.ia11
+        db.session.flush()
+        rv = self.app.post('/payment/attach', data={'payment_id':
+                                                    ia11_id,
+                                                    'client_id':
+                                                    client_id},
+                            follow_redirects=True)
+        self.assertIn(b'Cannot attach', rv.data,
+                      'Attached to payment with assigned amount')
+
+    def test_invalid_ccy_error(self):
+        """ Specifying an invalid currency gives an error """
+
+        rv = self.app.post('/payment/new', data={'payment_ccy':'CBY',
+                                            'payment_amount':'567,99',
+                                            'debcred':'Cr',
+                                            'value_date':'17-12-2020'})
+        self.assertIn(b'The currency', rv.data,  "Error not on screen")
+
+

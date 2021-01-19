@@ -50,6 +50,7 @@ class AmountField(Field):
         if self.data is None:
             return ''
         return edited_amount(self.data, currency=self.currency)
+
     def process_formdata(self, valuelist):
         """ Set the data to the value retrieved from the form data """
 

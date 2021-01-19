@@ -23,9 +23,10 @@ holds these forms.
 
 from flask_wtf import FlaskForm
 from wtforms import HiddenField, StringField, DateField, SubmitField,\
-    IntegerField, FieldList, FormField
+    IntegerField, SelectField, FieldList, FormField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
 from debtmodels.debtbilling import Bills, ReplacedBillError
+from debtmodels.payments import validate_currency, IncomingAmounts as Amounts
 # For testing only!
 from debtviews.wtformsmonetary import AmountField
 
@@ -55,9 +56,9 @@ class PrevBillMustExist(ValueError):
 class RequiredIfAny(ValueError):
     """ WTForms validator for a required field
 
-    It replaces a DataRequired validator, where we can only see
-    the field is required if any field is filled. We cannot pass the
-    requirement into HTML through the "required" attribute.
+    It replaces a DataRequired validator, where we can only see the
+    field is required if this same field is filled. Here a field can be empty if none of the other fields are filled. However, if one other field (any)
+    is filled, this field becomes required.
     """
 
     message = 'This field is required'
@@ -71,6 +72,27 @@ class RequiredIfAny(ValueError):
 
         if not field.data:
             raise ValidationError(self.message)
+
+
+class PaymentCcyValid(ValueError):
+    """ WTForms validator for existence of a payment currency
+
+    If a payment is entered through the new payment page, we needs
+    to make sure the currency is an existing one, e.g. for editing
+    amounts.
+    """
+
+    message = 'The currency {} is invalid'
+
+    def __init__(self, message=None):
+
+        if message:
+            self.message = message
+
+    def __call__(self, form, field):
+
+        if not validate_currency(field.data):
+            raise ValidationError(self.message.format(field.data))
 
 
 class BillLineForm(FlaskForm):
@@ -124,15 +146,18 @@ class FormForAmount(FlaskForm):
 class PaymentForm(FlaskForm):
     """ This is the form for showing payment data """
 
+    local_choices = [(k, v) for k, v in Amounts.DEBCRED.items()]
     id = HiddenField('Payment sequence')
     csrf_token = HiddenField('csrf_token')
-    payment_ccy = StringField('Currency', validators=[Length(max=3)])
+    payment_ccy = StringField('Currency', validators=[Length(max=3),
+                                                      PaymentCcyValid()])
     payment_amount = AmountField('Amount paid')
-    debcred = StringField('Debit/credit', validators=[Length(max=2)])
+    debcred = SelectField('Debit/credit', choices=local_choices,
+                          validators=[Length(max=2)])
     value_date = DateField('Paid at', format='%d-%m-%Y')
-    our_ref = StringField('Our reference')
-    bank_ref = StringField('Bank reference')
-    creditor_iban = StringField('Creditors IBAN')
+    our_ref = StringField('Our reference', validators=[Length(max=35)])
+    bank_ref = StringField('Bank reference', validators=[Length(max=35)])
+    creditor_iban = StringField('Creditors IBAN', validators=[Length(max=35)])
     client_name = StringField('Client name (from bank)')
 
 class PaymentCreateForm(PaymentForm):

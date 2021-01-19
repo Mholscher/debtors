@@ -28,6 +28,7 @@ from clientmodels.clients import Clients
 from debtors import db
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm
+from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
 
@@ -48,6 +49,8 @@ class PaymentView(MethodView):
             except IncomingAmountNotFoundError as ianfe:
                 abort(404, str(ianfe))
             payment_form = PaymentForm(obj=payment)
+            if payment.client:
+                payment_update_form.client_id.data = payment.client.id
         else:
             payment = IncomingAmounts()
             payment_form = PaymentCreateForm()
@@ -56,6 +59,48 @@ class PaymentView(MethodView):
                                form2=payment_update_form,
                                payment=payment, client=payment.client, 
                                search_form=client_search_form)
+
+    def post(self, payment_id=None):
+        """ Add or update a payment with the user input """
+
+        AmountField.get_currency = self._get_currency
+        payment_form = PaymentCreateForm()
+        payment_update_form = ClientAttachForm()
+        payment_id = payment_form.id.data
+        if payment_form.validate_on_submit():
+            payment_ccy = payment_form.payment_ccy.data
+            payment_amount = payment_form.payment_amount.data
+            payment_debcred = payment_form.debcred.data
+            payment_value_date = payment_form.value_date.data
+            payment_our_ref = payment_form.our_ref.data
+            if not payment_id:
+                payment = IncomingAmounts(payment_ccy = payment_ccy,
+                                        payment_amount= payment_amount,
+                                        debcred = payment_debcred,
+                                        value_date = payment_value_date,
+                                        our_ref = payment_our_ref)
+                payment.add()
+                del AmountField.get_currency
+                db.session.commit()
+                payment_id = payment.id
+                return redirect(url_for('payment_update',
+                                        payment_id=payment_id))
+
+        client_search_form = ClientSearchForm()
+        payment = IncomingAmounts()
+        del AmountField.get_currency
+        flash("Validation error(s) encountered")
+
+        return render_template('payment.html', form=payment_form,
+                               form2=payment_update_form,
+                               payment=payment, client=payment.client, 
+                               search_form=client_search_form)
+
+    def _get_currency(field):
+        """ Get the currency of this payment for validating amounts """
+
+        return request.form.get('payment_ccy').upper()
+
 
 class PaymentUpdateView(MethodView):
     """ Update an existing payment from the web """
@@ -69,6 +114,9 @@ class PaymentUpdateView(MethodView):
             flash('No payment to attach client to')
             return redirect(url_for('.payment_create'))
         payment = IncomingAmounts.query.filter_by(id=payment_id).first()
+        if payment.assigned():
+            flash('Cannot attach to client when money assigned')
+            return redirect(url_for('.payment_update', payment_id=payment_id))
         client_id = update_form.client_id.data
         client = Clients.query.filter_by(id=client_id).first()
         if client:

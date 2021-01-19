@@ -94,12 +94,20 @@ def validate_amount(amount_string, precision=2, currency=None):
         except KeyError as ke:
             raise ValueError(currency + ' is not a valid currency')
     ldb = localeconv()
+
     if precision == 0 and ldb['mon_decimal_point'] in amount_string:
         raise ValueError('The amount cannot contain a decimal separator')
+
     c = Counter(amount_string)
     no_of_decimal_separators = c[ldb['mon_decimal_point']]
     if no_of_decimal_separators > 1:
         raise ValueError('Only one decimal point separator allowed')
+
+    if no_of_decimal_separators == 1:
+        amount_split = amount_string.split(sep=ldb['mon_decimal_point'])
+        if len(amount_split[-1]) > precision:
+            raise ValueError('Too many decimal places')
+
     sign = '+'
     if amount_string[-1] == ldb['negative_sign']\
         or amount_string[-1] == ldb['positive_sign'] :
@@ -111,7 +119,12 @@ def validate_amount(amount_string, precision=2, currency=None):
         raise ValueError('Value is not a valid amount')
     if sign == ldb['negative_sign']:
         internal = internal * -1
+
     if no_of_decimal_separators == 0:
         internal = internal * (10 ** precision)
+    else:
+        if len(amount_split[-1]) < precision:
+            internal = internal * (10 ** (precision - len(amount_split[-1])))
+
     return internal
 

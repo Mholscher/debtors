@@ -185,6 +185,7 @@ class Bills(db.Model):
         """Get a bill by reading it by bill_id  """
 
         bill = db.session.query(Bills).filter_by(bill_id=id_requested).first()
+
         if not bill:
             raise BillNotFoundError(
                 'Bill with id {0} was not found'.format(id_requested))

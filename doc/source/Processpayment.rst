@@ -134,6 +134,13 @@ Payments may also be assigned to another payment. For an example of how to use t
 
 Assigned amounts are only visible in the payments that are assigned by the amount.
 
+Attach a payment to (another) client
+------------------------------------
+
+When the system cannot assign to a bill automatically, but is aware of the client that paid the amount, it will attach that payment to the client. We can also do that manually. On the payment screen, enter the client number in the appropriate field and click attach. From then on, the amount will be shown in the client debt screen.
+
+If a client is already attached, attaching a new one will replace the previous attachment.
+
 Assigning amounts to a bill manually
 ------------------------------------
 
@@ -143,11 +150,10 @@ Rules for finding the bills:
 
 * The bill amount must be smaller than the unassigned amount
 * Bill currency must be the same as the incoming payment currency
-* The client that paid (if known) must be the client having been billed
-*  If the client is not  known, look if the name on the payment is "like" the name of a client
 * The operator can select a client whose bills are used when looking for unpaid bills
+* If the client is not  known, look if the name on the payment is "like" the name of a client
 
-One or more of the bills may be selected, however, the total of all bill amounts may not exceed the unassigned amount on the payment.
+One or more of the bills may be selected, however, the total of all bill amounts may of course not exceed the unassigned amount on the payment.
 
 .. _multicurrency:
 

@@ -28,7 +28,8 @@ of the amount retained for further processing.
 from datetime import datetime
 from debtors import db
 from sqlalchemy import event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, validates
+from iso4217 import raw_table  # This is the currency table
 from debtors import InvalidDataError
 from debtmodels.debtbilling import Bills
 from clientmodels.clients import Clients
@@ -38,6 +39,31 @@ class IncomingAmountNotFoundError(InvalidDataError):
     """ An amount requested by id was not found """
 
     pass
+
+
+class IncomingAmountInvalidCcyError(InvalidDataError):
+    """ Validation of amount currency failed """
+
+    pass
+
+
+class InvalidDebitCreditError(InvalidDataError):
+    """ Validation of debit/credit indicator failed """
+
+    pass
+
+
+class ReferenceToLongError(InvalidDataError):
+    """ A reference is too long """
+
+    pass
+
+def validate_currency(currency):
+    """ Validate the currency on ISO 2417 """
+
+    currency = currency.upper()
+    return currency if currency in raw_table.keys() else None
+
 
 
 class IncomingAmounts(db.Model):
@@ -61,6 +87,9 @@ class IncomingAmounts(db.Model):
         :creditor_iban: The IBAN the payment was made from
         """
 
+    CREDIT = "Cr"
+    DEBIT = "Db"
+    DEBCRED = { CREDIT : "Credit", DEBIT : "Debit" }
     __tablename__ = 'payments'
     id = db.Column(db.Integer, db.Sequence('payment_seq'),
                    primary_key=True)
@@ -84,6 +113,41 @@ class IncomingAmounts(db.Model):
                                     backref='incoming_amount',
                                     cascade='all, delete')
 
+
+    @validates("payment_ccy")
+    def validate_ccy(self, key, currency):
+        """ Validate the currency entered """
+
+        currency = currency.upper()
+        if validate_currency(currency):
+            return currency
+
+        raise IncomingAmountInvalidCcyError(
+            'The currency {} is invalid'.format(currency))
+
+
+
+    @validates("debcred")
+    def validatedebcred(self, key, debcred):
+        """ Validate the values in the debit/credit indicator  """
+
+        if not debcred in {"Cr", "Db" }:
+            raise InvalidDebitCreditError("{} is invalid".format(debcred))
+
+        return debcred
+
+    def validate_maxlen(self, reference):
+        """ A reference may not be longer than 35 positions """
+
+        if len(reference) > 35:
+            raise ReferenceToLongError("The reference is too long")
+        return reference
+
+    @validates("our_ref")
+    def validate_our_reference(self, key, our_ref):
+        """ Validate our reference """
+
+        return self.validate_maxlen(our_ref)
 
     def add(self):
         """ Add this amount to the session. """
@@ -145,6 +209,14 @@ class IncomingAmounts(db.Model):
                 if self.payment_amount == assigned_until_now:
                     self.fully_assigned = True
                 assignment.add()
+
+    def assigned(self):
+        """ Total up the amount assigned to this payment """
+
+        assigned_total = 0
+        for assigned_amount in self.used_in:
+            assigned_total += assigned_amount.amount_assigned
+        return assigned_total
 
 class IncomingAmountsList(list):
     ''' A list of incoming amounts to be processed  '''
