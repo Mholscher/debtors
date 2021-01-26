@@ -118,6 +118,20 @@ class TestCreatePayment(unittest.TestCase):
         self.assertEqual(IncomingAmounts.get_payment_by_id(ia10_id).id,
                          ia10_id, 'Wrong/no payment retrieved by id')
 
+    def test_attach_client_when_assigned_fails(self):
+        """ We cannot assitgn a non-existing client """
+
+        ia18 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=48856,
+                               creditor_iban= 'NL08INGB0212952123',
+                               client_name='F.K. Giropal')
+        ia18.add()
+        aa04 = AssignedAmounts(ccy='USD', amount_assigned=3)
+        aa04.from_amount = ia18
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            ia18.change_client(self.clt3)
+
 
 class TestCAMTEntryHandler(unittest.TestCase):
 
@@ -445,9 +459,12 @@ class TestAssignment(unittest.TestCase):
         parse(self.infile, self.camthandler)
         ia06 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
+
         ia06.assign_amount()
+
         aa01 = db.session.query(AssignedAmounts).\
             filter_by(from_amount=ia06).first()
+
         self.assertEqual(aa01.from_amount.id, ia06.id, 'Not assigned')
         self.assertEqual(aa01.bill.status, 'paid', 'Status not set to paid')
         self.assertTrue(ia06.fully_assigned, 'Fully assigned not set')
@@ -464,6 +481,20 @@ class TestAssignment(unittest.TestCase):
         bll8.lines.append(blll4)
         bll8.client = self.clt5
         bll8.add()
+
+        bll10 = Bills(billing_ccy='JPY', date_sale=date(year=2020, month=2,
+                                                       day=14),
+                     date_bill=date(year=2020, month=2, day=16), 
+                     status='issued')
+        blll6 = BillLines(short_desc='35',
+                    long_desc='Perfume bottle',
+                    number_of=2,
+                    measured_in='box',
+                    unit_price=116)
+        bll10.lines.append(blll6)
+        bll10.add()
+        bll10.client = self.clt5
+
         ia02 = IncomingAmounts(payment_ccy='JPY',
                                creditor_iban= 'NL76INGB0594788005',
                                payment_amount=1890)
@@ -473,7 +504,7 @@ class TestAssignment(unittest.TestCase):
         ia02.assign_amount()
         db.session.flush()
         aa02 = db.session.query(AssignedAmounts).all()
-        self.assertEqual(len(aa02), 2, 'Not assigned to 2 bills')
+        self.assertEqual(len(aa02), 3, 'Not assigned to 2 bills')
         self.assertEqual(ia02.client, self.clt5, 'Not attached to client')
 
     def test_unassigned_is_attached_to_client(self):
@@ -524,6 +555,29 @@ class TestAssignment(unittest.TestCase):
         db.session.flush()
         ial05 = ia11.find_assignment_targets()
         self.assertNotIn(self.bll2, ial05, 'Bill is in targets')
+
+    def test_attach_client_triggers_assignment(self):
+        """ When attaching a new client, assignment is tried """
+
+        ia18 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=48856,
+                               creditor_iban= 'NL08INGB0212952123',
+                               client_name='F.K. Giropal')
+        ia18.add()
+        bll9 = Bills(billing_ccy='USD', date_sale=date(year=2020, month=2,
+                                                       day=16),
+                     date_bill=date(year=2020, month=2, day=16), 
+                     status='issued')
+        bll9.client = self.clt2
+        blll5 = BillLines(short_desc='phi', number_of=2,
+                          unit_price=1300)
+        bll9.add()
+        blll5.bill = bll9
+        db.session.flush()
+        ia18.change_client(self.clt2)
+        db.session.flush()
+        aa05 = db.session.query(AssignedAmounts).filter_by(bill=bll9).first()
+        self.assertTrue(aa05, 'No assignement took place')
 
 
 class TestPaymentTransactions(unittest.TestCase):

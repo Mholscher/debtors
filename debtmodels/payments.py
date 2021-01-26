@@ -58,6 +58,12 @@ class ReferenceToLongError(InvalidDataError):
 
     pass
 
+
+class CanNotAttachIfMoneyAssignedError(InvalidDataError):
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -176,10 +182,17 @@ class IncomingAmounts(db.Model):
     def find_assignment_targets(self):
         """ Finds a target for assignments """
 
-        bills_with_account = Bills.bills_for_IBAN(self.creditor_iban)
-        usable_bills = [bill for bill in bills_with_account 
-                        if bill.total() <= self.payment_amount
-                        and bill.billing_ccy == self.payment_ccy]
+        if not self.client:
+            self.client = self.find_client_to_attach()
+
+        if self.client:
+            bills_for_client = Bills.get_outstanding_bills(self.client)
+            usable_bills = [bill for bill in bills_for_client 
+                            if bill.total() <= self.payment_amount
+                            and bill.billing_ccy == self.payment_ccy]
+        else:
+            usable_bills = []
+
         if self.client_ref:
             bills_having_id = Bills.bills_having_id(self.client_ref)
             usable_bills.extend([bill for bill in bills_having_id 
@@ -217,6 +230,15 @@ class IncomingAmounts(db.Model):
         for assigned_amount in self.used_in:
             assigned_total += assigned_amount.amount_assigned
         return assigned_total
+
+    def change_client(self, new_client):
+        """ Change the client the payment is assigned to """
+
+        if self.assigned():
+            raise CanNotAttachIfMoneyAssignedError("Cannot attach to payment with assigned amount")
+        self.client = new_client
+        self.assign_amount()
+
 
 class IncomingAmountsList(list):
     ''' A list of incoming amounts to be processed  '''

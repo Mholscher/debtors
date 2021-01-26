@@ -114,13 +114,15 @@ class PaymentUpdateView(MethodView):
             flash('No payment to attach client to')
             return redirect(url_for('.payment_create'))
         payment = IncomingAmounts.query.filter_by(id=payment_id).first()
-        if payment.assigned():
-            flash('Cannot attach to client when money assigned')
-            return redirect(url_for('.payment_update', payment_id=payment_id))
         client_id = update_form.client_id.data
         client = Clients.query.filter_by(id=client_id).first()
         if client:
-            payment.client = client
+            try:
+                payment.change_client(client)
+            except ValueError as ve:
+                flash(str(ve))
+                return redirect(url_for('.payment_update',
+                                        payment_id=payment_id))
         else:
             flash('No client {} to attach'.format(client_id))
             return redirect(url_for('.payment_update', payment_id=payment_id))

@@ -211,7 +211,7 @@ def add_lines_to_bills(instance):
     The instance bills are in instance.bills 
     """
 
-    bill = instance.bills[0]
+    bill = instance.bll1
     bill_line = BillLines(short_desc='S1',
                         long_desc='A longer description one',
                         number_of=15,
@@ -223,14 +223,14 @@ def add_lines_to_bills(instance):
                         measured_in='Kilo',
                         unit_price=234)
     bill.lines.append(bill_line)
-    bill = instance.bills[1]
+    bill = instance.bll2
     bill_line = BillLines(short_desc='1276',
                         long_desc='Outside business place',
                         number_of=1,
                         measured_in='unit',
                         unit_price=128734)
     bill.lines.append(bill_line)
-    bill = instance.bills[2]
+    bill = instance.bll3
     bill_line = BillLines(short_desc='h0',
                         long_desc='Grease',
                         number_of=2,
@@ -255,14 +255,14 @@ def add_lines_to_bills(instance):
                         measured_in='box',
                         unit_price=1876)
     bill.lines.append(bill_line)
-    bill = instance.bills[3]
+    bill = instance.bll4
     bill_line = BillLines(short_desc='765',
                         long_desc='Nine inch nails',
                         number_of=5,
                         measured_in='box',
                         unit_price=376)
     bill.lines.append(bill_line)
-
+    bill = instance.bll5
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """

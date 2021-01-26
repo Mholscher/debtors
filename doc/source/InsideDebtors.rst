@@ -44,3 +44,10 @@ Test CAMT053 files are not fully standards conform
 --------------------------------------------------
 
 The delivered files for testing the CAMT053 files are not meant to be standards conform. We test several aspects of the translation into IncomingAmounts (amounts ready to assign to bills) and these files reflect what we are testing. E.g. a CAMT053 can contain statements for different accounts, but the postings for each account must always be in the currency of the account. This is not the case in "SEPA transactions test assignment".
+
+Handling of "zero debt" and "zero payments"
+-------------------------------------------
+
+It is possible to enter bills and payments into the system with a zero amount. Of course that is not really useful. But, as a zero bill will always be payable and a zero payment can be satisfied by any payment, as long as one payment follows a zero bill, we are OK.
+
+A zero payment is more of a problem as it will only be paid if followed by a non-zero payment.

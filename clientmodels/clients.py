@@ -209,7 +209,7 @@ class Clients(db.Model):
         try:
             return BankAccounts.get_account_by_iban(iban).owner
         except NoAccountFoundError as naf:
-            raise NoClientFoundError(naf.message) from naf
+            raise NoClientFoundError(str(naf)) from naf
 
     @staticmethod
     def get_clients_by_name(surname):
