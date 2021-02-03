@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
-""" This module holds the model classes for the processing of incoming 
+""" This module holds the model classes for the processing of incoming
 payments.
 
 Incoming payments are identified for the payor and the bill that the
@@ -27,8 +27,7 @@ of the amount retained for further processing.
 
 from datetime import datetime
 from debtors import db
-from sqlalchemy import event
-from sqlalchemy.orm import Session, validates
+from sqlalchemy.orm import validates
 from iso4217 import raw_table  # This is the currency table
 from debtors import InvalidDataError
 from debtmodels.debtbilling import Bills
@@ -64,6 +63,16 @@ class CanNotAttachIfMoneyAssignedError(InvalidDataError):
     pass
 
 
+class CanOnlyAssignBillAmount(ValueError):
+
+    pass
+
+
+class CanOnlyAssignToBillInSameCcy(ValueError):
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -71,31 +80,33 @@ def validate_currency(currency):
     return currency if currency in raw_table.keys() else None
 
 
-
 class IncomingAmounts(db.Model):
     """ Incoming amounts are all stored in this table.
-    
+
     After these have been stored, the assigning process takes these amounts
     and assigns them to a debt or a payment reversal.
-    
+
     The fields have the following meaning:
 
         :file_timestamp: The date time the paymetn was processed
         :payment_ccy: The currency of the payment
         :payment_amount: The amount in the smallest unit (cents for $ and €)
-        :debcred: To be able to process reversal we need to know debit or credit
-        :client_id: After the client has been found, (s)he is coupled to the             amount; this is the assignming process.
+        :debcred: To be able to process reversal we need to know debit
+            or credit
+        :client_id: After the client has been found, (s)he is coupled to
+            the amount; this is the assignming process.
         :value_date: The date that the amount was added to our bank balkance
         :our_ref: If a reference that we produced is on the payment, this is it
         :bank_ref: The reference from the clients bank
         :client_ref: The clients reference if (s)he has added one
-        :client_name: The name on the statement or document that documents the payment
+        :client_name: The name on the statement or document that documents
+            the payment
         :creditor_iban: The IBAN the payment was made from
         """
 
     CREDIT = "Cr"
     DEBIT = "Db"
-    DEBCRED = { CREDIT : "Credit", DEBIT : "Debit" }
+    DEBCRED = {CREDIT: "Credit", DEBIT: "Debit"}
     __tablename__ = 'payments'
     id = db.Column(db.Integer, db.Sequence('payment_seq'),
                    primary_key=True)
@@ -107,7 +118,7 @@ class IncomingAmounts(db.Model):
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
                           index=True, nullable=True)
     value_date = db.Column(db.DateTime, default=datetime.now,
-                               nullable=True)
+                           nullable=True)
     our_ref = db.Column(db.String(35))
     bank_ref = db.Column(db.String(35))
     client_ref = db.Column(db.String(35))
@@ -118,7 +129,6 @@ class IncomingAmounts(db.Model):
     amount_queued = db.relationship('AmountQueued', uselist=False,
                                     backref='incoming_amount',
                                     cascade='all, delete')
-
 
     @validates("payment_ccy")
     def validate_ccy(self, key, currency):
@@ -131,13 +141,11 @@ class IncomingAmounts(db.Model):
         raise IncomingAmountInvalidCcyError(
             'The currency {} is invalid'.format(currency))
 
-
-
     @validates("debcred")
     def validatedebcred(self, key, debcred):
         """ Validate the values in the debit/credit indicator  """
 
-        if not debcred in {"Cr", "Db" }:
+        if debcred not in {"Cr", "Db"}:
             raise InvalidDebitCreditError("{} is invalid".format(debcred))
 
         return debcred
@@ -168,7 +176,8 @@ class IncomingAmounts(db.Model):
             first()
         if payment:
             return payment
-        raise IncomingAmountNotFoundError('No payment for id {}'.format(payment_id))
+        raise IncomingAmountNotFoundError('No payment for id {}'
+                                          .format(payment_id))
 
     def find_client_to_attach(self):
         """ We try to find the client that made the payment """
@@ -187,7 +196,7 @@ class IncomingAmounts(db.Model):
 
         if self.client:
             bills_for_client = Bills.get_outstanding_bills(self.client)
-            usable_bills = [bill for bill in bills_for_client 
+            usable_bills = [bill for bill in bills_for_client
                             if bill.total() <= self.payment_amount
                             and bill.billing_ccy == self.payment_ccy]
         else:
@@ -195,15 +204,20 @@ class IncomingAmounts(db.Model):
 
         if self.client_ref:
             bills_having_id = Bills.bills_having_id(self.client_ref)
-            usable_bills.extend([bill for bill in bills_having_id 
-                            if bill.total() <= self.payment_amount
-                            and bill.billing_ccy == self.payment_ccy
-                            and bill not in usable_bills])
+            usable_bills.extend([bill for bill in bills_having_id
+                                if bill.total() <= self.payment_amount
+                                and bill.billing_ccy == self.payment_ccy
+                                and bill not in usable_bills])
         usable_bills.sort(key=lambda bill: bill.total(), reverse=True)
         return usable_bills
 
     def assign_amount(self):
-        """ Assign this amount to an outstanding bill """
+        """ Assign this amount to an outstanding bill 
+
+        This routine scripts finding assignment candidates, 
+        attaching a client to the payment and executing as many
+        assignments as we can from this payment.
+        """
 
         client = self.find_client_to_attach()
         if client:
@@ -211,17 +225,12 @@ class IncomingAmounts(db.Model):
         usable_bills = self.find_assignment_targets()
         assigned_until_now = 0
         for bill in usable_bills:
-            if bill.total() <= self.payment_amount - assigned_until_now:
-                assignment =\
-                    AssignedAmounts(amount_id=self.id,
-                                   ccy=self.payment_ccy,
-                                   amount_assigned=bill.total())
-                assignment.bill = bill
-                assigned_until_now += assignment.amount_assigned
-                bill.status = Bills.PAID
+            to_assign = bill.total()
+            if to_assign <= self.payment_amount - assigned_until_now:
+                self.assign_to_bill(bill, amount=to_assign)
+                assigned_until_now += to_assign
                 if self.payment_amount == assigned_until_now:
                     self.fully_assigned = True
-                assignment.add()
 
     def assigned(self):
         """ Total up the amount assigned to this payment """
@@ -235,9 +244,39 @@ class IncomingAmounts(db.Model):
         """ Change the client the payment is assigned to """
 
         if self.assigned():
-            raise CanNotAttachIfMoneyAssignedError("Cannot attach to payment with assigned amount")
+            raise CanNotAttachIfMoneyAssignedError("Cannot attach\
+                to payment with assigned amount")
         self.client = new_client
         self.assign_amount()
+
+    def assign_to_bill(self, bill, *, amount=None):
+        """ Create an assignment for this amount to bill
+
+            :bill: Assign the amount to this bill
+            :amount: If the full payment is not to be assigned to this bill,
+                the amount that callee thinks need to be assigned.
+
+        """
+
+        if amount is None:
+            assignment_amount = self.payment_amount
+        else:
+            assignment_amount = amount
+
+        if self.payment_ccy != bill.billing_ccy:
+            raise CanOnlyAssignToBillInSameCcy("Currency of bill is {}"
+                                               .format(bill.billing_ccy))
+
+        if assignment_amount != bill.total():
+            raise CanOnlyAssignBillAmount("Amount to be assigned must be equal billed amount")
+
+        assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
+                                          amount_assigned =
+                                            assignment_amount)
+        assigned_amount.bill = bill
+        bill.bill_is_paid()
+        assigned_amount.from_amount = self
+        return assigned_amount
 
 
 class IncomingAmountsList(list):
@@ -252,7 +291,7 @@ class IncomingAmountsList(list):
 class AmountQueued(db.Model):
     """ Amounts incoming waiting to be assigned
 
-    An amount that comes in needs to be assigned to a debt. This happens 
+    An amount that comes in needs to be assigned to a debt. This happens
     in an asynchronous way, so as to not slow other transactions down.
     This is a queued amount.
 
@@ -284,20 +323,23 @@ class AmountQueued(db.Model):
 
 class AssignedAmounts(db.Model):
     """ These are the amounts that are assigned to a bill or payment
-    
+
     When (part of) an amount is used to pay a bill, an assigned amount is
     created for the amount used and the source. Assigned amounts are only
     created if a bill can be paid in full; we do not assign amounts to
     partially pay a bill.
 
-    Payments may also be assigned to another payment. Se the documentation for an example.
+    Payments may also be assigned to another payment. Se the documentation
+    for an example.
 
         :id: The generated sequence number
         :amount_id: The id of the incoming amount that is assigned from
         :ccy: The amount of the assigned ccy
         :amount_assigned: How much of the incoming amount is assigned here
-        :bill_id: If assigned to a bill (the standard action) the bill assigned to
-        :amount_id_to: If assigned to another incoming amount, the id of the amount to which we assigned it
+        :bill_id: If assigned to a bill (the standard action) the bill
+            assigned to
+        :amount_id_to: If assigned to another incoming amount, the id of the
+            amount to which we assigned it
         :amount_to: The amount (in new ccy if applicable) on the new amount
 
     """
@@ -311,13 +353,13 @@ class AssignedAmounts(db.Model):
     bill_id = db.Column(db.Integer, db.ForeignKey('bill.bill_id'),
                         nullable=True)
     amount_id_to = db.Column(db.Integer, db.ForeignKey('payments.id'),
-                            nullable=True)
+                             nullable=True)
     amount_to = db.Column(db.Integer, default=0)
     bill = db.relationship('Bills', backref='assignments')
-    from_amount = db.relationship('IncomingAmounts',uselist=False, 
-                                    foreign_keys=[amount_id],
-                                    backref='used_in')
-    to_amount = db.relationship('IncomingAmounts', 
+    from_amount = db.relationship('IncomingAmounts', uselist=False,
+                                  foreign_keys=[amount_id],
+                                  backref='used_in')
+    to_amount = db.relationship('IncomingAmounts',
                                 foreign_keys=[amount_id_to],
                                 backref='from_amt')
 

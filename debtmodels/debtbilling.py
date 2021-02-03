@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
-""" This module contains the database interface items for the debt processing: 
+""" This module contains the database interface items for the debt processing:
 
     *   the receipt and storing of preprocessed information for new bills
     *   the alteration of bills due to payment and changes to bills
@@ -54,6 +54,7 @@ class InvalidBillingCcyError(InvalidDataError):
 
     pass
 
+
 class NoSaleDateError(InvalidDataError):
     """ A sale date is required but not supplied """
 
@@ -90,16 +91,24 @@ class InvalidMediumError(ValueError):
 
 class Bills(db.Model):
     """ Bill models the bill sent to the client.
-    
-    The bill is created either by another system sending a bill request, or through the user entering billing data. Changes through the bill are from inside the debtors system when a bill is paid, or it is replaced by another one.
+
+    The bill is created either by another system sending a bill request,
+    or through the user entering billing data. Changes through the bill
+    are from inside the debtors system when a bill is paid, or it is
+    replaced by another one.
 
         :bill_id: The primary key, goes up from 1
-        :client_id: The client number the bill will be sent to. This si a foreign key into the client database
+        :client_id: The client number the bill will be sent to. This is
+            a foreign key into the client database
         :billing_ccy: The currency the bill is issued in.
-        :date_sale: The date the system creating the bill request (the message triggering creation of the database record) wants to see on the bill as the date of the sale/contract/..
+        :date_sale: The date the system creating the bill request
+            (the message triggering creation of the database record)
+            wants to see on the bill as the date of the sale/contract/..
         :date_bill: The date the billing program created and sent the bill
-        :prev_bill: If a bill is incorrect, a new one is sent. This is the number that this bill is replacing (so found on the new bill)
-        :status: What can we do with this bill? E.g. a paid bill cannot be resent
+        :prev_bill: If a bill is incorrect, a new one is sent. This is
+            the number that this bill is replacing (so found on the new bill)
+        :status: What can we do with this bill? E.g. a paid bill cannot
+            be resent
 
     """
 
@@ -107,8 +116,8 @@ class Bills(db.Model):
     ISSUED = 'issued'
     PAID = 'paid'
     REPLACED = 'replaced'
-    STATUS_NAME = { 'new' : 'New', 'issued' : 'Billed, unpaid',
-                    'paid' : 'Fully paid', 'replaced' : 'Bill replaced' }
+    STATUS_NAME = {'new': 'New', 'issued': 'Billed, unpaid',
+                   'paid': 'Fully paid', 'replaced': 'Bill replaced'}
 
     __tablename__ = 'bill'
     bill_id = db.Column(db.Integer,  db.Sequence('bill_sequence'),
@@ -134,7 +143,7 @@ class Bills(db.Model):
     def validate_billing_ccy(self, key, billing_ccy):
         """ Validate the currency against iso 4217 table """
 
-        if not billing_ccy in raw_table.keys():
+        if billing_ccy not in raw_table.keys():
             raise InvalidBillingCcyError(
                 'The currency {} is invalid'.format(billing_ccy))
         return billing_ccy
@@ -157,7 +166,7 @@ class Bills(db.Model):
     def validate_bill_status(self, key, status):
         """ Checks a status passed has a valid value """
 
-        if not status in Bills.STATUS_NAME:
+        if status not in Bills.STATUS_NAME:
             raise BillStatusInvalidError('Status {} is invalid'.format(status))
         return status
 
@@ -202,10 +211,11 @@ class Bills(db.Model):
         try:
             old = Bills.get_bill_by_id(prev_bill)
         except BillNotFoundError:
-            raise ReplacedBillError('The bill {0} to replace does not exist'.format(prev_bill))
-        if not old.status in {Bills.NEW, Bills.ISSUED}:
-            msg = 'Bill to replace {0} has invalid status {1}'.\
-                format(prev_bill, old.status)
+            raise ReplacedBillError('The bill {0} to replace does not exist'.
+                                    format(prev_bill))
+        if old.status not in {Bills.NEW, Bills.ISSUED}:
+            msg = 'Bill to replace {0} has invalid status {1}'\
+                .format(prev_bill, old.status)
             raise ReplacedBillError(msg)
         return prev_bill
 
@@ -220,16 +230,16 @@ class Bills(db.Model):
         """ Return a list of outstanding bills for client """
 
         return Bills.get_bills_with_status(client, [Bills.NEW, Bills.ISSUED])
-    
+
     @staticmethod
     def bills_for_IBAN(IBAN):
         """ Get a list of bills with the IBAN passed in """
 
-        accounts =  db.session.query(BankAccounts).filter_by(iban=IBAN).\
+        accounts = db.session.query(BankAccounts).filter_by(iban=IBAN).\
             all()
-        clients = [account.owner for account in accounts] 
-        return [bill for client in clients for bill in client.bills\
-            if bill.status == Bills.ISSUED]
+        clients = [account.owner for account in accounts]
+        return [bill for client in clients for bill in client.bills
+                if bill.status == Bills.ISSUED]
 
     @staticmethod
     def bills_having_id(reference):
@@ -260,7 +270,15 @@ class Bills(db.Model):
         if old:
             old.set_replaced()
             return
-        raise BillNotFoundError(f"The bill with id {bill_id} was not found")
+        raise BillNotFoundError(f"The bill with id {self.prev_bill} was not found")
+
+    def bill_is_paid(self):
+        """A bill is paid.
+
+        Currently no side effects, so just set to paid.
+        """
+
+        self.status = self.PAID
 
     @classmethod
     def create_from_dict(cls, bill_dict):
@@ -271,10 +289,10 @@ class Bills(db.Model):
         items, as will bill lines. The result is a bill that is returned.
         """
 
-        client = Clients.get_by_id(int(bill_dict['client'])) 
+        client = Clients.get_by_id(int(bill_dict['client']))
         try:
             bill = cls(date_sale=parse(bill_dict["date-sale"]))
-        except KeyError as ke:
+        except KeyError:
             raise NoSaleDateError("date-sale missing")
         bill.client = client
         if bill_dict.get('currency'):
@@ -314,7 +332,7 @@ class BillLines(db.Model):
     short_desc = db.Column(db.String(10), nullable=False)
     long_desc = db.Column(db.String(40))
     number_of = db.Column(db.Integer, server_default='1')
-    measured_in = db.Column(db.String(10), nullable=True) 
+    measured_in = db.Column(db.String(10), nullable=True)
     unit_price = db.Column(db.Integer, nullable=False)
 
     def add(self):
@@ -347,11 +365,10 @@ class BillLines(db.Model):
     def get_by_id(line_id):
         """ Get a line by id """
 
-        line = db.session.query(BillLines).filter_by(line_id = line_id).first()
+        line = db.session.query(BillLines).filter_by(line_id=line_id).first()
         if line:
             return line
         raise BillLineNotFoundError("No line found for id")
-
 
     @classmethod
     def create_line_from_dict(cls, bill, line_dict):
@@ -387,11 +404,11 @@ class DebtorPreferences(db.Model):
     PREF_POSTAL = 'post'
     PREF_DEBIT = 'dd'
     BILL_MEDIA = {PREF_MAIL, PREF_POSTAL, PREF_DEBIT}
-    LETTER_MEDIA =  {PREF_MAIL, PREF_POSTAL}
+    LETTER_MEDIA = {PREF_MAIL, PREF_POSTAL}
 
     __table_name__ = 'debtprefs'
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
-                        nullable=False, primary_key=True)
+                          nullable=False, primary_key=True)
     bill_medium = db.Column(db.String(5), default='mail')
     letter_medium = db.Column(db.String(5), server_default='post')
     client = db.relationship('Clients', backref='debtor_prefs')
@@ -403,7 +420,8 @@ class DebtorPreferences(db.Model):
             return bill_medium
         if bill_medium in self.BILL_MEDIA:
             return bill_medium
-        raise InvalidMediumError('{} is not a valid bill medium'.format(bill_medium))
+        raise InvalidMediumError('{} is not a valid bill medium'
+                                 .format(bill_medium))
 
     @validates('letter_medium')
     def validate_letter_medium(self, key, letter_medium):
@@ -412,7 +430,8 @@ class DebtorPreferences(db.Model):
             return letter_medium
         if letter_medium in self.BILL_MEDIA:
             return letter_medium
-        raise InvalidMediumError('{} is not a valid letter medium'.format(letter_medium))
+        raise InvalidMediumError('{} is not a valid letter medium'
+                                 .format(letter_medium))
 
     def check_media(self, session):
         """ Check if the chosen media for the client are available.

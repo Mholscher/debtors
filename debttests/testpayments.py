@@ -307,6 +307,7 @@ class TestAssignAmounts(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        add_lines_to_bills(self)
         db.session.flush()
         self.camthandler = CAMT53Handler()
         self.parser = make_parser()
@@ -354,6 +355,100 @@ class TestAssignAmounts(unittest.TestCase):
         db.session.flush()
         self.assertIn(incoming_amount, self.clt4.payments,
                       'Payment not in clients payments')
+
+    def test_assign_to_any_bill(self):
+        """ Assign a payment to a bill not for the attached client """
+
+        ia19 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=1000,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 21))
+        ia19.client = self.clt3
+        ia19.add()
+        db.session.flush()
+        aa06 = AssignedAmounts(ccy='JPY',
+                               amount_assigned=1000)
+        aa06.bill = self.bll4
+        db.session.flush()
+        self.assertIn(aa06, self.bll4.assignments, "Not assigned to bill")
+
+    def test_assign_amount_through_method(self):
+        """ Assign a full payment to a bill """
+
+        ia20 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=1880,
+                               debcred='Cr',
+                               value_date=datetime(2020, 12, 11))
+        ia20.client = self.clt3
+        ia20.add()
+        db.session.flush()
+        aa07 = ia20.assign_to_bill(self.bll4)
+        self.assertIn(aa07, ia20.used_in, "Not assigned to amount")
+
+    def test_assignment_must_be_less_eq__payment(self):
+        """ We can not assign more than the bill amount """
+
+        ia21 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=3760,
+                               debcred='Cr',
+                               value_date=datetime(2021, 2, 1))
+        ia21.client = self.clt3
+        ia21.add()
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            aa08 = ia21.assign_to_bill(self.bll4)
+
+    def test_incoming_amount_bill_must_be_same_ccy(self):
+        """ A payment must be same currency as bill to assign"""
+
+        ia22 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=890,
+                               debcred='Cr',
+                               value_date=datetime(2021, 2, 1))
+        ia22.client = self.clt4
+        ia22.add()
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            aa09 = ia22.assign_to_bill(self.bll4)
+
+    def test_assignment_pays_bill(self):
+        """ If we assign "enough" cash to a bill, it is paid """
+
+        ia23 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=1880,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 25))
+        ia23.client = self.clt3
+        ia23.add()
+        db.session.flush()
+        aa10 = ia23.assign_to_bill(self.bll4)
+        self.assertEqual(self.bll4.status, "paid", "Bill not set paid")
+
+    def test_cannot_assign_less_than_bill_amount(self):
+        """ Assigning less than bill amount fails """
+
+        ia24 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=1758,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 25))
+        ia24.client = self.clt3
+        ia24.add()
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            aa11 = ia24.assign_to_bill(self.bll4)
+
+    def test_can_assign_part_of_payment(self):
+        """ Part of a payment can be assigned to pay a bill """
+
+        ia25 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=3760,
+                               debcred='Cr',
+                               value_date=datetime(2021, 2, 1))
+        ia25.client = self.clt3
+        ia25.add()
+        db.session.flush()
+        aa12 = ia25.assign_to_bill(self.bll4, amount=self.bll4.total())
+        self.assertEqual(self.bll4.status, Bills.PAID, "Bill not paid")
 
 
 class TestAssignment(unittest.TestCase):
@@ -461,6 +556,7 @@ class TestAssignment(unittest.TestCase):
             filter_by(bank_ref='011111333306999888000000008').first()
 
         ia06.assign_amount()
+        db.session.flush()
 
         aa01 = db.session.query(AssignedAmounts).\
             filter_by(from_amount=ia06).first()
