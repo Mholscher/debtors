@@ -798,4 +798,22 @@ class TestPaymentTransactions(unittest.TestCase):
                                             'value_date':'17-12-2020'})
         self.assertIn(b'The currency', rv.data,  "Error not on screen")
 
+    def test_assign_to_bill(self):
+        """ Assign a payment to a bill """
 
+        ia24 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=1880,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 17))
+        ia24.client = self.clt3
+        ia24.add()
+        db.session.flush()
+        routestr = "/payment/assign/" + str(ia24.id) + "/bill/" + str(self.bll4.bill_id)
+        rv = self.app.post(routestr)
+        self.assertEqual(self.bll4.status, Bills.PAID, "Bill not assigned")
+
+    def test_assign_nonexisting_payment_fails(self):
+        """ Getting a non-existing payment to assign fails """
+
+        rv = self.app.get('/payment/assign/1')
+        self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')

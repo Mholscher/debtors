@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from 'fields.html' import fld %}
+{% from 'nolabel.html' import nolabel %}
+
+{% block title %}
+  <title>Payment {{payment.id}} assignment</title>
+{% endblock %}
+
+{% block searches %}
+    {% include 'clientsearch.html' %}
+{% endblock searches %}
+{% block content %}
+<div class="staticline">
+<div class="lbl"> Currency </div>{{payment.payment_ccy}}<br/>
+<div class="lbl">Amount </div> {{payment.payment_amount}}<br/>
+<div class="lbl">Debit/credit </div>{{payment.debcred}}<br/>
+<div class="lbl">Our reference </div>{% if payment.our_ref %} {{payment.our_ref}} {% endif%}<br/>
+<div class="lbl">Client reference </div>{% if payment.client_refrence %} {{payment.client_ref}} {% endif %}<br/>
+<div class="lbl">Client IBAN </div>{% if payment.creditor_iban %}{{payment.creditor_iban}} {% endif %}<br/>
+<div class="lbl">Client name </div>{% if payment.client_name %}{{payment.client_name}} {% endif %}<br/>
+
+<h2> Select debt <h2>
+<table>
+</div>
+    {% for bill in search_bills %}
+<tr>
+<td><form action={{ url_for('.payment_assign', payment_id=form.payment_id.data, bill_id=bill.bill_id.data) }} method="GET" class="inlineform">
+{{payment.bill.bill_id}} {{ bill.client.surname }} {{ bill.client.initials }} {{bill.billing_ccy}} {{bill.bill_amount}} {{bill.bill_id}} <input type="submit" value="Pay this" id="pay">Pay this<input>
+</form></td>
+{% endfor %}
+</tr>
+</table>
+{% endblock content %}

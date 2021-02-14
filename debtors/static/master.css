@@ -47,7 +47,14 @@ a.IMG {
     background-color : bisque ;
     display : block ;
     }
-    
+
+.staticline {
+    width : 50em ;
+    margin : 1em ;
+    display : block ;
+    }
+
+
 .inlineform {
     width : 50em ;
     display : block ;

@@ -26,11 +26,37 @@ from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from clientmodels.clients import Clients
 from debtors import db
+from debtviews.monetary import edited_amount
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
+from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
+
+class PaymentDict(dict):
+    """ Create backing for use of payments without form
+
+    When using a form all this is taken care of by the form. Without
+    form we do it ourselves.
+    """
+
+    def __init__(self, payment):
+
+        if not payment:
+            raise IncomingAmountNotFoundError("No payment for conversion")
+
+        self["id"] = payment.id
+        self["payment_ccy"] = payment.payment_ccy
+        self["payment_amount"] = edited_amount(payment.payment_amount,
+                                               currency=payment.payment_ccy)
+        self["debcred"] = IncomingAmounts.DEBCRED[payment.debcred]
+        self["value_date"] = payment.value_date.strftime("%d-%m-%Y")
+        self["our_ref"] = payment.our_ref
+        self["bank_ref"] = payment.bank_ref
+        self["client_ref"] = payment.client_ref
+        self["client_name"] = payment.client_name
+        self["creditor_iban"] = payment.creditor_iban
 
 class PaymentView(MethodView):
     """ This class shows the data of one payment on the web. """
@@ -130,3 +156,40 @@ class PaymentUpdateView(MethodView):
 
         return redirect(url_for('.payment_update', payment_id=payment_id))
 
+class PaymentAssignView(MethodView):
+    """ A paymentmay be assigned to a bill
+
+    The operator may search for bills in a few ways. Once the 
+    bill to be paid is found, it can be paid.
+    """
+
+    def get(self, payment_id):
+        """ Get the payment with id payment_id """
+
+        try:
+            payment = IncomingAmounts.get_payment_by_id(payment_id)
+        except ValueError as ve:
+            abort(404, str(ve))
+        payment = PaymentDict(payment)
+        client_search_form = ClientSearchForm()
+        search_results = []
+        return render_template('paymentassign.html', payment=payment,
+                               search_results=search_results,
+                               search_form=client_search_form)
+
+
+class PaymentAssignToBill(MethodView):
+    """ Assign a payment to a bill """
+
+    def post(self, payment_id, bill_id):
+        """ Assign the payment for payment_id to the bill for bill_id """
+
+        payment = IncomingAmounts.get_payment_by_id(payment_id)
+        if not payment:
+            raise IncomingAmountNotFoundError("No payment for {}"
+                                              .format(payment_id))
+        bill = Bills.get_bill_by_id(bill_id)
+        if not bill:
+            raise BillNotFoundError("No bill for {}".format(bill_id))
+        payment.assign_to_bill(bill)
+        return redirect(url_for("payment_assign", payment_id=payment_id))
