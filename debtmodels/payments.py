@@ -59,16 +59,24 @@ class ReferenceToLongError(InvalidDataError):
 
 
 class CanNotAttachIfMoneyAssignedError(InvalidDataError):
+    """ We cannot attach another client if money has been assigned """
 
     pass
 
 
 class CanOnlyAssignBillAmount(ValueError):
+    """ A bill can only be assigned the exact bill amount """
 
     pass
 
 
 class CanOnlyAssignToBillInSameCcy(ValueError):
+    """ Trying to assign to a bill in currency not equal to payment """
+
+    pass
+
+class NoSupportedArgumentError(ValueError):
+    """ No actual parameter found that is supported """
 
     pass
 
@@ -231,6 +239,7 @@ class IncomingAmounts(db.Model):
                 assigned_until_now += to_assign
                 if self.payment_amount == assigned_until_now:
                     self.fully_assigned = True
+                    break
 
     def assigned(self):
         """ Total up the amount assigned to this payment """
@@ -267,8 +276,9 @@ class IncomingAmounts(db.Model):
             raise CanOnlyAssignToBillInSameCcy("Currency of bill is {}"
                                                .format(bill.billing_ccy))
 
-        if assignment_amount != bill.total():
-            raise CanOnlyAssignBillAmount("Amount to be assigned must be equal billed amount")
+        if assignment_amount < bill.total():
+            raise CanOnlyAssignBillAmount("Amount to be assigned must be more than or equal billed amount")
+        assignment_amount = bill.total()
 
         assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
                                           amount_assigned =
@@ -277,6 +287,31 @@ class IncomingAmounts(db.Model):
         bill.bill_is_paid()
         assigned_amount.from_amount = self
         return assigned_amount
+
+    @staticmethod
+    def get_bill_targets(name=None, client_id=None, account_nr=None):
+        """ Get bills targeted in assignment by client or bank account
+
+        A user can assign a payment to any bill. This routine returns bills
+        from input:
+
+            :name: (part of) the name of a client
+            :number: the client number of a client
+            :bank account: a bank account number of a client
+
+        """
+
+        if client_id:
+            try:
+                client = Clients.get_by_id(client_id)
+                return Bills.get_outstanding_bills(client)
+            except ValueError as ve:
+                return []
+        if name:
+            return Bills.bills_for_clients_name_like(name)
+        if account_nr:
+            return Bills.bills_for_IBAN(account_nr)
+        raise NoSupportedArgumentError("Pass client name, number or bank account")
 
 
 class IncomingAmountsList(list):

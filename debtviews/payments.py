@@ -29,7 +29,8 @@ from debtors import db
 from debtviews.monetary import edited_amount
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtmodels.debtbilling import Bills, BillNotFoundError
-from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm
+from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm,\
+    FindClientForm
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
@@ -171,8 +172,22 @@ class PaymentAssignView(MethodView):
         except ValueError as ve:
             abort(404, str(ve))
         payment = PaymentDict(payment)
-        client_search_form = ClientSearchForm()
+        client_search_form = FindClientForm()
+
+        name=request.args.get("find_name", None)
+        client_id=request.args.get("find_number", None)
+        account_nr=request.args.get("find_bank_account", None)
+        search_values = (name, client_id, account_nr)
         search_results = []
+
+        if any(search_values):
+            search_results =\
+                IncomingAmounts.get_bill_targets(name=name,
+                                             client_id=client_id,
+                                             account_nr=account_nr)
+        for bill in search_results:
+            bill.billing_amount = edited_amount(bill.total(),
+                                                currency=bill.billing_ccy)
         return render_template('paymentassign.html', payment=payment,
                                search_results=search_results,
                                search_form=client_search_form)
@@ -192,4 +207,5 @@ class PaymentAssignToBill(MethodView):
         if not bill:
             raise BillNotFoundError("No bill for {}".format(bill_id))
         payment.assign_to_bill(bill)
+        db.session.commit()
         return redirect(url_for("payment_assign", payment_id=payment_id))

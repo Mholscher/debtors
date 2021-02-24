@@ -213,12 +213,14 @@ class TestBillFunctions(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         self.bill08.client = self.clt1
+        create_bills(self)
         db.session.flush()
 
     def tearDown(self):
 
         db.session.rollback()
         delete_test_prefs(self)
+        delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -253,7 +255,7 @@ class TestBillFunctions(unittest.TestCase):
         db.session.flush()
 
         bill08_new = db.session.query(Bills).filter_by(bill_id=bill08_id).first()
-        self.assertEqual(len(bill08_new.client.bills), 2, 'Wrong no. of bills')
+        self.assertEqual(len(bill08_new.client.bills), 4, 'Wrong no. of bills')
         self.assertEqual(len(self.clt2.bills), 0, 'Unexpected bill on client')
 
     def test_get_only_issued_bills(self):
@@ -282,6 +284,18 @@ class TestBillFunctions(unittest.TestCase):
         list_unpaid = Bills.get_outstanding_bills(self.clt1)
         self.assertIn(bill13, list_unpaid, 'Unpaid bill not in unpaid list')
         self.assertNotIn(bill14, list_unpaid, 'Paid bill  in unpaid list')
+
+    def test_return_bills_for_clients_like(self):
+        """ We get (part of) the name of clients, find their bills """
+
+        bill_list = Bills.bills_for_clients_name_like("Auber")
+        self.assertIn(self.bll4, bill_list, "Bill not in list")
+
+    def test_search_must_be_for_more(self):
+        """ The search string must be at least 3 characters """
+
+        with self.assertRaises(ValueError):
+            bill_list = Bills.bills_for_clients_name_like("Ka")
 
 
 class TestConvertToTagged(unittest.TestCase):
@@ -338,7 +352,7 @@ class TestConvertToTagged(unittest.TestCase):
         """ When we send in an empty list, failure occurs """
 
         with self.assertRaises(TypeError):
-            blld4 = BillListDict(bill_list=[])        
+            blld4 = BillListDict(bill_list=[])
 
 
 class TestBillTransactions(unittest.TestCase):

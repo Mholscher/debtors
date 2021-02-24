@@ -172,3 +172,11 @@ class ClientAttachForm(FlaskForm):
     payment_id = HiddenField('Payment sequence')
     client_id = StringField('Client number')
     attach = SubmitField('Attach client')
+
+class FindClientForm(FlaskForm):
+    """ Form for finding clients through different predicates """
+
+    find_name = StringField('By client: Name')
+    find_number = StringField('Number')
+    find_bank_account = StringField('Bankaccount')
+    search_client = SubmitField('Find client debt')

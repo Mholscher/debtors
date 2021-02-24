@@ -385,19 +385,6 @@ class TestAssignAmounts(unittest.TestCase):
         aa07 = ia20.assign_to_bill(self.bll4)
         self.assertIn(aa07, ia20.used_in, "Not assigned to amount")
 
-    def test_assignment_must_be_less_eq__payment(self):
-        """ We can not assign more than the bill amount """
-
-        ia21 = IncomingAmounts(payment_ccy='JPY',
-                               payment_amount=3760,
-                               debcred='Cr',
-                               value_date=datetime(2021, 2, 1))
-        ia21.client = self.clt3
-        ia21.add()
-        db.session.flush()
-        with self.assertRaises(ValueError):
-            aa08 = ia21.assign_to_bill(self.bll4)
-
     def test_incoming_amount_bill_must_be_same_ccy(self):
         """ A payment must be same currency as bill to assign"""
 
@@ -478,6 +465,7 @@ class TestAssignment(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
 
@@ -556,7 +544,7 @@ class TestAssignment(unittest.TestCase):
             filter_by(bank_ref='011111333306999888000000008').first()
 
         ia06.assign_amount()
-        db.session.flush()
+        db.session.commit()
 
         aa01 = db.session.query(AssignedAmounts).\
             filter_by(from_amount=ia06).first()
@@ -600,7 +588,7 @@ class TestAssignment(unittest.TestCase):
         ia02.assign_amount()
         db.session.flush()
         aa02 = db.session.query(AssignedAmounts).all()
-        self.assertEqual(len(aa02), 3, 'Not assigned to 2 bills')
+        self.assertEqual(len(aa02), 2, 'Not assigned to 2 bills')
         self.assertEqual(ia02.client, self.clt5, 'Not attached to client')
 
     def test_unassigned_is_attached_to_client(self):
@@ -675,6 +663,50 @@ class TestAssignment(unittest.TestCase):
         aa05 = db.session.query(AssignedAmounts).filter_by(bill=bll9).first()
         self.assertTrue(aa05, 'No assignement took place')
 
+    def test_find_assignment_target_by_client_name(self):
+        """ We can find assignment targets by (part of) client name """
+
+        bill_list = IncomingAmounts.get_bill_targets(name="Auber")
+        self.assertIn(self.bll4, bill_list, "Expected bill not returned")
+
+    def test_find_bills_but_none_found(self):
+        """ If we enter a name and no bill found, we get an empty list """
+
+        bill_list = IncomingAmounts.get_bill_targets(name="Knir")
+        self.assertEqual(bill_list, [], "No empty list returned")
+
+    def test_search_string_too_short_fails(self):
+        """ Passing a search string that is very short, fails. """
+
+        with self.assertRaises(ValueError):
+            bill_list = IncomingAmounts.get_bill_targets(name="Kr")
+
+    def test_find_by_number(self):
+        """ We can find bills for a client by client number """
+
+        client_id = self.clt5.id
+        bill_list = IncomingAmounts.get_bill_targets(client_id=client_id)
+        self.assertTrue(bill_list, "Bill list empty")
+        self.assertIn(self.bll4, bill_list, "Expected bill not returned")
+
+    def test_invalid_client_number_returns_empty_list(self):
+        """ When requesting an non-existing client number fails """
+
+        bill_list = IncomingAmounts.get_bill_targets(client_id=1)
+        self.assertEqual(bill_list, [], "Returned nhot an empty ;ist")
+
+    def test_find_by_bank_account(self):
+        """ We can find bills by bank account number  """
+
+        iban = 'NL95INGB0696154021'
+        bill_list = IncomingAmounts.get_bill_targets(account_nr=iban)
+
+    def test_pass_no_id_fails(self):
+        """ If we pass no parameters, finding bills fails """
+
+        with self.assertRaises(ValueError):
+            bill_list = IncomingAmounts.get_bill_targets()
+
 
 class TestPaymentTransactions(unittest.TestCase):
 
@@ -704,8 +736,8 @@ class TestPaymentTransactions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.query(AmountQueued).delete()
-        db.session.query(IncomingAmounts).delete()
         db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
         db.session.commit()
 
     def test_get_payment(self):
@@ -721,18 +753,18 @@ class TestPaymentTransactions(unittest.TestCase):
         rv = self.app.get('/payment/1')
         self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')
 
-    #def test_put_payment(self):
+    def test_put_payment(self):
         """ Create a new payment """
 
-        #self.app.put('/payment/new', data={'payment_ccy':'EUR',
-                                           #'payment_amount':'567,99',
-                                           #'debcred':'Cr',
-                                           #'value_date':'17-12-2020'})
-        #ia13 = db.session.query(IncomingAmounts).\
-            #filter_by(payment_amount=56799).first()
-        #self.assertEqual(ia13.value_date, parser.parse('17-12-2020'),
-                         #'Incorrect date')
-        #self.assertEqual(ia13.payment_ccy, 'EUR', 'Currency incorrect')
+        self.app.post('/payment/new', data={'payment_ccy':'EUR',
+                                           'payment_amount':'567,99',
+                                           'debcred':'Cr',
+                                           'value_date':'17-12-2020'})
+        ia13 = db.session.query(IncomingAmounts).\
+            filter_by(payment_amount=56799).first()
+        self.assertEqual(ia13.value_date, parser.parse('17-12-2020'),
+                         'Incorrect date')
+        self.assertEqual(ia13.payment_ccy, 'EUR', 'Currency incorrect')
 
 
     def test_attach_client(self):
@@ -808,8 +840,10 @@ class TestPaymentTransactions(unittest.TestCase):
         ia24.client = self.clt3
         ia24.add()
         db.session.flush()
+        bll4_id = self.bll4.bill_id
         routestr = "/payment/assign/" + str(ia24.id) + "/bill/" + str(self.bll4.bill_id)
         rv = self.app.post(routestr)
+        self.bll4 = db.session.query(Bills).filter_by(bill_id=bll4_id).first()
         self.assertEqual(self.bll4.status, Bills.PAID, "Bill not assigned")
 
     def test_assign_nonexisting_payment_fails(self):
@@ -817,3 +851,67 @@ class TestPaymentTransactions(unittest.TestCase):
 
         rv = self.app.get('/payment/assign/1')
         self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')
+
+    def test_assign_shows_debt_select(self):
+        """ When reading the assign page, we are shown the client fields """
+
+        ia26 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=19980,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia26.add()
+        db.session.flush()
+        rv = self.app.get('/payment/assign/' + str(ia26.id))
+        self.assertIn(b"By client", rv.data, 'No client search field')
+        self.assertIn(b"find_number", rv.data, 'No client search number field')
+        self.assertIn(b"find_bank_account", rv.data, 'No client search account field')
+
+    def test_find_by_name(self):
+        """ Search bills by name """
+
+        ia27 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=19980,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia27.add()
+        db.session.flush()
+        qrystring = "?find_name=" + "Aubergine"
+        rv = self.app.get('/payment/assign/' + str(ia27.id) + qrystring)
+        self.assertIn(b'Aubergine', rv.data, 'Name not in response')
+
+    def test_find_by_client_id(self):
+        """ Search bills for a client by number """
+
+        ia28 = IncomingAmounts(payment_ccy='USD',
+                               payment_amount=19980,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia28.add()
+        db.session.flush()
+        qrystring = "?find_number=" + str(self.clt5.id)
+        rv = self.app.get('/payment/assign/' + str(ia28.id) + qrystring)
+        self.assertIn(b'Aubergine', rv.data, 'Name not in response')
+
+    def test_assign_to_bill_via_screen(self):
+        """ The assign payment to bill  """
+
+        bll11 = Bills(billing_ccy='EUR',
+                      date_sale=parser.parse("2020-12-24"),
+                      date_bill=parser.parse("2020-12-28"),
+                      status="issued",
+                      client=self.clt3)
+        blll7 = BillLines(short_desc="ks",
+                          long_desc="Korte Steel",
+                          unit_price=1200,
+                          bill=bll11)
+        bll11.add()
+        db.session.commit()
+        bll11_id = bll11.bill_id
+        rv = self.app.post("/payment/assign/" + str(self.ia11.id) +
+                           "/bill/" + str(bll11.bill_id),
+                           follow_redirects=True)
+        bll12 = db.session.query(Bills).filter_by(bill_id=bll11_id).\
+            first()
+        self.assertTrue(bll12, "No bill with id {}".format(bll11_id))
+        self.assertEqual(bll12.status, "paid", "bill not paid")
+

@@ -39,9 +39,15 @@ a.IMG {
 
 .lbl {
     float : left ;
-    width : 20em ;
+    width : 40ch ;
     }
-    
+
+.lblindent {
+    float : left ;
+    width : 32ch ;
+    padding-left : 8ch ;
+    }
+
 .inputline {
     margin : 1em ;
     background-color : bisque ;
@@ -74,7 +80,8 @@ a.IMG {
     
 td, th {
     outline : 2px solid ;
-    width : 12em ;
+    min-width : 24ch ;
+    justify-content : center ;
     }
     
 .content-main {

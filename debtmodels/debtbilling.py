@@ -88,6 +88,14 @@ class NoClientInPreferenceError(ValueError):
 class InvalidMediumError(ValueError):
     """ Invalid value in a bill medium """
 
+    pass
+
+
+class ShortNameSearchStringError(ValueError):
+    """ The search string for a client name search was too short """
+
+    pass
+
 
 class Bills(db.Model):
     """ Bill models the bill sent to the client.
@@ -240,6 +248,17 @@ class Bills(db.Model):
         clients = [account.owner for account in accounts]
         return [bill for client in clients for bill in client.bills
                 if bill.status == Bills.ISSUED]
+
+    @staticmethod
+    def bills_for_clients_name_like(search_string):
+
+        if len(search_string) < 3:
+            raise ShortNameSearchStringError("Search string must be > 2 characters")
+        client_list = Clients.client_list(search_for=search_string)
+        bill_list = []
+        for client in client_list:
+            bill_list.extend(Bills.get_outstanding_bills(client))
+        return bill_list
 
     @staticmethod
     def bills_having_id(reference):

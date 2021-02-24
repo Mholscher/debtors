@@ -6,9 +6,6 @@
   <title>Payment {{payment.id}} assignment</title>
 {% endblock %}
 
-{% block searches %}
-    {% include 'clientsearch.html' %}
-{% endblock searches %}
 {% block content %}
 <div class="staticline">
 <div class="lbl"> Currency </div>{{payment.payment_ccy}}<br/>
@@ -19,15 +16,21 @@
 <div class="lbl">Client IBAN </div>{% if payment.creditor_iban %}{{payment.creditor_iban}} {% endif %}<br/>
 <div class="lbl">Client name </div>{% if payment.client_name %}{{payment.client_name}} {% endif %}<br/>
 
-<h2> Select debt <h2>
+<h2> Select debt </h2>
+<form method="GET">
+<div class="inputline">{{fld(search_form.find_name)}}</div>
+<div class="inputline">{{search_form.find_number.label(class="lblindent")}}{{nolabel(search_form.find_number)}}</div>
+<div class="inputline">{{search_form.find_bank_account.label(class="lblindent")}}{{nolabel(search_form.find_bank_account)}}</div>
+<div>{{search_form.search_client}}</div>
+<form/>
+<br/>
 <table>
 </div>
-    {% for bill in search_bills %}
+    {% for bill in search_results %}
 <tr>
-<td><form action={{ url_for('.payment_assign', payment_id=form.payment_id.data, bill_id=bill.bill_id.data) }} method="GET" class="inlineform">
-{{payment.bill.bill_id}} {{ bill.client.surname }} {{ bill.client.initials }} {{bill.billing_ccy}} {{bill.bill_amount}} {{bill.bill_id}} <input type="submit" value="Pay this" id="pay">Pay this<input>
-</form></td>
-{% endfor %}
-</tr>
+<form action={{ url_for('.payment_assign', payment_id=payment.id, bill_id=bill.bill_id) }} method="GET" class="inlineform">
+<td>{{bill.bill_id}}</td><td> {{ bill.client.surname }}</td><td> {{ bill.client.initials }}</td><td> {{bill.billing_ccy}}</td><td> {{bill.billing_amount}}</td><td><input type="submit" value="Pay this" id="pay"/>
+</td></form>
+</tr>{% endfor %}
 </table>
 {% endblock content %}
