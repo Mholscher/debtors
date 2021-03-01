@@ -155,6 +155,19 @@ Rules for finding the bills:
 
 One or more of the bills may be selected, however, the total of all bill amounts may of course not exceed the unassigned amount on the payment.
 
+Assigning debits
+----------------
+
+Upon receiving a debit from the bank for an account, we need to assign this also. The process of assigning however is different from credits. 
+
+*    In case it corrects a payment that has not been assigned, we assign the original credit to the debit.
+*   When the original payment was assigned to a bill we need to "unpay" the bill, i.e. the assignment needs to be reversed, using the received debit amount.
+*   Amounts assigned to another amount can be reversed the same away as assignments to bills. However, when the resulting amount was assigned, that assignment must first be manually reversed, because it may have more consequences.
+
+Processing is equal for debits received through the electronic statements and manually input debits.
+
+Accounting items will be simply reversing the accounting done for posting for credit changes.
+
 .. _multicurrency:
 
 Payments in a different currency from the bill

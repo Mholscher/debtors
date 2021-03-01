@@ -22,6 +22,7 @@ from dateutil.tz import tzoffset
 from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
+from debtviews.payments import PaymentAccounting
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
     delete_test_bills, add_debtor_preferences, delete_amountq,\
@@ -706,6 +707,82 @@ class TestAssignment(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             bill_list = IncomingAmounts.get_bill_targets()
+
+
+class TestPaymentAccounting(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+        #delete_amountq(self)
+        db.session.flush()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_create_journal(self):
+        """ From a payment a journal can be created """
+
+        ia29 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        pa01 = PaymentAccounting(ia29)
+        self.assertTrue(pa01["journal"], "No valid journal created")
+
+    def test_journal_has_id(self):
+        """ Generated accounting contains the key """
+
+        ia30 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        pa02 = PaymentAccounting(ia30)
+        self.assertEqual(pa02["journal"]["extkey"], "payment" + str(ia30.id),
+                         "No valid external key in payment")
+
+    def test_no_accounting_for_zero_payment(self):
+        """ If the payment amount is zero, refuse accounting """
+
+        ia31 = IncomingAmounts(payment_ccy="USD",
+                               payment_amount=0,
+                               creditor_iban= 'NL08INGB0212952123',
+                               client_name='F.L. Snazzyclient')
+        with self.assertRaises(ValueError):
+            pa03 = PaymentAccounting(ia31)
+
+    def test_payment_accounting_correct_posts(self):
+        """ The correct posting types are created for correct amounts """
+
+        ia32 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000755').first()
+        pa04 = PaymentAccounting(ia32)
+        postings = pa04["journal"]["postings"]
+        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        self.assertIn("debt", accounts, "No debt posting")
+        self.assertIn("receipts", accounts, "No receipt posting")
+        self.assertEqual(postings[0]["amount"], str(ia32.payment_amount),
+                         "Incorrect amount in posting")
+        self.assertEqual(postings[0]["currency"], str(ia32.payment_ccy),
+                         "Incorrect currency in posting")
 
 
 class TestPaymentTransactions(unittest.TestCase):

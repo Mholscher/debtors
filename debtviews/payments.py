@@ -209,3 +209,44 @@ class PaymentAssignToBill(MethodView):
         payment.assign_to_bill(bill)
         db.session.commit()
         return redirect(url_for("payment_assign", payment_id=payment_id))
+
+
+class PaymentAccounting(dict):
+    """ Create accounting fior a payment
+
+    The accounting is created as a dictionary, ready to be shipped as a 
+    JSON formatted file.
+    
+    This class assumes that GLedger is being used. Subclass or replace to
+    use a different GL system.
+    """
+
+    def __init__(self, payment):
+
+        super().__init__()
+        self["journal"] = self._create_journal(payment)
+
+    def _create_journal(self, payment):
+        """ Create the journal for a payment """
+
+        journal_dict = dict()
+        journal_dict["function"] = "insert"
+        journal_dict["extkey"] = "payment" + str(payment.id)
+        if payment.payment_amount == 0:
+            raise ValueError("Can not do accounting for zero amount")
+        posting_list = []
+        posting_debt = {"account" : "debt", "currency" : 
+                             payment.payment_ccy,
+                             "amount" : str(payment.payment_amount),
+                             "debitcredit" : "Cr",
+                             "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        posting_receipt = {"account" : "receipts", "currency" : 
+                             payment.payment_ccy,
+                             "amount" : str(payment.payment_amount),
+                             "debitcredit" : "Db",
+                             "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_list.append(posting_receipt)
+        journal_dict["postings"] = posting_list
+
+        return journal_dict
