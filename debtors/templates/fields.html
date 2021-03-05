@@ -1,5 +1,5 @@
 {% macro fld(field, readonly=False) -%}
 {# This macro displays a field label, the field and any errors on the field. #}
-    {{ field.label(class="lbl") }} {% if readonly %} {{field(readonly="true")}}{% else %}{{field}}{% endif %}{% if field.errors %} <ul class="flash"> {% for error in field.errors %} {{ error }} {% endfor %}</ul>
+    {{ field.label(class="lbl") }} {% if readonly %} {{ field(readonly="true")}}{% else %}{{field}}{% endif %}{% if field.errors %} <ul class="flash"> {% for error in field.errors %} {{ error }} {% endfor %}</ul>
     {% endif %}
 {%- endmacro %}

@@ -30,6 +30,7 @@ from jinja2 import Environment, PackageLoader
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills, DebtorPreferences
+from debtmodels.accounting import AccountingTemplate
 
 rtfenvironment = Environment(
     loader=PackageLoader('debtors', 'templates'),
@@ -187,7 +188,7 @@ class HTMLMailBill(object):
             f.write(self.multipart_message.as_string())
 
 
-class BillAccounting(dict):
+class BillAccounting(AccountingTemplate):
     """ This class models the accounting to be done for a bill
 
     The accounting is created for use in the GLedger package.
@@ -195,39 +196,32 @@ class BillAccounting(dict):
     another accounting system will be very similar.
     """
 
-    def __init__(self, bill):
+    def journal_entries(self, journal_dict, bill):
+        """ Create the journal entries for the bill.
 
-        super().__init__()
-        self. bill = bill
-        self["journal"] = self.create_journal()
-
-    def create_journal(self):
-        """ Create the journal for the bill.
-
-        The journal consists of a header that contains the 
-        information to identify the actions and journal itself.
-        The next bit are the postings that are made in this journal.
+        The next bit are the postings that are made in this journal. This
+        is dependent on the kind of event we are accounting for, in this
+        case the creation of a bill.
         """
-        journal = dict()
-        journal["function"] = "insert"
-        journal["extkey"] = "bill" + str(self.bill.bill_id) 
-        if self.bill.total() == 0:
+
+        journal_dict["extkey"] = "bill" + str(bill.bill_id) 
+        if bill.total() == 0:
             raise ValueError("Do not account for zero debt")
         posting_list = []
         posting_sales = {"account" : "sales", "currency" : 
-                             self.bill.billing_ccy,
-                             "amount" : str(self.bill.total()),
+                             bill.billing_ccy,
+                             "amount" : str(bill.total()),
                              "debitcredit" : "Cr",
-                             "valuedate" : self.bill.date_sale.strftime("%Y-%m-%d")}
+                             "valuedate" : bill.date_sale.strftime("%Y-%m-%d")}
         posting_list.append(posting_sales)
         posting_debt = {"account" : "debt", "currency" : 
-                             self.bill.billing_ccy,
-                             "amount" : str(self.bill.total()),
+                             bill.billing_ccy,
+                             "amount" : str(bill.total()),
                              "debitcredit" : "Db",
-                             "valuedate" : self.bill.date_sale.strftime("%Y-%m-%d")}
+                             "valuedate" : bill.date_sale.strftime("%Y-%m-%d")}
         posting_list.append(posting_debt)
-        journal["postings"] = posting_list
-        return journal
+        journal_dict["postings"] = posting_list
+        return journal_dict
 
     def as_json(self):
         """ Return myself as a json string """
@@ -237,7 +231,7 @@ class BillAccounting(dict):
     def write_file(self):
         """ Write the json for the accounting to a file """
 
-        with open("output/accounting" + str(self.bill.bill_id), 'w') as f:
+        with open("output/" + str(self["journal"]["extkey"]), 'w') as f:
             f.write(self.as_json())
 
  
@@ -249,19 +243,19 @@ class BillReplaceAccounting(BillAccounting):
     necessary field to make it a reversal of the original postings
     """
 
-    def create_journal(self):
+    def journal_entries(self, journal_dict, bill):
         """ Create the journal and reverse the postings and
         change the external key on the journal.
         """
 
-        journal = super().create_journal()
-        journal["extkey"] = "billr" + str(self.bill.bill_id) 
-        for posting in journal["postings"]:
+        journal_dict = super().journal_entries(journal_dict, bill)
+        journal_dict["extkey"] = "billr" + str(bill.bill_id) 
+        for posting in journal_dict["postings"]:
             if posting["debitcredit"] == 'Db':
                 posting["debitcredit"] = 'Cr'
             else:
                 posting["debitcredit"] = 'Db'
-        return journal
+        return journal_dict
 
 
 def create_physical_bill(bill_id, print_it=False, print_acc=False):

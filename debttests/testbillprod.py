@@ -347,7 +347,7 @@ class TestCreateAnyBill(unittest.TestCase):
 
         create_physical_bill(self.bll1.bill_id, print_acc=True)
         try:
-            file_status = os.stat('output/accounting' + str(self.bll1.bill_id))
+            file_status = os.stat('output/bill' + str(self.bll1.bill_id))
         except FileNotFoundError:
             self.assertTrue(False, 'No file created')
         self.assertNotEqual(file_status.st_size, 0, 'Empty file')
@@ -367,7 +367,7 @@ class TestCreateAnyBill(unittest.TestCase):
         db.session.flush()
         create_physical_bill(new.bill_id, print_acc=True)
         try:
-            file_status = os.stat('output/accounting' + str(self.bll3.bill_id))
+            file_status = os.stat('output/billr' + str(self.bll3.bill_id))
         except FileNotFoundError:
             self.assertTrue(False, 'No file created')
         self.assertNotEqual(file_status.st_size, 0, 'Empty file')

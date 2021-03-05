@@ -19,6 +19,12 @@ The module debtmodels payments
 .. automodule:: debtmodels.payments
    :members:
 
+The module debtmodels accounting
+--------------------------------
+
+.. automodule:: debtmodels.accounting
+   :members:
+
 The module debtviews bills
 --------------------------
 

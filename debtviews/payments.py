@@ -29,6 +29,7 @@ from debtors import db
 from debtviews.monetary import edited_amount
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtmodels.debtbilling import Bills, BillNotFoundError
+from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm,\
     FindClientForm
 from debtviews.wtformsmonetary import AmountField
@@ -211,8 +212,8 @@ class PaymentAssignToBill(MethodView):
         return redirect(url_for("payment_assign", payment_id=payment_id))
 
 
-class PaymentAccounting(dict):
-    """ Create accounting fior a payment
+class PaymentAccounting(AccountingTemplate):
+    """ Create accounting for a payment
 
     The accounting is created as a dictionary, ready to be shipped as a 
     JSON formatted file.
@@ -221,16 +222,15 @@ class PaymentAccounting(dict):
     use a different GL system.
     """
 
-    def __init__(self, payment):
+    def journal_entries(self, journal_dict, payment):
+        """ Create postings for a payment
+        
+        Thew journal_dict passed in is the dictionary that will be
+        transformed into a JSON message for the accounting software.
+        We need to add the postings and come up with a (unique)
+        external key to identify the journal.
+        """
 
-        super().__init__()
-        self["journal"] = self._create_journal(payment)
-
-    def _create_journal(self, payment):
-        """ Create the journal for a payment """
-
-        journal_dict = dict()
-        journal_dict["function"] = "insert"
         journal_dict["extkey"] = "payment" + str(payment.id)
         if payment.payment_amount == 0:
             raise ValueError("Can not do accounting for zero amount")
@@ -248,5 +248,4 @@ class PaymentAccounting(dict):
                              "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
-
         return journal_dict
