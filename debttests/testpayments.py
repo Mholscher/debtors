@@ -22,7 +22,7 @@ from dateutil.tz import tzoffset
 from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
-from debtviews.payments import PaymentAccounting
+from debtviews.payments import PaymentAccounting, AssignmentAccounting
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at, create_bills, add_lines_to_bills,\
     delete_test_bills, add_debtor_preferences, delete_amountq,\
@@ -783,6 +783,28 @@ class TestPaymentAccounting(unittest.TestCase):
                          "Incorrect amount in posting")
         self.assertEqual(postings[0]["currency"], str(ia32.payment_ccy),
                          "Incorrect currency in posting")
+
+    def test_assign_to_bill_accounting(self):
+        """ Make accounting for assigning to a bill """
+
+        ia33 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+
+        ia33.assign_amount()
+        db.session.commit()
+
+        aa13 = db.session.query(AssignedAmounts).\
+            filter_by(from_amount=ia33).first()
+        aac01 = AssignmentAccounting(aa13)
+
+        aac01_extkey = aac01["journal"]["extkey"]
+        self.assertEqual(aac01_extkey, "assign" + str(aa13.id),
+                         "Incorrect journal key")
+        postings = aac01["journal"]["postings"]
+        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        self.assertIn("income", accounts, "No debt posting")
+        self.assertIn("receipts", accounts, "No receipt posting")
+
 
 
 class TestPaymentTransactions(unittest.TestCase):

@@ -22,6 +22,7 @@ can also be created and changed by users through web transactions. This
 module has the views to do the latter.
 """
 
+from datetime import datetime
 from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from clientmodels.clients import Clients
@@ -220,12 +221,13 @@ class PaymentAccounting(AccountingTemplate):
     
     This class assumes that GLedger is being used. Subclass or replace to
     use a different GL system.
+    TODO Where and when do the accounting?
     """
 
     def journal_entries(self, journal_dict, payment):
         """ Create postings for a payment
         
-        Thew journal_dict passed in is the dictionary that will be
+        The journal_dict passed in is the dictionary that will be
         transformed into a JSON message for the accounting software.
         We need to add the postings and come up with a (unique)
         external key to identify the journal.
@@ -246,6 +248,34 @@ class PaymentAccounting(AccountingTemplate):
                              "amount" : str(payment.payment_amount),
                              "debitcredit" : "Db",
                              "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_list.append(posting_receipt)
+        journal_dict["postings"] = posting_list
+        return journal_dict
+
+
+class AssignmentAccounting(AccountingTemplate):
+    """ Create posting for assignment of an amount to a bill"""
+
+    def journal_entries(self, journal_dict, assignment):
+        """ Create the postings
+
+    The journal_dict passed in will be filled with the accounting for
+    assignment and the journal key set.
+    """
+
+        journal_dict["extkey"] = "assign" + str(assignment.id)
+        posting_list = []
+        posting_debt = {"account" : "income", "currency" : 
+                             assignment.ccy,
+                             "amount" : str(assignment.amount_assigned),
+                             "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        posting_receipt = {"account" : "receipts", "currency" : 
+                             assignment.ccy,
+                             "amount" : str(assignment.amount_assigned),
+                             "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict

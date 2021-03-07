@@ -111,6 +111,17 @@ For each of the steps accounting is done.
     
     This assumes that the tax due amount is determined at the time of the creation of the payable, before invoicing.
         
+**A payment is assigned to a bill**
+    A payment is meant to pay one or more bills. After assignment of the money to a bill, the amount unreconciled will be lowered by the amount of the assignment.
+
+        * Receipt before reconciliation will be credited for the amount of the assignment
+        * Realized income will be debited for the amount of the assignment
+
+**A payment is assigned to another amount to be reconciled**
+    This is a transaction that has no financial consequences in total. Yet we will make an accounting entry to make reconciliation of the books possible at the individual transaction level.
+
+        * Receipt before reconciliation will be credited for the amount of the assignment
+        * Receipt before reconciliation will be debited for the amount of the assignment
 
 **Transfer to the debt collector agency**
     The accounting here is dependent on your position as to what the consequences are. You can e.g. post the amount to a special debts account, so reconciliation and success by the agency will be apparent from your books. No posting rules are in the delivered system.
