@@ -23,10 +23,10 @@ from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
 from debtviews.payments import PaymentAccounting, AssignmentAccounting
-from debttests.helpers import delete_test_clients, add_addresses,\
-    create_clients, spread_created_at, create_bills, add_lines_to_bills,\
-    delete_test_bills, add_debtor_preferences, delete_amountq,\
-    delete_test_prefs
+from debttests.helpers import (delete_test_clients, add_addresses,
+    create_clients, spread_created_at, create_bills, add_lines_to_bills,
+    delete_test_bills, add_debtor_preferences, delete_amountq,
+    delete_test_prefs)
 from debtors.processCAMT import CAMT53Handler
 from xml.sax import ContentHandler, make_parser, parse
 
@@ -804,7 +804,6 @@ class TestPaymentAccounting(unittest.TestCase):
         accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
         self.assertIn("income", accounts, "No debt posting")
         self.assertIn("receipts", accounts, "No receipt posting")
-
 
 
 class TestPaymentTransactions(unittest.TestCase):

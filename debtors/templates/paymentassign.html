@@ -9,7 +9,7 @@
 {% block content %}
 <div class="staticline">
 <div class="lbl"> Currency </div>{{payment.payment_ccy}}<br/>
-<div class="lbl">Amount </div> {{payment.payment_amount}}<br/>
+<div class="lbl">Amount </div> {{payment.payment_amount}} {{payment.debcred}}<br/>
 <div class="lbl">Debit/credit </div>{{payment.debcred}}<br/>
 <div class="lbl">Our reference </div>{% if payment.our_ref %} {{payment.our_ref}} {% endif%}<br/>
 <div class="lbl">Client reference </div>{% if payment.client_refrence %} {{payment.client_ref}} {% endif %}<br/>

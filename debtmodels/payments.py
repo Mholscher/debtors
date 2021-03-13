@@ -180,8 +180,8 @@ class IncomingAmounts(db.Model):
     def get_payment_by_id(payment_id):
         """ Get an Incoming amount for id payment_id """
 
-        payment = db.session.query(IncomingAmounts).filter_by(id=payment_id).\
-            first()
+        payment = (db.session.query(IncomingAmounts).filter_by(id=payment_id).
+            first())
         if payment:
             return payment
         raise IncomingAmountNotFoundError('No payment for id {}'
@@ -351,8 +351,8 @@ class AmountQueued(db.Model):
     def is_queued(amount_requested):
         """ Is the amount amount_requested queued? """
 
-        aq = db.session.query(AmountQueued).\
-            filter_by(amount_id=amount_requested).first()
+        aq = (db.session.query(AmountQueued).
+            filter_by(amount_id=amount_requested).first())
         return aq is not None
 
 
@@ -375,7 +375,8 @@ class AssignedAmounts(db.Model):
             assigned to
         :amount_id_to: If assigned to another incoming amount, the id of the
             amount to which we assigned it
-        :amount_to: The amount (in new ccy if applicable) on the new amount
+        :to_amount: The amount (in new ccy if applicable) on the new amount
+        :from_amount: The incoming amount (payment) that is assigned in this
 
     """
 

@@ -20,8 +20,8 @@
 from xml.sax import ContentHandler, make_parser, parse
 from dateutil.parser import parse as dt_parse
 from debtviews.monetary import internal_amount
-from debtmodels.payments import IncomingAmounts, IncomingAmountsList,\
-    AmountQueued
+from debtmodels.payments import (IncomingAmounts, IncomingAmountsList,
+    AmountQueued)
 
 
 class CAMT53Handler(ContentHandler):
@@ -54,8 +54,8 @@ class CAMT53Handler(ContentHandler):
             self.in_valuedate = True
         elif name == 'CdtDbtInd':
             self.in_credit_debit = True
-        elif name == 'Dt' or name == 'DtTm'\
-            and hasattr(self, ".in_valuedate"):
+        elif (name == 'Dt' or name == 'DtTm'
+            and hasattr(self, ".in_valuedate")):
             self.in_date = True
         elif name == 'NtryRef':
             self.in_entry_ref = True
@@ -152,8 +152,8 @@ class CAMT53Handler(ContentHandler):
                 self.unassigned_amount.add()
                 self.entries.append(self.unassigned_amount)
                 # queue this for assignment
-                amount_queued = AmountQueued(incoming_amount =\
-                    self.unassigned_amount)
+                amount_queued = (AmountQueued(incoming_amount =
+                    self.unassigned_amount))
                 amount_queued.add()
             del(self.in_entry) 
         elif name == 'Stmt':
@@ -182,8 +182,8 @@ class CAMT53Handler(ContentHandler):
 
         if hasattr(self, "ignore_statement"):
             return
-        elif hasattr(self, "in_our_IBAN")\
-            and hasattr(self, "accounts"):
+        elif (hasattr(self, "in_our_IBAN")
+            and hasattr(self, "accounts")):
                 if content not in self.accounts:
                     self.ignore_statement = True
         elif hasattr(self, 'in_credit_debit') and self.in_credit_debit:
@@ -191,26 +191,26 @@ class CAMT53Handler(ContentHandler):
                 self.unassigned_amount.debcred = 'Db'
             else:
                 self.unassigned_amount.debcred = 'Cr'
-        elif hasattr(self, 'in_amount')\
-            and self.in_amount:
+        elif (hasattr(self, 'in_amount')
+            and self.in_amount):
             self.unassigned_amount.payment_amount = internal_amount(content)
-        elif hasattr(self, 'in_date')\
-            and self.in_date:
+        elif (hasattr(self, 'in_date')
+            and self.in_date):
             self.unassigned_amount.value_date = dt_parse(timestr=content)
-        elif hasattr(self, 'in_entry_ref')\
-            and self.in_entry_ref:
+        elif (hasattr(self, 'in_entry_ref')
+            and self.in_entry_ref):
             self.unassigned_amount.bank_ref = content
-        elif hasattr(self, 'in_ref')\
-            and self.in_ref:
+        elif (hasattr(self, 'in_ref')
+            and self.in_ref):
             self.unassigned_amount.client_ref = content
-        elif hasattr(self, 'in_client_name')\
-            and self.in_client_name:
+        elif (hasattr(self, 'in_client_name')
+            and self.in_client_name):
             self.unassigned_amount.client_name = content
-        elif hasattr(self, 'in_creditor_iban')\
-            and self.in_creditor_iban:
+        elif (hasattr(self, 'in_creditor_iban')
+            and self.in_creditor_iban):
             self.unassigned_amount.creditor_iban = content
-        elif hasattr(self, 'in_create_timestamp')\
-            and hasattr(self, 'in_statement'):
+        elif (hasattr(self, 'in_create_timestamp')
+            and hasattr(self, 'in_statement')):
             self.creation_timestamp = dt_parse(timestr=content)
         elif hasattr(self, "in_family_code"):
             self.family = content

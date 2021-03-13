@@ -222,8 +222,8 @@ class Bills(db.Model):
             raise ReplacedBillError('The bill {0} to replace does not exist'.
                                     format(prev_bill))
         if old.status not in {Bills.NEW, Bills.ISSUED}:
-            msg = 'Bill to replace {0} has invalid status {1}'\
-                .format(prev_bill, old.status)
+            msg = ('Bill to replace {0} has invalid status {1}'
+                .format(prev_bill, old.status))
             raise ReplacedBillError(msg)
         return prev_bill
 
@@ -243,8 +243,8 @@ class Bills(db.Model):
     def bills_for_IBAN(IBAN):
         """ Get a list of bills with the IBAN passed in """
 
-        accounts = db.session.query(BankAccounts).filter_by(iban=IBAN).\
-            all()
+        accounts = (db.session.query(BankAccounts).filter_by(iban=IBAN).
+            all())
         clients = [account.owner for account in accounts]
         return [bill for client in clients for bill in client.bills
                 if bill.status == Bills.ISSUED]

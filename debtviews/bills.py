@@ -103,8 +103,8 @@ class BillView(MethodView):
         if hasattr(AmountField, 'get_currency'):
             del AmountField.get_currency
 
-        while bill_form.lines.__len__() > 0\
-            and not any(bill_form.lines.data[bill_form.lines.__len__() - 1].values()) :
+        while (bill_form.lines.__len__() > 0
+            and not any(bill_form.lines.data[bill_form.lines.__len__() - 1].values())) :
             bill_form.lines.pop_entry()
 
         for line in bill_form.lines:
@@ -176,7 +176,7 @@ class ClientDebtView(MethodView):
         ccy_list = { bill.billing_ccy for bill in bills }
         ccy_totals = dict()
         for ccy in ccy_list:
-            total = sum([bill.total() if bill.billing_ccy == ccy else 0\
+            total = sum([bill.total() if bill.billing_ccy == ccy else 0
                 for bill in bills])
             ccy_totals[ccy] = (total, ccy)
         bills = {'bill_list': bills} 

@@ -31,8 +31,8 @@ from debtviews.monetary import edited_amount
 from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
-from debtviews.forms import PaymentForm, PaymentCreateForm, ClientAttachForm,\
-    FindClientForm
+from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
+    FindClientForm)
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
