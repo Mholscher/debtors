@@ -175,4 +175,4 @@ Payments in a different currency from the bill
 
 As the debtors system does not have currency rates, it is not possible to convert amounts between currencies. So, if an amount is reported by the bank in a different currency than the amount on the bill, we cannot directly use that amount to pay the bill.
 
-We will make use of the manual input facility mentioned in :ref:`manualpaymentinput`. The amount of the original input can be assigned to the newly created user payment. This will assign all of the money on the original payment and make the new amount available for assigning to the bill. 
+We will make use of the manual input facility mentioned in :ref:`manualpaymentinput`. The amount of the original input can be assigned to the newly created user payment. This will assign all of the money on the original payment and make the new amount available for assigning to the bill. If part of the payment has already been assigned to a bill, this assigning to another amount will be for the remainder, obviously.

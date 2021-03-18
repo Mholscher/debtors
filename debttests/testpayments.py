@@ -709,6 +709,153 @@ class TestAssignment(unittest.TestCase):
             bill_list = IncomingAmounts.get_bill_targets()
 
 
+class TestAssignToPayment(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.ia38 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=4456,
+                               creditor_iban= 'NL08INGB0212977892',
+                               client_name='T. Sommerzeel',
+                               our_ref='Ref TB22',
+                               bank_ref='11987')
+        self.ia38.add()
+        self.ia39 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               client_name='T. den Oude',
+                               our_ref='Snn34')
+        self.ia39.add()
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+        #delete_amountq(self)
+        db.session.flush()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_shows_payment(self):
+        """ The assignment page shows a payment for a reference """
+
+        ia34 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=88756,
+                               creditor_iban= 'NL08INGB0212952188',
+                               client_name='F.K. Grondeel',
+                               our_ref='ref2286')
+        ia34.add()
+        db.session.flush()
+        ia34_id = ia34.id
+        ial06 = IncomingAmounts.get_target_payments(our_ref='2286')
+        self.assertIn(ia34, ial06, "Payment not found")
+
+    def test_no_payment_returns_empty_list(self):
+        """ A selector that returns no payments, gets an empty list """
+
+        ia35 = IncomingAmounts(payment_ccy='GBP',
+                               payment_amount=88735,
+                               creditor_iban= 'NL08INGB0212952186',
+                               client_name='F.K. Nakkisch',
+                               our_ref='ref227789')
+        ia35.add()
+        db.session.flush()
+        ia35_id = ia35.id
+        ial07 = IncomingAmounts.get_target_payments(our_ref='2286')
+        self.assertFalse(ial07, "Payment found, not there")
+
+    def test_empty_search_criterion_fails(self):
+        """ Not passing criterion fails """
+
+        ia36 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=665456,
+                               creditor_iban= 'NL08INGB0212952657',
+                               client_name='F.J. Waterbak',
+                               our_ref='&&9098')
+        ia36.add()
+        db.session.flush()
+        ia36_id = ia36.id
+        with self.assertRaises(ValueError):
+            ial08 = IncomingAmounts.get_target_payments()
+
+    def test_bank_reference_searchable(self):
+        """ We can search for a bank reference """
+
+        ia37 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=866856,
+                               creditor_iban= 'NL08INGB0212977654',
+                               client_name='T. Immerzeel',
+                               our_ref='Some text',
+                               bank_ref='referentie text')
+        ia37.add()
+        db.session.flush()
+        ia37_id = ia37.id
+        ial09 = IncomingAmounts.get_target_payments(bank_ref='text')
+        self.assertIn(ia37, ial09, "Payment not found")
+
+    def test_assign_to_payment(self):
+        """ We can assign to a payment """
+
+        aa14 = AssignedAmounts(ccy='EUR',
+                               amount_assigned=4456)
+        aa14.from_amount = self.ia38
+        aa14.to_amount = self.ia39
+        db.session.flush()
+        self.assertIn(aa14, self.ia39.from_amt, 
+                         "Back link not set")
+        self.assertIn(aa14, self.ia38.used_in, 
+                         "Forward link not set")
+
+    def test_assign_to_payment_method(self):
+        """ We can assign to amount through a method """
+
+        aa15 = self.ia38.assign_to_amount(self.ia39)
+        self.assertEqual(aa15.amount_assigned, self.ia38.payment_amount,
+                         "No assignment found")
+
+    def test_cannot_assign_zero_amount(self):
+        """ We cannot assign if from amount is zero  """
+
+        with self.assertRaises(ValueError):
+            aa16 = self.ia39.assign_to_amount(self.ia38)
+
+    def test_assigning_update_to_amount(self):
+        """ Assign to amount is updated with amount """
+
+        aa16 = self.ia38.assign_to_amount(self.ia39)
+        self.assertEqual(aa16.amount_assigned, self.ia39.payment_amount,
+                         "To amount not correct")
+        self.assertTrue(self.ia38.fully_assigned,
+                        "From amount not set to assigned")
+
+    def test_assign_remaining_amount_to_other(self):
+        """ Assign the remaining of an amount to another """
+
+        aa17 = AssignedAmounts(ccy='EUR',
+                               amount_assigned=22)
+        aa17.from_amount = self.ia38
+        db.session.flush()
+        aa18 = self.ia38.assign_to_amount(self.ia39)
+        self.assertEqual(self.ia39.payment_amount, 4434,
+                         "To amount not correct")
+
+
 class TestPaymentAccounting(unittest.TestCase):
 
     def setUp(self):
@@ -948,7 +1095,8 @@ class TestPaymentTransactions(unittest.TestCase):
         """ Getting a non-existing payment to assign fails """
 
         rv = self.app.get('/payment/assign/1')
-        self.assertEqual(rv.status_code, 404, 'Not Found not returned from find payment')
+        self.assertEqual(rv.status_code, 404,
+                         'Not Found not returned from find payment')
 
     def test_assign_shows_debt_select(self):
         """ When reading the assign page, we are shown the client fields """
@@ -962,7 +1110,8 @@ class TestPaymentTransactions(unittest.TestCase):
         rv = self.app.get('/payment/assign/' + str(ia26.id))
         self.assertIn(b"By client", rv.data, 'No client search field')
         self.assertIn(b"find_number", rv.data, 'No client search number field')
-        self.assertIn(b"find_bank_account", rv.data, 'No client search account field')
+        self.assertIn(b"find_bank_account", rv.data,
+                      'No client search account field')
 
     def test_find_by_name(self):
         """ Search bills by name """

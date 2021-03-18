@@ -75,8 +75,14 @@ class CanOnlyAssignToBillInSameCcy(ValueError):
 
     pass
 
+
 class NoSupportedArgumentError(ValueError):
     """ No actual parameter found that is supported """
+
+    pass
+
+
+class CannotAssignZeroAmountToAmount(ValueError):
 
     pass
 
@@ -288,6 +294,31 @@ class IncomingAmounts(db.Model):
         assigned_amount.from_amount = self
         return assigned_amount
 
+    def assign_to_amount(self, to_amount):
+        """ Assign this amount to another amount
+
+        The amounts are checked, the assignment is placed in the
+        assignments table and the amount assigned to is updated
+
+            :to_amount: The amount we want to assign the current amount to
+
+        """
+
+        if self.payment_amount == 0:
+            raise CannotAssignZeroAmountToAmount("Amount must be > 0")
+
+        assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
+                               amount_assigned=self.payment_amount
+                               - self.assigned())
+        assigned_amount.from_amount = self
+        assigned_amount.to_amount = to_amount
+
+        to_amount.payment_amount += assigned_amount.amount_assigned
+        self.fully_assigned = True
+
+        return assigned_amount
+
+
     @staticmethod
     def get_bill_targets(name=None, client_id=None, account_nr=None):
         """ Get bills targeted in assignment by client or bank account
@@ -312,6 +343,19 @@ class IncomingAmounts(db.Model):
         if account_nr:
             return Bills.bills_for_IBAN(account_nr)
         raise NoSupportedArgumentError("Pass client name, number or bank account")
+
+    def get_target_payments(our_ref=None, bank_ref=None):
+        """ Get a list of payments with a given (part of) reference """
+
+        if our_ref is None and bank_ref is  None:
+            raise NoSupportedArgumentError("(Part of) a reference is required")
+        q = IncomingAmounts.query
+        if our_ref:
+            q = q.filter(IncomingAmounts.our_ref.like("%"+our_ref+"%"))
+        if bank_ref:
+            q = q.filter(IncomingAmounts.bank_ref.like("%"+bank_ref+"%"))
+        q = q.all()
+        return q
 
 
 class IncomingAmountsList(list):

@@ -33,4 +33,11 @@
 </td></form>
 </tr>{% endfor %}
 </table>
+
+<h2>Select another payment</h2>
+<form method="GET">
+<div class="inputline">{{fld(payment_form.find_our_ref)}}</div>
+<div class="inputline">{{fld(payment_form.find_bank_ref)}}</div>
+<div>{{payment_form.search_payment}}</div>
+</form>
 {% endblock content %}

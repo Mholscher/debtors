@@ -32,7 +32,7 @@ from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
-    FindClientForm)
+    FindClientForm, FindPaymentByRef)
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
@@ -160,14 +160,18 @@ class PaymentUpdateView(MethodView):
         return redirect(url_for('.payment_update', payment_id=payment_id))
 
 class PaymentAssignView(MethodView):
-    """ A paymentmay be assigned to a bill
+    """ A payment may be assigned to a bill or a payment
 
     The operator may search for bills in a few ways. Once the 
     bill to be paid is found, it can be paid.
+
+    If the payment is to be assigned to another payment, the
+    user can look up the payment through the references given
+    by ourselves or by the bank.
     """
 
     def get(self, payment_id):
-        """ Get the payment with id payment_id """
+        """ Get the payment and show assignment  choices """
 
         try:
             payment = IncomingAmounts.get_payment_by_id(payment_id)
@@ -175,6 +179,9 @@ class PaymentAssignView(MethodView):
             abort(404, str(ve))
         payment = PaymentDict(payment)
         client_search_form = FindClientForm()
+        payment_form = FindPaymentByRef()
+
+        # process input search arguments for finding bill(s)
 
         name=request.args.get("find_name", None)
         client_id=request.args.get("find_number", None)
@@ -190,9 +197,13 @@ class PaymentAssignView(MethodView):
         for bill in search_results:
             bill.billing_amount = edited_amount(bill.total(),
                                                 currency=bill.billing_ccy)
+
+        # process input search arguments for "other" payments
+
         return render_template('paymentassign.html', payment=payment,
                                search_results=search_results,
-                               search_form=client_search_form)
+                               search_form=client_search_form,
+                               payment_form=payment_form)
 
 
 class PaymentAssignToBill(MethodView):

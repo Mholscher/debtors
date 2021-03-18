@@ -180,3 +180,10 @@ class FindClientForm(FlaskForm):
     find_number = StringField('Number')
     find_bank_account = StringField('Bankaccount')
     search_client = SubmitField('Find client debt')
+
+class FindPaymentByRef(FlaskForm):
+    """ The form to find payments to assign to """
+
+    find_our_ref = StringField("Our reference")
+    find_bank_ref = StringField("Bank reference")
+    search_payment = SubmitField("Find payment")
