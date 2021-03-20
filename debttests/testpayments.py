@@ -855,6 +855,20 @@ class TestAssignToPayment(unittest.TestCase):
         self.assertEqual(self.ia39.payment_amount, 4434,
                          "To amount not correct")
 
+    def test_assign_to_amount_other_currency(self):
+        """ Assign an amount to an amount in another currency """
+
+        ia40 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0)
+        ia40.add()
+        db.session.flush()
+        aa19 = self.ia38.assign_to_amount(ia40, other_ccy=ia40.payment_ccy,
+                                          other_amount=1365)
+        self.assertEqual(ia40.payment_amount, 1365,
+                         "Amount not properly converted")
+        self.assertEqual(aa19.amount_assigned, self.ia38.payment_amount,
+                         "Wrong amount assigned")
+
 
 class TestPaymentAccounting(unittest.TestCase):
 
