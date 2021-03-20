@@ -294,7 +294,7 @@ class IncomingAmounts(db.Model):
         assigned_amount.from_amount = self
         return assigned_amount
 
-    def assign_to_amount(self, to_amount):
+    def assign_to_amount(self, to_amount, other_ccy=None, other_amount=None):
         """ Assign this amount to another amount
 
         The amounts are checked, the assignment is placed in the
@@ -313,7 +313,13 @@ class IncomingAmounts(db.Model):
         assigned_amount.from_amount = self
         assigned_amount.to_amount = to_amount
 
-        to_amount.payment_amount += assigned_amount.amount_assigned
+        if other_ccy:
+            if other_amount:
+                to_amount.payment_amount += other_amount
+            else:
+                raise CannotAssignZeroAmountToAmount("Other currency amount missing")
+        else:
+            to_amount.payment_amount += assigned_amount.amount_assigned
         self.fully_assigned = True
 
         return assigned_amount
