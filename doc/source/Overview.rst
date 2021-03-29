@@ -102,14 +102,6 @@ For each of the steps accounting is done.
         * ordinary debt - credit for the total amount of the invoice
         * receipt before reconciliation - debit for the total amount of the invoice
     
-    If a payment contains amounts that are to be reserved for other means the accounting done is:
-    
-        * tax payable but not received - debit for the tax amount
-        * reserved tax - credit for the tax amount
-        * receipt before reconciliation - debit for the total amount of the invoice
-        * ordinary debt - credit for the total amount of the invoice
-    
-    This assumes that the tax due amount is determined at the time of the creation of the payable, before invoicing.
         
 **A payment is assigned to a bill**
     A payment is meant to pay one or more bills. After assignment of the money to a bill, the amount unreconciled will be lowered by the amount of the assignment.
@@ -122,6 +114,13 @@ For each of the steps accounting is done.
 
         * Receipt before reconciliation will be credited for the amount of the assignment
         * Receipt before reconciliation will be debited for the amount of the assignment
+
+    If the amount being assigned to has a different currency than the amount being assigned, the posting is slightly different.
+
+        * Receipt before reconciliation will be credited for the amount of the assignment (in the payment currency)
+        * Currency conversion will be debited for the amount of the assignment (in the payment currency)
+        * Currency conversion will be credited for the amount of the assignment (in the target currency)
+        * Receipt before reconciliation will be debited for the amount of the assignment (in the target currency)
 
 **Transfer to the debt collector agency**
     The accounting here is dependent on your position as to what the consequences are. You can e.g. post the amount to a special debts account, so reconciliation and success by the agency will be apparent from your books. No posting rules are in the delivered system.

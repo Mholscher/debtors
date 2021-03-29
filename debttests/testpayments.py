@@ -854,6 +854,8 @@ class TestAssignToPayment(unittest.TestCase):
         aa18 = self.ia38.assign_to_amount(self.ia39)
         self.assertEqual(self.ia39.payment_amount, 4434,
                          "To amount not correct")
+        self.assertEqual(aa18.to_amount, self.ia39, 
+                         "Assignment no /incorrect to amount")
 
     def test_assign_to_amount_other_currency(self):
         """ Assign an amount to an amount in another currency """
@@ -965,6 +967,43 @@ class TestPaymentAccounting(unittest.TestCase):
         accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
         self.assertIn("income", accounts, "No debt posting")
         self.assertIn("receipts", accounts, "No receipt posting")
+
+    def test_assign_to_amount_accounting(self):
+        """ Make accounting to assign to another amount """
+
+        ia34 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        ia35 = IncomingAmounts(payment_ccy=ia34.payment_ccy,
+                               payment_amount=0)
+        db.session.flush()
+        aa20 = ia34.assign_to_amount(ia35)
+        db.session.flush()
+        aac02 = AssignmentAccounting(aa20)
+        postings = aac02["journal"]["postings"]
+        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        self.assertIn("receipts", accounts, "No receipt posting")
+        self.assertNotIn("income", accounts, "unexpected income posting")
+        self.assertEqual(len(postings), 2, "Incorrect number of postings")
+
+    def test_assign_other_currency_accounting(self):
+        """ Make accounting for change of currency  """
+
+        ia36 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        ia37 = IncomingAmounts(payment_ccy="EUR",
+                               payment_amount=0)
+        db.session.flush()
+        aa21 = ia36.assign_to_amount(ia37, other_ccy="EUR",
+                                     other_amount=17820)
+        db.session.flush()
+        aac03 = AssignmentAccounting(aa21)
+        postings = aac03["journal"]["postings"]
+        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        self.assertIn("receipts", accounts, "No receipt posting")
+        self.assertNotIn("income", accounts, "unexpected income posting")
+        self.assertNotIn("income", accounts, "unexpected income posting")
+        self.assertIn("convertccy", accounts, "Conversion postings missing")
+        self.assertEqual(len(postings), 4, "Incorrect number of postings")
 
 
 class TestPaymentTransactions(unittest.TestCase):

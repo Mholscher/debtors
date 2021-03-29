@@ -276,12 +276,35 @@ class AssignmentAccounting(AccountingTemplate):
 
         journal_dict["extkey"] = "assign" + str(assignment.id)
         posting_list = []
-        posting_debt = {"account" : "income", "currency" : 
+        if assignment.bill:
+            posting_debt = {"account" : "income", "currency" : 
                              assignment.ccy,
                              "amount" : str(assignment.amount_assigned),
                              "debitcredit" : "Cr",
                              "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        elif assignment.to_amount:
+            posting_debt = {"account" : "receipts", "currency" : 
+                             assignment.ccy,
+                             "amount" : str(assignment.amount_assigned),
+                             "debitcredit" : "Db",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        else:
+            raise ValueError("Assignment to unknown target")
         posting_list.append(posting_debt)
+        if (assignment.to_amount
+            and assignment.ccy != assignment.to_amount.payment_ccy):
+            posting_ccy_from = {"account" : "convertccy", "currency" : 
+                             assignment.ccy,
+                             "amount" : str(assignment.amount_assigned),
+                             "debitcredit" : "Db",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_to = {"account" : "convertccy", "currency" : 
+                             assignment.to_amount.payment_ccy,
+                             "amount" : str(assignment.to_amount.payment_amount),
+                             "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_list.append(posting_ccy_to)
+            posting_list.append(posting_ccy_from)
         posting_receipt = {"account" : "receipts", "currency" : 
                              assignment.ccy,
                              "amount" : str(assignment.amount_assigned),
