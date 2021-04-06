@@ -980,7 +980,8 @@ class TestPaymentAccounting(unittest.TestCase):
         db.session.flush()
         aac02 = AssignmentAccounting(aa20)
         postings = aac02["journal"]["postings"]
-        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        accounts = [account for posting in postings 
+                    for k, account in posting.items() if k == 'account' ]
         self.assertIn("receipts", accounts, "No receipt posting")
         self.assertNotIn("income", accounts, "unexpected income posting")
         self.assertEqual(len(postings), 2, "Incorrect number of postings")
@@ -998,9 +999,9 @@ class TestPaymentAccounting(unittest.TestCase):
         db.session.flush()
         aac03 = AssignmentAccounting(aa21)
         postings = aac03["journal"]["postings"]
-        accounts = [account for posting in postings for k, account in posting.items() if k == 'account' ]
+        accounts = [account for posting in postings 
+                    for k, account in posting.items() if k == 'account' ]
         self.assertIn("receipts", accounts, "No receipt posting")
-        self.assertNotIn("income", accounts, "unexpected income posting")
         self.assertNotIn("income", accounts, "unexpected income posting")
         self.assertIn("convertccy", accounts, "Conversion postings missing")
         self.assertEqual(len(postings), 4, "Incorrect number of postings")
@@ -1022,6 +1023,7 @@ class TestPaymentTransactions(unittest.TestCase):
         self.parser = make_parser()
         self.parser.setContentHandler(self.camthandler)
         self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
         db.session.commit()
         self.app = app.test_client()
         self.app.testing = True
@@ -1215,3 +1217,105 @@ class TestPaymentTransactions(unittest.TestCase):
         self.assertTrue(bll12, "No bill with id {}".format(bll11_id))
         self.assertEqual(bll12.status, "paid", "bill not paid")
 
+
+class TestPaymentAssignToPayment(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.ia11 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=1330)
+        self.ia11.add()
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+        db.session.commit()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.infile.close()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_put_selection(self):
+        """ Get assignment page with selection by reference of payments """
+
+        ia41 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        qrystring="?find_our_ref=&find_bank_ref=000008&search_payment=Find+payment"
+        rv = self.app.get("/payment/assign/" + str(ia41.id) +
+                          qrystring,
+                          follow_redirects=True)
+        self.assertIn(b"1 880" , rv.data, "Amount not in response")
+
+    def test_put_selection_by_account(self):
+        """ Get assignment page with search of bills by bank account """
+
+        ia42 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        bill_list = Bills.bills_for_IBAN('NL76INGB0594788005')        
+        qrystring = "?find_name=&find_number=&find_bank_account=NL76INGB0594788005&search_client=Find+client+debt"
+        rv = self.app.get("/payment/assign/" + str(ia42.id) +
+                          qrystring,
+                          follow_redirects=True)
+        self.assertIn(b"1 880" , rv.data, "Amount not in response")
+
+    def test_search_string_for_account_returned(self):
+        """ If we search for a bill, the search string is returned """
+
+        ia43 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        bill_list = Bills.bills_for_IBAN('NL76INGB0594788005')        
+        qrystring = "?find_name=&find_number=&find_bank_account=NL76INGB0594788005&search_client=Find+client+debt"
+        rv = self.app.get("/payment/assign/" + str(ia43.id) +
+                          qrystring,
+                          follow_redirects=True)
+        self.assertIn(b"NL76INGB0594788005" ,
+                      rv.data, "Search string not in response")
+        self.assertIn(b"No bill found",
+                      rv.data, "No message saying no bill found")
+
+    def test_ref_search_returned(self):
+        """ If we search for a reference, the search string is returned """
+
+        ia44 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000187763').first()
+        qrystring = "?find_our_ref=watty&find_bank_ref=&search_payment=Find+payment"
+        rv = self.app.get("/payment/assign/" + str(ia44.id) +
+                          qrystring,
+                          follow_redirects=True)
+        self.assertIn(b"watty" ,
+                      rv.data, "Search string not in response")
+        self.assertIn(b"No payment found",
+                      rv.data, "No message saying nothing found")
+
+    def test_assign_to_same_ccy_amount(self):
+        """ Assign an amount to another amount in the same ccy """
+
+        ia45 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia45.add()
+        db.session.flush()
+        ia45_id = ia45.id
+        ia46 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        ia46_id = ia46.id
+        rv = self.app.post("/payment/assign/" + str(ia46.id) + "/payment/"
+                           + str(ia45.id))
+        ia45 = ia46 = db.session.query(IncomingAmounts).filter_by(id=ia45_id).first()
+        ia47 =db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        self.assertEqual(ia47.payment_amount, ia45.payment_amount,
+                         "Amount not updated")
+        ia46 = db.session.query(IncomingAmounts).filter_by(id=ia46_id).first()
+        self.assertTrue(ia46.used_in, "No assignment found")

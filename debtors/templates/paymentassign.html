@@ -22,7 +22,7 @@
 <div class="inputline">{{search_form.find_number.label(class="lblindent")}}{{nolabel(search_form.find_number)}}</div>
 <div class="inputline">{{search_form.find_bank_account.label(class="lblindent")}}{{nolabel(search_form.find_bank_account)}}</div>
 <div>{{search_form.search_client}}</div>
-<form/>
+</form>
 <br/>
 <table>
 </div>
@@ -33,6 +33,11 @@
 </td></form>
 </tr>{% endfor %}
 </table>
+    {% if search_result|length == 0 and (search_form.find_name.data
+        or search_form.find_number.data 
+        or search_form.find_bank_account.data) %}
+No bill found
+    {% endif %}
 
 <h2>Select another payment</h2>
 <form method="GET">
@@ -40,4 +45,23 @@
 <div class="inputline">{{fld(payment_form.find_bank_ref)}}</div>
 <div>{{payment_form.search_payment}}</div>
 </form>
+<br/>
+<table>
+    {% for to_payment in payments_found %}
+<tr>
+<form action={{url_for('.payment_to_payment', from_id=payment.id, to_id=to_payment.id) }} method="POST" class="inlineform">
+<td>Our ref.: {{to_payment.our_ref}}</td>
+<td>{{to_payment.payment_ccy}}{% if to_payment.payment_ccy != payment.payment_ccy %}<br/>{{payment.payment_ccy}}{% endif %}</td>
+<td>{{to_payment.payment_amount}}{% if to_payment.payment_ccy != payment.payment_ccy %}<br/>{{to_payment.to_payment_form.payment_amount}}{% endif %}</td>
+<td>{{to_payment.debcred}}</td>
+<td>Id: {{to_payment.id}}</td>
+<td>{{to_payment.to_payment_form.add_to_payment}}</td>
+</form>
+</tr>
+    {% endfor %}
+    {% if payments_found|length == 0 and (payment_form.find_our_ref.data or payment_form.find_bank_ref.data) %}
+No payment found
+    {% endif %}
+
 {% endblock content %}
+

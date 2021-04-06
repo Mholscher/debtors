@@ -187,3 +187,8 @@ class FindPaymentByRef(FlaskForm):
     find_our_ref = StringField("Our reference")
     find_bank_ref = StringField("Bank reference")
     search_payment = SubmitField("Find payment")
+
+class OtherPaymentForm(FlaskForm):
+    id = HiddenField("Other payment id")
+    payment_amount = AmountField("Other currency amount")
+    add_to_payment = SubmitField("Add here")

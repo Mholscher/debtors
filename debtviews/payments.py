@@ -32,7 +32,7 @@ from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
-    FindClientForm, FindPaymentByRef)
+    FindClientForm, FindPaymentByRef, OtherPaymentForm)
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
@@ -196,13 +196,44 @@ class PaymentAssignView(MethodView):
                                              account_nr=account_nr)
         for bill in search_results:
             bill.billing_amount = edited_amount(bill.total(),
-                                                currency=bill.billing_ccy)
+ 
+                                               currency=bill.billing_ccy)
+
+        if name:
+            client_search_form.find_name.data = name
+        if client_id:
+            client_search_form.find_number.data = client_id
+        if account_nr:
+            client_search_form.find_bank_account.data = account_nr
 
         # process input search arguments for "other" payments
+
+        our_ref = request.args.get("find_our_ref", None)
+        bank_ref = request.args.get("find_bank_ref", None)
+
+        payments_temp = payments_found = []
+        to_payment_forms = []
+
+        if our_ref or bank_ref:
+            payments_temp =\
+                IncomingAmounts.get_target_payments(our_ref=our_ref,
+                                                    bank_ref=bank_ref)
+
+        if our_ref:
+            payment_form.find_our_ref.data = our_ref
+        if bank_ref:
+            payment_form.find_bank_ref.data = bank_ref
+
+        for target_payment in payments_temp:
+            target_payment = PaymentDict(target_payment)
+            to_payment_form = OtherPaymentForm(obj=target_payment)
+            target_payment.to_payment_form = to_payment_form
+            payments_found.append(target_payment)
 
         return render_template('paymentassign.html', payment=payment,
                                search_results=search_results,
                                search_form=client_search_form,
+                               payments_found=payments_found,
                                payment_form=payment_form)
 
 
@@ -222,6 +253,21 @@ class PaymentAssignToBill(MethodView):
         payment.assign_to_bill(bill)
         db.session.commit()
         return redirect(url_for("payment_assign", payment_id=payment_id))
+
+
+class PaymentAssignToPayment(MethodView):
+    """ Assign a payment to a bill """
+
+    def post(self, from_id, to_id):
+        """ Assign the payment with payment_id to another payment """
+
+        from_amount = db.session.query(IncomingAmounts).\
+            filter_by(id=from_id).first()
+        to_amount = db.session.query(IncomingAmounts).\
+            filter_by(id=to_id).first()
+        from_amount.assign_to_amount(to_amount)
+        db.session.commit()
+        return redirect(url_for("payment_assign", payment_id=from_id))
 
 
 class PaymentAccounting(AccountingTemplate):

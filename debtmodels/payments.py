@@ -87,6 +87,11 @@ class CannotAssignZeroAmountToAmount(ValueError):
     pass
 
 
+class AToAmountIsRequiredError(ValueError):
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -317,7 +322,7 @@ class IncomingAmounts(db.Model):
             if other_amount:
                 to_amount.payment_amount += other_amount
             else:
-                raise CannotAssignZeroAmountToAmount("Other currency amount missing")
+                raise AToAmountIsRequiredError("Amount in {} missing".format(other_ccy))
         else:
             to_amount.payment_amount += assigned_amount.amount_assigned
         self.fully_assigned = True
