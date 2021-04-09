@@ -51,7 +51,7 @@ No bill found
 <tr>
 <form action={{url_for('.payment_to_payment', from_id=payment.id, to_id=to_payment.id) }} method="POST" class="inlineform">
 <td>Our ref.: {{to_payment.our_ref}}</td>
-<td>{{to_payment.payment_ccy}}{% if to_payment.payment_ccy != payment.payment_ccy %}<br/>{{payment.payment_ccy}}{% endif %}</td>
+<td>{{to_payment.payment_ccy}}{% if to_payment.payment_ccy != payment.payment_ccy %}<br/>{{to_payment.payment_ccy}}{% endif %}</td>
 <td>{{to_payment.payment_amount}}{% if to_payment.payment_ccy != payment.payment_ccy %}<br/>{{to_payment.to_payment_form.payment_amount}}{% endif %}</td>
 <td>{{to_payment.debcred}}</td>
 <td>Id: {{to_payment.id}}</td>

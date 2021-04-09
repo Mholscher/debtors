@@ -92,6 +92,11 @@ class AToAmountIsRequiredError(ValueError):
     pass
 
 
+class AmountInOtherCcyRequiredError(ValueError):
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -309,8 +314,11 @@ class IncomingAmounts(db.Model):
 
         """
 
-        if self.payment_amount == 0:
+        if self.payment_amount == 0 or self.fully_assigned:
             raise CannotAssignZeroAmountToAmount("Amount must be > 0")
+
+        if self.payment_ccy != to_amount.payment_ccy and not other_amount:
+            raise AmountInOtherCcyRequiredError("Amount in other currency required")
 
         assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
                                amount_assigned=self.payment_amount

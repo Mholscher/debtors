@@ -177,6 +177,8 @@ class PaymentAssignView(MethodView):
             payment = IncomingAmounts.get_payment_by_id(payment_id)
         except ValueError as ve:
             abort(404, str(ve))
+        if payment.fully_assigned:
+            flash("This payment has been fully assigned")
         payment = PaymentDict(payment)
         client_search_form = FindClientForm()
         payment_form = FindPaymentByRef()
@@ -261,11 +263,26 @@ class PaymentAssignToPayment(MethodView):
     def post(self, from_id, to_id):
         """ Assign the payment with payment_id to another payment """
 
+        other_ccy = request.args.get("other_ccy", None)
+        other_amount = request.args.get("other_amount", None)
+
         from_amount = db.session.query(IncomingAmounts).\
             filter_by(id=from_id).first()
         to_amount = db.session.query(IncomingAmounts).\
             filter_by(id=to_id).first()
-        from_amount.assign_to_amount(to_amount)
+
+        if other_ccy and other_ccy != to_amount.payment_ccy:
+            abort(400, "Invalid currency")
+
+        if other_amount and not other_ccy:
+            abort(400, "Currency for target amount is required")
+
+        if other_amount:
+            from_amount.assign_to_amount(to_amount,
+                                         other_amount=int(other_amount),
+                                         other_ccy=other_ccy)
+        else:
+            from_amount.assign_to_amount(to_amount)
         db.session.commit()
         return redirect(url_for("payment_assign", payment_id=from_id))
 

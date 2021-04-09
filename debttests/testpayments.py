@@ -871,6 +871,33 @@ class TestAssignToPayment(unittest.TestCase):
         self.assertEqual(aa19.amount_assigned, self.ia38.payment_amount,
                          "Wrong amount assigned")
 
+    def test_assign_different_ccy_no_amount_fails(self):
+        """ Need to pass in "other amount"to assign to different currency """
+
+        ia50 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0)
+        ia50.add()
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            aa23 = self.ia38.assign_to_amount(ia50)
+
+
+    def test_assign_more_than_remainder_fails(self):
+        """ If we assign an unassigned amount of zero, it fails """
+
+        parse(self.infile, self.camthandler)
+        ia48 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+        aa22 = AssignedAmounts(ccy='JPY',
+                               amount_assigned=1880)
+        aa22.from_amount = ia48
+        ia49 = IncomingAmounts(payment_ccy="JPY",
+                               payment_amount=0)
+        ia48.assign_to_amount(ia49)
+        db.session.flush()
+        with self.assertRaises(ValueError):
+            ia48.assign_to_amount(ia49)
+
 
 class TestPaymentAccounting(unittest.TestCase):
 
@@ -1302,20 +1329,79 @@ class TestPaymentAssignToPayment(unittest.TestCase):
     def test_assign_to_same_ccy_amount(self):
         """ Assign an amount to another amount in the same ccy """
 
-        ia45 = IncomingAmounts(payment_ccy='JPY',
+        ia45 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=0,
                                debcred='Cr',
                                value_date=datetime(2021, 1, 16))
         ia45.add()
-        db.session.flush()
+        db.session.commit()
         ia45_id = ia45.id
         ia46 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
         ia46_id = ia46.id
+
         rv = self.app.post("/payment/assign/" + str(ia46.id) + "/payment/"
                            + str(ia45.id))
-        ia45 = ia46 = db.session.query(IncomingAmounts).filter_by(id=ia45_id).first()
+
+        ia45 = db.session.query(IncomingAmounts).filter_by(id=ia45_id).first()
         ia47 =db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
         self.assertEqual(ia47.payment_amount, ia45.payment_amount,
                          "Amount not updated")
         ia46 = db.session.query(IncomingAmounts).filter_by(id=ia46_id).first()
         self.assertTrue(ia46.used_in, "No assignment found")
+
+    def test_assign_to_other_ccy_amount(self):
+        """ We can assign to an amount in another currency """
+
+        ia51 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia51.add()
+        db.session.flush()
+        ia51_id = ia51.id
+        ia52 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        ia52_id = ia52.id
+
+        qrystring = "?other_ccy=" + ia51.payment_ccy + "&other_amount=5562"
+        rv = self.app.post("/payment/assign/" + str(ia52.id) + "/payment/"
+                           + str(ia51.id) + qrystring)
+
+        ia51 = db.session.query(IncomingAmounts).filter_by(id=ia51_id).first()
+        ia52 =db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        self.assertEqual(ia51.payment_amount, 5562, "Amount to incorrect")
+
+    def test_wrong_other_ccy_fails(self):
+        """ Other currency is incorrect produces a 400 error """
+
+        ia53 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia53.add()
+        db.session.flush()
+        ia53_id = ia53.id
+        ia54 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        ia54_id = ia54.id
+
+        qrystring = "?other_ccy=GBP&other_amount=5562"
+        rv = self.app.post("/payment/assign/" + str(ia54.id) + "/payment/"
+                           + str(ia53.id) + qrystring)
+        self.assertEqual(rv.status_code, 400, "No status 400")
+
+    def test_other_amount_no_ccy_fails(self):
+        """ Pass an other amount but no currency fails """
+
+        ia55 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0,
+                               debcred='Cr',
+                               value_date=datetime(2021, 1, 16))
+        ia55.add()
+        db.session.flush()
+        ia55_id = ia55.id
+        ia56 = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000019').first()
+        ia56_id = ia56.id
+
+        qrystring = "?other_amount=5562"
+        rv = self.app.post("/payment/assign/" + str(ia56.id) + "/payment/"
+                           + str(ia55.id) + qrystring)
+        self.assertEqual(rv.status_code, 400, "No status 400")
