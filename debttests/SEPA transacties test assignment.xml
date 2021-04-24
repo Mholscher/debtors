@@ -431,6 +431,72 @@
        </TxDtls>
     </NtryDtls>
   </Ntry>
+  <Ntry>
+    <NtryRef>011111333306999888000005708</NtryRef>
+    <Amt Ccy="EUR">125.00</Amt>
+    <CdtDbtInd>DBIT</CdtDbtInd>
+    <Sts>BOOK</Sts>
+   <BookgDt>
+       <Dt>2014-01-04</Dt>
+    </BookgDt>
+   <ValDt>
+       <Dt>2014-01-03</Dt>
+    </ValDt>
+    <AcctSvcrRef>59999208N9</AcctSvcrRef>
+   <BkTxCd>
+     <Domn>
+         <Cd>PMNT</Cd>
+        <Fmly>
+            <Cd>IRCT</Cd>
+               <SubFmlyCd>RRTN</SubFmlyCd>
+         </Fmly>
+       </Domn>
+     <Prtry>
+         <Cd>09900</Cd>
+         <Issr>ING Group</Issr>
+       </Prtry>
+    </BkTxCd>
+   <NtryDtls>
+     <TxDtls>
+        <RltdPties>
+          <Dbtr>
+               <Nm>ING Testrekening</Nm>
+            </Dbtr>
+          <DbtrAcct>
+             <Id>
+                  <IBAN>NL08INGB0212952803</IBAN>
+               </Id>
+             <Tp>
+                  <Prtry>General</Prtry>
+               </Tp>
+            </DbtrAcct>
+          </RltdPties>
+        <RltdAgts>
+           <DbtrAgt>
+             <FinInstnId>
+                  <BIC>INGBNL2A</BIC>
+               </FinInstnId>
+            </DbtrAgt>
+          </RltdAgts>
+        <RmtInf>
+           <Strd>
+             <CdtrRefInf>
+                <Tp>
+                   <CdOrPrtry>
+                       <Cd>SCOR</Cd>
+                     </CdOrPrtry>
+                     <Issr>CUR</Issr>
+                  </Tp>
+                  <Ref>0010008346912075</Ref>
+               </CdtrRefInf>
+            </Strd>
+          </RmtInf>
+        <RltdDts>
+            <TxDtTm>2014-01-04T19:10:18</TxDtTm>
+          </RltdDts>
+       </TxDtls>
+    </NtryDtls>
+</Ntry>S
     </Stmt>
   </BkToCstmrStmt>
 </Document>

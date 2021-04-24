@@ -222,6 +222,7 @@ class TestCAMTEntryHandler(unittest.TestCase):
                             None, 
                             f'Our reference incorrect: {unassigned.our_ref}')
 
+
 class TestMoreTransactions(unittest.TestCase):
 
     def setUp(self):
@@ -233,7 +234,7 @@ class TestMoreTransactions(unittest.TestCase):
     def tearDown(self):
 
         self.camthandler = None
-        parser = None
+        self.parser = None
         self.infile.close()
         delete_amountq(self)
         db.session.query(IncomingAmounts).delete()
@@ -300,6 +301,18 @@ class TestMoreTransactions(unittest.TestCase):
         one_amount = db.session.query(IncomingAmounts).filter_by(bank_ref='011111333306999888000000008').first()
         self.assertTrue(one_amount, "No entry for bank reference")
 
+    def test_reversal_indicator_set(self):
+        """ We translate the reversal indicator from CAMT053 """
+
+        parse(self.infile, self.camthandler)
+        rvsl_list = [(entry.debcred, entry.rvslind) for entry in 
+                     self.camthandler.entries if entry.bank_ref ==
+                     "021514017743280167000000001"]
+        for entry in rvsl_list:
+            self.assertEqual(entry[0], "Db", "Entry not debit")
+            self.assertEqual(entry[1], True, "Entry no reversal")
+
+
 
 class TestAssignAmounts(unittest.TestCase):
 
@@ -313,7 +326,6 @@ class TestAssignAmounts(unittest.TestCase):
         self.camthandler = CAMT53Handler()
         self.parser = make_parser()
         self.parser.setContentHandler(self.camthandler)
-       
 
     def tearDown(self):
 
@@ -708,6 +720,73 @@ class TestAssignment(unittest.TestCase):
         with self.assertRaises(ValueError):
             bill_list = IncomingAmounts.get_bill_targets()
 
+    def test_find_payment_for_reversal(self):
+        """ Find the payment that is to be reversed """
+
+        parse(self.infile, self.camthandler)
+        ia57 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=56797,
+                               debcred="Db",
+                               creditor_iban='NL08INGB0212170098')
+        ia57.add()
+        db.session.flush()
+        ial10 = IncomingAmounts.find_reversible_payments(ia57)
+        ia61 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref="011111333306999888000000755").first()
+        self.assertIn(ia61, ial10, "Reversible item not found")
+
+    def test_list_items_must_be_credit(self):
+        """ Only credit items must be returned """
+
+        parse(self.infile, self.camthandler)
+        ia60 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=13400,
+                               debcred="Db",
+                               creditor_iban= 'NL08INGB0212952803')
+        ia60.add()
+        db.session.flush()
+        ial12 = IncomingAmounts.find_reversible_payments(ia60)
+        for payment in ial12:
+            self.assertEqual(payment.debcred, "Cr", "Debit item in list")
+ 
+
+    def test_payment_must_have_same_amount(self):
+        """ A payment is only reversible if the amount is equal  """
+
+        parse(self.infile, self.camthandler)
+        ia58 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=56797,
+                               debcred="Db",
+                               creditor_iban= 'NL08INGB0212170098')
+        ia58.add()
+        ia59 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=13100,
+                               debcred="Db",
+                               creditor_iban= 'NL08INGB0212170098')
+        ia59.add()
+        db.session.flush()
+        ia62 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref="011111333306999888000000755").first()
+        ial11 = IncomingAmounts.find_reversible_payments(ia58)
+        self.assertIn(ia62, ial11, "Reversible item not found")
+        ial12 = IncomingAmounts.find_reversible_payments(ia59)
+        self.assertNotIn(ia59, ial12, "The payment was returned wrongly")
+
+    def test_item_must_have_same_currency(self):
+        """ To select a payment as candidate, currencies must be the same """
+
+        parse(self.infile, self.camthandler)
+        ia63 = IncomingAmounts(payment_ccy='GBP',
+                               payment_amount=56797,
+                               debcred="Db",
+                               creditor_iban= 'NL08INGB0212170098')
+        ia63.add()
+        db.session.flush()
+        ia64 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref="011111333306999888000000755").first()
+        ial12 = IncomingAmounts.find_reversible_payments(ia63)
+        self.assertNotIn(ia64, ial12, "Reversible item other ccy returned")
+
 
 class TestAssignToPayment(unittest.TestCase):
 
@@ -734,6 +813,7 @@ class TestAssignToPayment(unittest.TestCase):
         self.parser = make_parser()
         self.parser.setContentHandler(self.camthandler)
         self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
 
     def tearDown(self):
 
@@ -885,7 +965,6 @@ class TestAssignToPayment(unittest.TestCase):
     def test_assign_more_than_remainder_fails(self):
         """ If we assign an unassigned amount of zero, it fails """
 
-        parse(self.infile, self.camthandler)
         ia48 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='011111333306999888000000008').first()
         aa22 = AssignedAmounts(ccy='JPY',
@@ -897,6 +976,23 @@ class TestAssignToPayment(unittest.TestCase):
         db.session.flush()
         with self.assertRaises(ValueError):
             ia48.assign_to_amount(ia49)
+
+    def test_reverse_open_payment(self):
+        """ verse a payment not yet assigned """
+
+        ia65 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=12500,
+                               debcred='Db',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Some text',
+                               bank_ref='Terugboeking betaling')
+        ia66 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        db.session.flush()
+        ia65.assign_reversal_to_payment(ia66)
+        self.assertEqual(ia65.fully_assigned, True, "Reversal not assigned")
+        self.assertTrue(ia66.fully_assigned, "Reversed item still available")
 
 
 class TestPaymentAccounting(unittest.TestCase):

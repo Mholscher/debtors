@@ -18,7 +18,7 @@
 """ This module holds the model classes for the processing of incoming
 payments.
 
-Incoming payments are identified for the payor and the bill that the
+Incoming payments are identified for the payer and the bill that the
 payment must be applied to. No partial application (a payment may be
 insufficient to pay all of a bill) will be performed. However, if a
 payment is larger than the debt, the debt will be paid and the rest
@@ -139,6 +139,7 @@ class IncomingAmounts(db.Model):
     payment_ccy = db.Column(db.String(3), nullable=False)
     payment_amount = db.Column(db.Integer, default=0)
     debcred = db.Column(db.String(2), default='Cr')
+    rvslind = db.Column(db.Boolean, default=False)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
                           index=True, nullable=True)
     value_date = db.Column(db.DateTime, default=datetime.now,
@@ -337,6 +338,27 @@ class IncomingAmounts(db.Model):
 
         return assigned_amount
 
+    def assign_reversal_to_payment(self, to_amount):
+        """ Assign this payment to another payment that will be reversed 
+
+        This payment will be assigned as if it is a normal payment, although
+        it is a debit. The to_amount will be assigned to and no longer
+        available for use to pay a bill.
+        """
+
+        assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
+                               amount_assigned=self.payment_amount)
+        assigned_amount.from_amount = self
+        assigned_amount.to_amount = to_amount
+        self.fully_assigned = True
+        to_assignment = AssignedAmounts(ccy=to_amount.payment_ccy,
+                                        amount_assigned=
+                                        to_amount.payment_amount)
+        to_assignment.from_amount = to_amount
+        to_assignment.to_amount = self
+        to_amount.fully_assigned = True
+        return assigned_amount
+
 
     @staticmethod
     def get_bill_targets(name=None, client_id=None, account_nr=None):
@@ -362,6 +384,21 @@ class IncomingAmounts(db.Model):
         if account_nr:
             return Bills.bills_for_IBAN(account_nr)
         raise NoSupportedArgumentError("Pass client name, number or bank account")
+
+    @staticmethod
+    def find_reversible_payments(debit_amount):
+        """ Find a list of payments that can be reversed.
+
+        When a debit amount is input (either through the browser or CAMT53,
+        we try to find a list of reversible payments.
+        """
+
+        payment_list = db.session.query(IncomingAmounts).\
+            filter_by(creditor_iban=debit_amount.creditor_iban,
+                      payment_amount=debit_amount.payment_amount,
+                      payment_ccy=debit_amount.payment_ccy,
+                      debcred="Cr").all()
+        return payment_list
 
     def get_target_payments(our_ref=None, bank_ref=None):
         """ Get a list of payments with a given (part of) reference """
@@ -434,8 +471,9 @@ class AssignedAmounts(db.Model):
         :amount_id: The id of the incoming amount that is assigned from
         :ccy: The amount of the assigned ccy
         :amount_assigned: How much of the incoming amount is assigned here
-        :bill_id: If assigned to a bill (the standard action) the bill
-            assigned to
+        :bill_id: If assigned to a bill (the standard action) the id of the
+            bill assigned to
+        :bill: If assigned to a bill the bill that is assigned to
         :amount_id_to: If assigned to another incoming amount, the id of the
             amount to which we assigned it
         :to_amount: The amount (in new ccy if applicable) on the new amount

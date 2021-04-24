@@ -204,6 +204,13 @@ def create_bills(instance):
                           status='new')
     instance.clt5.bills.append(instance.bll5)
     instance.bills.append(instance.bll5)
+    instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=2),
+                          date_bill=datetime(year=2020, month=3, day=2),
+                          billing_ccy='EUR',
+                          status='paid')
+    instance.clt5.bills.append(instance.bll6)
+    instance.bills.append(instance.bll6)
+
 
 def add_lines_to_bills(instance):
     """ Add lines to the bills in the instance
@@ -262,7 +269,12 @@ def add_lines_to_bills(instance):
                         measured_in='box',
                         unit_price=376)
     bill.lines.append(bill_line)
-    bill = instance.bll5
+    bill = instance.bll6
+    bill_line = BillLines(short_desc='Sh75',
+                        long_desc='Paper bags',
+                        number_of=12,
+                        measured_in='pcs',
+                        unit_price=566)
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """

@@ -54,6 +54,8 @@ class CAMT53Handler(ContentHandler):
             self.in_valuedate = True
         elif name == 'CdtDbtInd':
             self.in_credit_debit = True
+        elif name == "RvslInd":
+            self.in_reversal_ind = True
         elif (name == 'Dt' or name == 'DtTm'
             and hasattr(self, ".in_valuedate")):
             self.in_date = True
@@ -87,6 +89,8 @@ class CAMT53Handler(ContentHandler):
             del(self.in_amount)
         elif name == 'CdtDbtInd':
             del(self.in_credit_debit)
+        elif name == "RvslInd":
+            del(self.in_reversal_ind)
         elif name == 'ValDt':
             del(self.in_valuedate)
         elif name == 'Dt' and hasattr(self, "in_date"):
@@ -191,6 +195,11 @@ class CAMT53Handler(ContentHandler):
                 self.unassigned_amount.debcred = 'Db'
             else:
                 self.unassigned_amount.debcred = 'Cr'
+        elif hasattr(self, "in_reversal_ind") and self.in_reversal_ind:
+            if content.lower() == "true":
+                self.unassigned_amount.rvslind = True
+            else:
+                self.unassigned_amount.rvslind = False
         elif (hasattr(self, 'in_amount')
             and self.in_amount):
             self.unassigned_amount.payment_amount = internal_amount(content)
