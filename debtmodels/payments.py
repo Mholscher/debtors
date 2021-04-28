@@ -97,6 +97,20 @@ class AmountInOtherCcyRequiredError(ValueError):
     pass
 
 
+class CanOnlyReverseEqualAmountError(ValueError):
+
+    pass
+
+
+class CanNotReverseToAssignedAmount(ValueError):
+
+    pass
+
+class ReverseRequiredOppositeDebcred(ValueError):
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -346,11 +360,21 @@ class IncomingAmounts(db.Model):
         available for use to pay a bill.
         """
 
+        if self.payment_ccy != to_amount.payment_ccy:
+            raise CanOnlyAssignToBillInSameCcy("Reversal must be same currency as original")
+        if self.payment_amount != to_amount.payment_amount:
+            raise CanOnlyReverseEqualAmountError("Reversal must be same amount as original")
+        if to_amount.assigned():
+            raise CanNotReverseToAssignedAmount("Amount reversed was assigned")
+        if self.debcred == to_amount.debcred:
+            raise ReverseRequiredOppositeDebcred("Can only reverse opposites")
+
         assigned_amount = AssignedAmounts(ccy=self.payment_ccy,
                                amount_assigned=self.payment_amount)
         assigned_amount.from_amount = self
         assigned_amount.to_amount = to_amount
         self.fully_assigned = True
+
         to_assignment = AssignedAmounts(ccy=to_amount.payment_ccy,
                                         amount_assigned=
                                         to_amount.payment_amount)
@@ -399,6 +423,18 @@ class IncomingAmounts(db.Model):
                       payment_ccy=debit_amount.payment_ccy,
                       debcred="Cr").all()
         return payment_list
+
+    def reverse_if_one_target(self):
+        """ If there is only one target found for reversing, do it
+
+        This function is executed on the reversal!
+        """
+
+        target_list = IncomingAmounts.find_reversible_payments(self)
+        target_list = [target for target in target_list 
+                       if not target.assigned()]
+        if len(target_list) == 1:
+            return self.assign_reversal_to_payment(target_list[0])
 
     def get_target_payments(our_ref=None, bank_ref=None):
         """ Get a list of payments with a given (part of) reference """

@@ -978,11 +978,11 @@ class TestAssignToPayment(unittest.TestCase):
             ia48.assign_to_amount(ia49)
 
     def test_reverse_open_payment(self):
-        """ verse a payment not yet assigned """
+        """ Reverse a payment not yet assigned """
 
         ia65 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=12500,
-                               debcred='Db',
+                               debcred='Cr',
                                creditor_iban= 'NL08INGB0212952803',
                                client_name='ING Testrekening',
                                our_ref='Some text',
@@ -993,6 +993,92 @@ class TestAssignToPayment(unittest.TestCase):
         ia65.assign_reversal_to_payment(ia66)
         self.assertEqual(ia65.fully_assigned, True, "Reversal not assigned")
         self.assertTrue(ia66.fully_assigned, "Reversed item still available")
+
+    def test_reverse_if_one_eligible_target(self):
+        """ If one target thatcan be reversed, do it """
+
+        ia67 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=56797,
+                               debcred='Db',
+                               creditor_iban= 'NL08INGB0212170098',
+                               client_name='Aquamarijn',
+                               our_ref='Some text',
+                               bank_ref='Terugboeking betaling')
+        ia67.add()
+        ia68 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000755').first()
+        db.session.flush()
+        ia67.reverse_if_one_target()
+        self.assertTrue(ia68.fully_assigned, "Reversed item still available")
+
+    def test_reverse_fails_if_wrong_ccy(self):
+        """ Trying to reverse a payment for another currency fails """
+
+        ia69 = IncomingAmounts(payment_ccy='GBP',
+                               payment_amount=12500,
+                               debcred='Db',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Reverse British Pounds',
+                               bank_ref='Terugboeking betaling')
+        ia70 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        db.session.flush()
+        with  self.assertRaises(ValueError):
+            ia69.assign_reversal_to_payment(ia70)
+
+    def test_reverse_fails_if_wrong_amount(self):
+        """ Trying to reverse a payment for another currency fails """
+
+        ia71 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=12530,
+                               debcred='Db',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Reverse British Pounds',
+                               bank_ref='Terugboeking betaling')
+        ia72 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        db.session.flush()
+        with  self.assertRaises(ValueError):
+            ia71.assign_reversal_to_payment(ia72)
+
+    def test_reverse_fails_if_same_debcred(self):
+        """ Trying to reverse a payment with credit amount fails """
+
+        ia76 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=12500,
+                               debcred='Db',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Reverse British Pounds',
+                               bank_ref='Terugboeking betaling')
+        ia77 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        db.session.flush()
+        with  self.assertRaises(ValueError):
+            ia76.assign_reversal_to_payment(ia77)
+
+    def test_reverse_fails_if_assigned(self):
+        """ Trying to reverse a payment for another currency fails """
+
+        ia73 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=12500,
+                               debcred='Cr',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Reverse British Pounds',
+                               bank_ref='Terugboeking betaling')
+        ia74 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        ia75 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               debcred='Cr')
+        db.session.flush()
+        ia74.assign_to_amount(ia75)
+        db.session.flush()
+        with  self.assertRaises(ValueError):
+            ia73.assign_reversal_to_payment(ia74)
 
 
 class TestPaymentAccounting(unittest.TestCase):
