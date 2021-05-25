@@ -31,7 +31,7 @@ from debtviews.forms import  FormForAmount
 @app.route('/')
 def index():
     """This is the index page of the application. It shows
-    a list of accounts
+    a list of clients
     """
     return redirect(url_for('client.list_clients')) 
 
