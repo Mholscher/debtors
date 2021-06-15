@@ -28,7 +28,7 @@ from flask.views import MethodView
 from clientmodels.clients import Clients
 from debtors import db
 from debtviews.monetary import edited_amount
-from debtmodels.payments import IncomingAmounts, IncomingAmountNotFoundError
+from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError)
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
@@ -287,6 +287,64 @@ class PaymentAssignToPayment(MethodView):
         return redirect(url_for("payment_assign", payment_id=from_id))
 
 
+class PaymentReverseView(MethodView):
+    """ A reversal of a previous payment must be processed manually """
+
+    def get(self, payment_id=None):
+        """ Get a reversal to be manually reversed """
+
+        try:
+            payment_reversal = IncomingAmounts.get_payment_by_id(payment_id)
+        except IncomingAmountNotFoundError as iafe:
+            abort(404, str(iafe))
+
+        if not payment_reversal.rvslind:
+            flash(f"Warning: Payment {payment_id} is not a reversal")
+
+        name = request.args.get("find_name", None)
+        client_number = request.args.get("find_number", None)
+        account = request.args.get("find_bank_account", None)
+
+        search_results = []
+        client_search_form = FindClientForm()
+        if name:
+            client_search_form.find_name.data = name
+        if client_number:
+            client_search_form.find_number.data = client_number
+        if account:
+            client_search_form.find_bank_account.data = account
+
+        search_values = (name, client_number, account)
+
+        payments_found = []
+
+        if not any(search_values):
+            reversible = IncomingAmounts.find_reversible_payments(
+                payment_reversal)
+            payments_found = [PaymentDict(to_convert) for to_convert
+                              in  reversible]
+        else:
+            clients_entered = []
+            if client_number:
+                try:
+                    client_found = Clients.get_by_id(client_number)
+                except ValueError as ve:
+                    client_found = None
+                if client_found:
+                    clients_entered.append(client_found)
+            elif name:
+                payments_found = IncomingAmounts.get_payments_by_name(name)
+ 
+        payment_form = FindPaymentByRef()
+
+        return render_template("paymentreverse.html",
+                               payment=payment_reversal,
+                               search_results=search_results,
+                               search_form=client_search_form,
+                               payments_found=payments_found,
+                               payment_form=payment_form)
+
+
 class PaymentAccounting(AccountingTemplate):
     """ Create accounting for a payment
 
@@ -300,7 +358,7 @@ class PaymentAccounting(AccountingTemplate):
 
     def journal_entries(self, journal_dict, payment):
         """ Create postings for a payment
-        
+
         The journal_dict passed in is the dictionary that will be
         transformed into a JSON message for the accounting software.
         We need to add the postings and come up with a (unique)

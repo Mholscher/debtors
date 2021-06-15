@@ -496,7 +496,83 @@
           </RltdDts>
        </TxDtls>
     </NtryDtls>
-</Ntry>S
+</Ntry>
+ <Ntry>
+    <NtryRef>021514017743280167000000001</NtryRef>
+    <Amt Ccy="EUR">30.00</Amt>
+    <CdtDbtInd>DBIT</CdtDbtInd>
+    <RvslInd>true</RvslInd>
+    <Sts>BOOK</Sts>
+   <BookgDt>
+       <Dt>2014-01-03</Dt>
+    </BookgDt>
+   <ValDt>
+       <Dt>2013-12-20</Dt>
+    </ValDt>
+    <AcctSvcrRef>3101963431841</AcctSvcrRef>
+   <BkTxCd>
+     <Domn>
+          <Cd>PMNT</Cd>
+        <Fmly>
+            <Cd>IDDT</Cd>
+            <SubFmlyCd>UPDD</SubFmlyCd>
+          </Fmly>
+    </Domn>
+   <Prtry>
+       <Cd>01304</Cd>
+       <Issr>ING Group</Issr>
+    </Prtry>
+  </BkTxCd>
+- <NtryDtls>
+   <TxDtls>
+     <Refs>
+         <EndToEndId>5000300060007000</EndToEndId>
+         <MndtId>DDMdtINGBC</MndtId>
+       </Refs>
+     <RltdPties>
+        <Cdtr>
+            <Nm>ING Testrekening</Nm>
+          <Id>
+             <OrgId>
+                <Othr>
+                    <Id>NL11ZZZ111123333111</Id>
+                   <SchmeNm>
+                       <Cd>SEPA</Cd>
+                    </SchmeNm>
+                  </Othr>
+               </OrgId>
+            </Id>
+         </Cdtr>
+        <CdtrAcct>
+          <Id>
+               <IBAN>NL20INGB0001234567</IBAN>
+            </Id>
+          <Tp>
+               <Prtry>General</Prtry>
+            </Tp>
+         </CdtrAcct>
+       </RltdPties>
+     <RltdAgts>
+        <CdtrAgt>
+          <FinInstnId>
+               <BIC>INGBNL2A</BIC>
+            </FinInstnId>
+         </CdtrAgt>
+       </RltdAgts>
+     <RmtInf>
+         <Ustrd>INGHGV21545 UstrdRemiInf20140103GUB</Ustrd>
+       </RmtInf>
+     <RltdDts>
+         <TxDtTm>2014-01-03T16:38:22</TxDtTm>
+       </RltdDts>
+     <RtrInf>
+               <Rsn>
+                   <Cd>MD06</Cd>
+                </Rsn>
+              </RtrInf>
+           </TxDtls>
+         </NtryDtls>
+      </Ntry>
     </Stmt>
   </BkToCstmrStmt>
 </Document>

@@ -111,6 +111,13 @@ class ReverseRequiredOppositeDebcred(ValueError):
     pass
 
 
+class IncomingAmountIsNotAReversal(ValueError):
+    """ An incoming amount which was requested as a reversal is not a
+    reversal """
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -423,6 +430,30 @@ class IncomingAmounts(db.Model):
                       payment_ccy=debit_amount.payment_ccy,
                       debcred="Cr").all()
         return payment_list
+
+    @staticmethod
+    def find_reversible_by_clients(client_list):
+        """ We get a list of clients and return reversible payments
+
+        The payments are retrieved from the clients by following 
+        the links on the client records, but defined in this class 
+        (i.e. IncomingAmounts) 
+        """
+
+        payment_list = []
+        for client in client_list:
+            payment_list.extend(client.payments)
+        return payment_list
+
+    @staticmethod
+    def get_payments_by_name(name_fragment):
+        """ Return payments where the bank supplied this name 
+        for the payor
+        """
+
+        return db.session.query(IncomingAmounts).\
+            filter(IncomingAmounts.client_name.like("%" + name_fragment
+                                                            + "%")).all()
 
     def reverse_if_one_target(self):
         """ If there is only one target found for reversing, do it

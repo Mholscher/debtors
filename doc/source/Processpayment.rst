@@ -155,8 +155,10 @@ Rules for finding the bills:
 
 One or more of the bills may be selected, however, the total of all bill amounts may of course not exceed the unassigned amount on the payment.
 
-Assigning debits
-----------------
+.. _reversal:
+
+Assigning reversals
+-------------------
 
 Upon receiving a debit from the bank for an account, we need to assign this also. The process of assigning however is different from credits. 
 
@@ -167,6 +169,29 @@ Upon receiving a debit from the bank for an account, we need to assign this also
 Processing is equal for debits received through the electronic statements and manually input debits.
 
 Accounting items will be simply reversing the accounting done for posting for credit changes.
+
+Assigning reversals manually
+----------------------------
+
+If we want to process debits manually, we have to give the operator the opportunity to find any credits that would be reasonable. Upon showing the page, one or more credits are shown with the following properties:
+
+*   the account of the reversal and the candidate original are equal
+*   the amounts of the reversal and the candidate are equal
+*   the reversal and the candidate have the same value date
+
+If no candidates having these properties are found, the list remains empty.
+
+The operator can search for candidates by entering search arguments. When they enter a client number or surname:
+
+*   all candidates must be from accounts having said customer or customers (in case of a surname) attached.
+*   all candidates must have the exact same currency and amount as the reversal, but a different debit/credit indicator
+
+When they enter an account number:
+
+*   all candidates must be for that account number
+*   all candidates must have the exact same currency and amount as the reversal, but a different debit/credit indicator
+
+Any of the shown candidates will be selectable as the entry to reverse. However, any entry that is assigned to another amount may need to be reversed first (see :ref:`reversal`).
 
 .. _multicurrency:
 

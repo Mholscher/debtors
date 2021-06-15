@@ -24,7 +24,8 @@ from debtors import app, InvalidDataError
 from flask import redirect, url_for, render_template, abort
 from debtviews.bills import BillView, ClientDebtView, BillDetailView
 from debtviews.payments import (PaymentView, PaymentUpdateView,
-    PaymentAssignView, PaymentAssignToBill, PaymentAssignToPayment)
+    PaymentAssignView, PaymentAssignToBill, PaymentAssignToPayment,
+    PaymentReverseView)
 from debtviews.forms import  FormForAmount
 
 
@@ -53,6 +54,9 @@ app.add_url_rule('/payment/assign/<int:payment_id>/bill/<int:bill_id>',
     view_func=PaymentAssignToBill.as_view('payment_assign_bill'))
 app.add_url_rule('/payment/assign/<int:from_id>/payment/<int:to_id>',
     view_func=PaymentAssignToPayment.as_view('payment_to_payment'))
+app.add_url_rule('/payment/reverse/<int:payment_id>',
+    view_func=PaymentReverseView.as_view('payment_reverse'))
+
 
 
 @app.route('/testamount/<amount>', methods=['GET', 'POST'])

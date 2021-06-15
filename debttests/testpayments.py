@@ -1587,3 +1587,126 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         rv = self.app.post("/payment/assign/" + str(ia56.id) + "/payment/"
                            + str(ia55.id) + qrystring)
         self.assertEqual(rv.status_code, 400, "No status 400")
+
+
+class TestPaymentReversal(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+        db.session.commit()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.infile.close()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_can_request_reversal(self):
+        """ We can request reversal page with a reversal """
+
+        ia78 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia78_id_str = str(ia78.id)
+        rv = self.app.get("/payment/reverse/" + ia78_id_str)
+        self.assertEqual(rv.status_code, 200, "Get reversal failed")
+        self.assertIn(b'ING Testrekening', rv.data,
+                      "Client name not shown")
+
+    def test_reversal_no_payment_fails(self):
+        """ Trying to reverse a non-existing payment fails """
+
+        rv = self.app.get("/payment/reverse/1")
+        self.assertEqual(rv.status_code, 404,
+                         "Get reversal id 1 wrong status code")
+
+    def test_reversal_indicator_set(self):
+        """ Trying to get reversal when it is a payment fails """
+
+        ia79 = db.session.query(IncomingAmounts).filter_by(bank_ref='022221333306999888222200112').first()
+        ia79_id_str = str(ia79.id)
+        rv = self.app.get("/payment/reverse/" + ia79_id_str)
+        self.assertEqual(rv.status_code, 200, "Get reversal failed")
+        self.assertIn(b'not a reversal', rv.data, "Invalid reversal not seen")
+
+    def test_show_search_argument(self):
+        """ When transaction is called with argument, it shows """
+
+        ia80 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia80_id_str = str(ia80.id)
+        rv = self.app.get("/payment/reverse/" + ia80_id_str +
+                          "?find_name=Jasper&find_number=218&find_bank_account=1188764")
+        self.assertEqual(rv.status_code, 200, "Get reversal failed")
+        self.assertIn(b'Jasper', rv.data, "Name not in output")
+        self.assertIn(b'218', rv.data, "Number not in output")
+        self.assertIn(b'1188764', rv.data, "Bank account not in output")
+
+    def test_get_shows_perfect_match(self):
+        """ If on get we have a perfect match, we show it """
+
+        ia81 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia81_id_str = str(ia81.id)
+        # setup a "perfect match"
+        ia82 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="To find",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3))
+        ia82.add()
+        db.session.flush()
+        rv = self.app.get("/payment/reverse/" + ia81_id_str)
+        self.assertIn(b"To find", rv.data, "Reference not on screen")
+
+    def test_conversion_of_target(self):
+        """ A payment showing as reversal target, must be edited """
+
+        ia83 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia83_id_str = str(ia83.id)
+        # setup a "perfect match"
+        ia84 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Test Conversion",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3))
+        ia84.add()
+        db.session.flush()
+        rv = self.app.get("/payment/reverse/" + ia83_id_str)
+        self.assertIn(b"30,00", rv.data, "Amount not converted")
+        self.assertIn(b"Credit", rv.data, "Debit/credit not converted")
+
+    def test_find_search_client_name(self):
+        """ We find a (maybe) reversible by client name """
+
+        ia85 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia85_id_str = str(ia85.id)
+        ia86 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Test Conversion",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3),
+                               client_name="ING Testrekening")
+        ia86.add()
+        db.session.commit()
+        ia86_id_str = str(ia86.id)
+        rv = self.app.get("/payment/reverse/" + ia86_id_str +
+                          "?find_name=ING%20Testrekening")
+        self.assertIn(ia85_id_str.encode(), rv.data, "Amount not in list")
