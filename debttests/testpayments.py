@@ -1655,7 +1655,7 @@ class TestPaymentReversal(unittest.TestCase):
         self.assertEqual(rv.status_code, 200, "Get reversal failed")
         self.assertIn(b'Jasper', rv.data, "Name not in output")
         self.assertIn(b'218', rv.data, "Number not in output")
-        self.assertIn(b'1188764', rv.data, "Bank account not in output")
+        #self.assertIn(b'1188764', rv.data, "Bank account not in output")
 
     def test_get_shows_perfect_match(self):
         """ If on get we have a perfect match, we show it """
@@ -1710,3 +1710,57 @@ class TestPaymentReversal(unittest.TestCase):
         rv = self.app.get("/payment/reverse/" + ia86_id_str +
                           "?find_name=ING%20Testrekening")
         self.assertIn(ia85_id_str.encode(), rv.data, "Amount not in list")
+
+    def test_amount_for_reversal_must_be_equal(self):
+        """ Amounts unequal to reversal amount must be ignored """
+
+        ia87 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia87_id_str = str(ia87.id)
+        ia88 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3003,
+                               debcred='Cr',
+                               our_ref="Test Conversion",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3),
+                               client_name="ING Testrekening")
+        ia88.add()
+        db.session.commit()
+        ia88_id_str = str(ia88.id)
+        ia89 = IncomingAmounts(payment_ccy='GBP',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Test Conversion",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3),
+                               client_name="ING Testrekening")
+        ia89.add()
+        db.session.commit()
+        ia89_id_str = str(ia89.id)
+
+        rv = self.app.get("/payment/reverse/" + ia87_id_str +
+                          "?find_name=ING%20Testrekening")
+        self.assertNotIn(ia88_id_str.encode(), rv.data,
+                         "Different amount in list")
+        self.assertNotIn(ia89_id_str.encode(), rv.data,
+                         "Different currency in list")
+
+    def test_find_search_client_number(self):
+        """ We can find payments by client number """
+
+        ia90 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia90_id_str = str(ia90.id)
+        ia91 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Test Conversion",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3),
+                               client_name="Oker")
+        ia91.client = self.clt6
+        ia91.add()
+        db.session.commit()
+        ia91_id_str = str(ia91.id)
+        rv = self.app.get("/payment/reverse/" + ia90_id_str +
+                          "?find_number=" + str(self.clt6.id))
+        self.assertIn(ia91_id_str.encode(), rv.data,
+                         "Amount not in list")

@@ -303,7 +303,7 @@ class PaymentReverseView(MethodView):
 
         name = request.args.get("find_name", None)
         client_number = request.args.get("find_number", None)
-        account = request.args.get("find_bank_account", None)
+        #account = request.args.get("find_bank_account", None)
 
         search_results = []
         client_search_form = FindClientForm()
@@ -311,10 +311,9 @@ class PaymentReverseView(MethodView):
             client_search_form.find_name.data = name
         if client_number:
             client_search_form.find_number.data = client_number
-        if account:
-            client_search_form.find_bank_account.data = account
-
-        search_values = (name, client_number, account)
+        #if account:
+        #    client_search_form.find_bank_account.data = account
+        search_values = (name, client_number)
 
         payments_found = []
 
@@ -324,16 +323,19 @@ class PaymentReverseView(MethodView):
             payments_found = [PaymentDict(to_convert) for to_convert
                               in  reversible]
         else:
-            clients_entered = []
             if client_number:
+                # the user entered a client number
                 try:
                     client_found = Clients.get_by_id(client_number)
                 except ValueError as ve:
                     client_found = None
                 if client_found:
-                    clients_entered.append(client_found)
+                    payments_found = client_found.payments
             elif name:
-                payments_found = IncomingAmounts.get_payments_by_name(name)
+                # the user entered (part of) a name
+                payments_found = IncomingAmounts.get_payments_by_name(name,
+                                     amount=payment_reversal.payment_amount,
+                                     ccy=payment_reversal.payment_ccy)
  
         payment_form = FindPaymentByRef()
 

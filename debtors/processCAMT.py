@@ -118,7 +118,7 @@ class CAMT53Handler(ContentHandler):
 
     def startElement(self, name, attrs):
         """ The parser calls this routine for each new element.
-        
+
         If the element is known to the CAMT53Handler, it handles the
         element. The element is recognised by its name.
         """
@@ -145,7 +145,7 @@ class CAMT53Handler(ContentHandler):
 
     def endElement(self, name):
         """ The parser calls this routine each time an element is done parsing
-        
+
         If there is closing logic for the element, it is done.
         """
 
@@ -179,7 +179,7 @@ class CAMT53Handler(ContentHandler):
 
     def characters(self, content):
         """ Called for each CDATA text in an element
-        
+
         The characters are the value in the xml entry (not to be confused
         with the statement entry ;=)
         """

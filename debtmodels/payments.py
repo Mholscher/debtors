@@ -446,14 +446,21 @@ class IncomingAmounts(db.Model):
         return payment_list
 
     @staticmethod
-    def get_payments_by_name(name_fragment):
-        """ Return payments where the bank supplied this name 
-        for the payor
+    def get_payments_by_name(name_fragment, amount=None, ccy=None):
+        """ Return payments where the bank supplied (part of) this name 
+        for the payer and optionally the amount and currency.
         """
 
-        return db.session.query(IncomingAmounts).\
+        amount_list = db.session.query(IncomingAmounts).\
             filter(IncomingAmounts.client_name.like("%" + name_fragment
-                                                            + "%")).all()
+                                                            + "%"))
+        if amount:
+            amount_list = amount_list.filter(IncomingAmounts.payment_amount
+                                                ==amount)
+        if ccy:
+            amount_list = amount_list.filter(IncomingAmounts.payment_ccy
+                                                ==ccy)
+        return amount_list.all()
 
     def reverse_if_one_target(self):
         """ If there is only one target found for reversing, do it
