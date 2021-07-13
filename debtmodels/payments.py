@@ -279,6 +279,11 @@ class IncomingAmounts(db.Model):
                     self.fully_assigned = True
                     break
 
+    def list_assignments(self):
+        """ Return all assignments """
+
+        return self.used_in
+
     def assigned(self):
         """ Total up the amount assigned to this payment """
 
@@ -390,6 +395,27 @@ class IncomingAmounts(db.Model):
         to_amount.fully_assigned = True
         return assigned_amount
 
+    def reverse_assignment(self, assigned_amount):
+        """ The assignment of this amount in assigned_amount is to be reversed
+
+        All action done by assigning need to be reversed
+
+            :assigned_amount: The assignment that is reversed
+
+        """
+
+        assigned_amount.reverse_assignment()
+
+    def reverse_assignment_for(self, amount):
+        """ An assignment is reversed, this amounts payment amount will be
+        lowered
+
+            :amount: The amount by which the amount available (payment_amount)
+                needs to be lowered
+
+        """
+
+        self.payment_amount -= amount
 
     @staticmethod
     def get_bill_targets(name=None, client_id=None, account_nr=None):
@@ -578,3 +604,16 @@ class AssignedAmounts(db.Model):
         """ Add self to session """
 
         db.session.add(self)
+
+    def reverse_assignment(self):
+        """ This assignment is to be reversed 
+        
+        The assignment will be deleted and all steps taken when assigning
+        will need to be wiped out.
+        """
+
+        if self.bill:
+            self.bill.assignment_reversal()
+        if self.to_amount:
+            self.to_amount.reverse_assignment_for(self.amount_assigned)
+        db.session.delete(self)

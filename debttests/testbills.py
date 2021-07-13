@@ -559,7 +559,7 @@ class TestBillTransactions(unittest.TestCase):
         self.assertIn(b'376', rv.data, 'Individual bill not in response')
         self.assertNotIn(b'376,00', rv.data, 'Wrong amount format')
         self.assertNotIn(b'188000', rv.data, 'Wrong total amount')
-        self.assertIn(b'1 880', rv.data, 'Wrong/no total amount')
+        self.assertIn(b'1.880', rv.data, 'Wrong/no total amount')
 
     def test_create_bill_no_precision(self):
         """ A bill created with no precision amount is correct """
@@ -655,7 +655,7 @@ class TestDebtEnquiries(unittest.TestCase):
         """ Amount formatting in debt view correct for currency """
 
         rv = self.app.get('debt/' + str(self.clt5.id))
-        self.assertIn(b'1 880', rv.data, 'Total wrongly formatted')
+        self.assertIn(b'1.880', rv.data, 'Total wrongly formatted')
         self.assertNotIn(b'1880', rv.data, 'Total wrongly formatted')
 
     def test_amount_edited_correct_precision_2(self):

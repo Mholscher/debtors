@@ -272,9 +272,10 @@ def add_lines_to_bills(instance):
     bill = instance.bll6
     bill_line = BillLines(short_desc='Sh75',
                         long_desc='Paper bags',
-                        number_of=12,
+                        number_of=4,
                         measured_in='pcs',
                         unit_price=566)
+    bill.lines.append(bill_line)
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """

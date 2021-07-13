@@ -193,6 +193,22 @@ When they enter an account number:
 
 Any of the shown candidates will be selectable as the entry to reverse. However, any entry that is assigned to another amount may need to be reversed first (see :ref:`reversal`).
 
+Reversing assignment
+--------------------
+
+If an amount is assigned to a bill or another amount, it may be assigned in error, or a reversal for the amount may be received. To be able to process these we can reverse an assignment.
+
+The assignment(s) are accessed via the original payment, whose assignment(s) are to be reversed. Accessing the reversal will show all assignments of this amount and those that should be reversed, can be selected.
+
+When the selection is submitted, assignments are reversed by removing the assignments, This entails:
+
+*   removing the assignment proper from the database
+*   reversing any accounting done for assignment
+*   if assignment was to a bill, the bill status will be set to issued (from paid)
+*   if assignment was to an amount, the amount will be deducted from the available amount for assignment on the amount assigned to
+
+Reversal from assignments to amount can only be done if the amount assigned to is not itself assigned. If it is, this assignment needs to be reversed first.
+
 .. _multicurrency:
 
 Payments in a different currency from the bill

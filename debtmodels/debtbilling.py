@@ -299,6 +299,12 @@ class Bills(db.Model):
 
         self.status = self.PAID
 
+    def assignment_reversal(self):
+        """ The bill was paid previously, but the assignment of the monies
+        needs to be revered
+        """
+        self.status = self.ISSUED
+
     @classmethod
     def create_from_dict(cls, bill_dict):
         """ Create a bill and bill lines from a dictionary

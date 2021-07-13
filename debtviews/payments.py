@@ -60,6 +60,7 @@ class PaymentDict(dict):
         self["client_ref"] = payment.client_ref
         self["client_name"] = payment.client_name
         self["creditor_iban"] = payment.creditor_iban
+        self["assigned"] = payment.assigned()
 
 class PaymentView(MethodView):
     """ This class shows the data of one payment on the web. """
@@ -287,6 +288,21 @@ class PaymentAssignToPayment(MethodView):
         return redirect(url_for("payment_assign", payment_id=from_id))
 
 
+class PaymentAssignReverseView(MethodView):
+    """ A payment was assigned and assignment(s) need to be reversed 
+
+    It is immaterial what the payment was assigned to, each assignment
+    (whether it was to a bill or anaother payment) will be reversed.
+    """
+
+    def get(self, payment_id=None):
+        """ Gather assignments for payment and show these to the user.
+
+        The user can select reversible assignements to process
+        """
+
+        return "Get payment assignments for " + str(payment_id)
+
 class PaymentReverseView(MethodView):
     """ A reversal of a previous payment must be processed manually """
 
@@ -382,6 +398,39 @@ class PaymentAccounting(AccountingTemplate):
                              "amount" : str(payment.payment_amount),
                              "debitcredit" : "Db",
                              "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_list.append(posting_receipt)
+        journal_dict["postings"] = posting_list
+        return journal_dict
+
+
+class PaymentReversalAccounting(AccountingTemplate):
+    ''' Create postings for the reversal from the bank for a payment.
+
+    The accounting is created as a dictionary, ready to be shipped as a 
+    JSON formatted file.
+
+    This class assumes that GLedger is being used. Subclass or replace to
+    use a different GL system.
+'''
+
+    def journal_entries(self, journal_dict, reversal):
+        """ Create the postings for a payment reversal """
+
+        journal_dict["extkey"] = "paymentreversal" + str(reversal.id)
+        if reversal.payment_amount == 0:
+            raise ValueError("Can not do accounting for zero amount")
+        posting_list = []
+        posting_debt = {"account" : "debt", "currency" : 
+                             reversal.payment_ccy,
+                             "amount" : str(reversal.payment_amount),
+                             "debitcredit" : "Cr",
+                             "valuedate" : reversal.value_date.strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        posting_receipt = {"account" : "receipts", "currency" : 
+                             reversal.payment_ccy,
+                             "amount" : str(reversal.payment_amount),
+                             "debitcredit" : "Db",
+                             "valuedate" : reversal.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict

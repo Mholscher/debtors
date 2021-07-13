@@ -32,7 +32,7 @@
 <td>{{to_payment.payment_amount}}</td>
 <td>{{to_payment.debcred}}</td>
 <td>Id: {{to_payment.id}}</td>
-<td>{{to_payment.add_to_payment}}</td>
+<td>{% if to_payment.assigned %}Assigned!{% else %}{{to_payment.add_to_payment}}{% endif %}</td>
 </form>
 </tr>
     {% endfor %}

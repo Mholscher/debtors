@@ -22,7 +22,8 @@ from dateutil.tz import tzoffset
 from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
-from debtviews.payments import PaymentAccounting, AssignmentAccounting
+from debtviews.payments import (PaymentAccounting, AssignmentAccounting,
+                                PaymentReversalAccounting)
 from debttests.helpers import (delete_test_clients, add_addresses,
     create_clients, spread_created_at, create_bills, add_lines_to_bills,
     delete_test_bills, add_debtor_preferences, delete_amountq,
@@ -311,7 +312,6 @@ class TestMoreTransactions(unittest.TestCase):
         for entry in rvsl_list:
             self.assertEqual(entry[0], "Db", "Entry not debit")
             self.assertEqual(entry[1], True, "Entry no reversal")
-
 
 
 class TestAssignAmounts(unittest.TestCase):
@@ -1081,6 +1081,147 @@ class TestAssignToPayment(unittest.TestCase):
             ia73.assign_reversal_to_payment(ia74)
 
 
+class TestAssignmentReversal(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.ia95 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=4456,
+                               creditor_iban= 'NL08INGB0212977892',
+                               client_name='T. Sommerzeel',
+                               our_ref='Ref TB22',
+                               bank_ref='11987')
+        self.ia95.add()
+        self.ia96 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               client_name='T. den Oude',
+                               our_ref='Snn34')
+        self.ia96.add()
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+        #delete_amountq(self)
+        db.session.flush()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_get_reversable_assignments(self):
+        """ Get assignments for the payment whose assignment(s) to reverse """
+
+        ia97 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+
+        ia97.assign_amount()
+        db.session.commit()
+
+        aa24 = db.session.query(AssignedAmounts).\
+            filter_by(from_amount=ia97).first()
+        self.assertIn(aa24, ia97.used_in, "Assigned amount not in list")
+
+    def test_get_reversable_assignments_through_function(self):
+        """ Get assignments for the payment whose assignment(s) to reverse """
+
+        ia98 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='011111333306999888000000008').first()
+
+        ia98.assign_amount()
+        db.session.commit()
+
+        al01 = ia98.list_assignments()
+        al02 = ia98.used_in
+
+        for assigned in al01:
+            self.assertIn(assigned, al02, "Not all returned in db")
+        for assigned in al02:
+            self.assertIn(assigned, al01, "Not all in returned list")
+
+    def test_return_more_assignments(self):
+        """ Return more than one assignment """
+
+        ia99 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=2535,
+                               creditor_iban= 'NL08INGB0212977817',
+                               client_name='T. Heerziel',
+                               our_ref='Ref 2assi',
+                               bank_ref='11987')
+        ia99.add()
+        ia100 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=47)
+        ia100.add()
+        ia101 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0)
+        ia101.add()
+        db.session.flush()
+        aa25 = ia99.assign_to_bill(self.bll4)
+        aa26 = ia99.assign_to_amount(ia101)
+        db.session.flush()
+        al03 = ia99.list_assignments()
+        self.assertEqual(len(al03), 2, "Too many/little amounts returned")
+
+    def test_reverse_assignment(self):
+        """ Reversing assignment deletes assignment row """
+
+        ia102 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=2535,
+                                creditor_iban= 'NL08INGB0212977817',
+                                client_name='T. Heerziel',
+                                our_ref='Ref 2assi',
+                                bank_ref='11987')
+        ia102.add()
+        db.session.flush()
+        aa27 = ia102.assign_to_bill(self.bll4)
+        db.session.flush()
+        self.assertEqual(self.bll4.status, 'paid', "The status is not paid")
+        ia102.reverse_assignment(aa27)
+        db.session.flush()
+        al04 = db.session.query(AssignedAmounts).filter_by(from_amount=ia102).all()
+        self.assertFalse(al04, "Assigned amount not removed")
+        self.assertNotEqual(self.bll4.status, 'paid',
+                            "The status of the bill is still paid")
+        self.assertEqual(self.bll4.total(), 1880, "The bill has wrong debt")
+
+    def test_reverse_assignment_amount(self):
+        """ Reverse an assignment to an amount """
+
+        ia103 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=2535,
+                                creditor_iban= 'NL08INGB0212977817',
+                                client_name='T. Heerziel',
+                                our_ref='Ref 2assi',
+                                bank_ref='11987')
+        ia103.add()
+        ia104 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=0)
+        ia104.add()
+        db.session.flush()
+        aa28 = ia103.assign_to_amount(ia104)
+        db.session.flush()
+        ia103.reverse_assignment(aa28)
+        al05 = db.session.query(AssignedAmounts).filter_by(from_amount=ia103).all()
+        self.assertFalse(al05, "Assigned amount not removed")
+        self.assertEqual(ia104.payment_amount, 0, "Amount not zero after reversal")
+
+
 class TestPaymentAccounting(unittest.TestCase):
 
     def setUp(self):
@@ -1130,6 +1271,14 @@ class TestPaymentAccounting(unittest.TestCase):
         pa02 = PaymentAccounting(ia30)
         self.assertEqual(pa02["journal"]["extkey"], "payment" + str(ia30.id),
                          "No valid external key in payment")
+
+    def test_payment_reversal_journal_id(self):
+        """ A payment reversal makes accounting with correct id """
+
+        ia94 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        pra01 = PaymentReversalAccounting(ia94)
+        self.assertEqual(pra01["journal"]["extkey"], "paymentreversal"
+                         + str(ia94.id), "No valid external key in payment")
 
     def test_no_accounting_for_zero_payment(self):
         """ If the payment amount is zero, refuse accounting """
@@ -1468,7 +1617,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         rv = self.app.get("/payment/assign/" + str(ia41.id) +
                           qrystring,
                           follow_redirects=True)
-        self.assertIn(b"1 880" , rv.data, "Amount not in response")
+        self.assertIn(b"1.880" , rv.data, "Amount not in response")
 
     def test_put_selection_by_account(self):
         """ Get assignment page with search of bills by bank account """
@@ -1479,7 +1628,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         rv = self.app.get("/payment/assign/" + str(ia42.id) +
                           qrystring,
                           follow_redirects=True)
-        self.assertIn(b"1 880" , rv.data, "Amount not in response")
+        self.assertIn(b"1.880" , rv.data, "Amount not in response")
 
     def test_search_string_for_account_returned(self):
         """ If we search for a bill, the search string is returned """
@@ -1764,3 +1913,22 @@ class TestPaymentReversal(unittest.TestCase):
                           "?find_number=" + str(self.clt6.id))
         self.assertIn(ia91_id_str.encode(), rv.data,
                          "Amount not in list")
+
+    def test_payment_to_reversed_cannot_be_assigned(self):
+        """ An assigned reversal candidate needs to be marked """
+
+        ia93 = db.session.query(IncomingAmounts).filter_by(bank_ref='021514017743280167000000001').first()
+        ia93_id_str = str(ia93.id)
+        ia92 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Paid bil reversal",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2014, 1, 3),
+                               client_name="Oker")
+        ia92.client = self.clt6
+        ia92.add()
+        ia92.assign_to_bill(self.bll6)
+        db.session.commit()
+        rv = self.app.get("/payment/reverse/" + ia93_id_str )
+        self.assertIn(b"Assigned", rv.data, "No assignment remark")

@@ -46,14 +46,14 @@ class TestMoneyConversions(unittest.TestCase):
 
         amount_cents = 24454
         edited = edited_amount(amount_cents, precision=0)
-        self.assertEqual('24 454', edited, 'Incorrect conversion')
+        self.assertEqual('24.454', edited, 'Incorrect conversion')
 
     def test_convert_tenths_to_string(self):
         """ We can convert an integer to an amount with 1 decimal position """
 
         amount_cents = 1624654
         edited = edited_amount(amount_cents, precision=1)
-        self.assertEqual('162 465,4', edited, 'Incorrect conversion')
+        self.assertEqual('162.465,4', edited, 'Incorrect conversion')
 
     def test_length_amount_less_precision(self):
         """ We can convert an amount with length less than precision """
@@ -145,7 +145,7 @@ class TestWithCurrency(unittest.TestCase):
 
         amount_cents = 22368
         edited = edited_amount(amount_cents, currency='JPY')
-        self.assertEqual('22 368', edited, 'Incorrect conversion')
+        self.assertEqual('22.368', edited, 'Incorrect conversion')
 
     def test_invalid_ccy_fails(self):
         """ We get an error if we try a non-existing currency """
@@ -159,12 +159,12 @@ class TestWithCurrency(unittest.TestCase):
 
         amount_cents = 71544
         edited = edited_amount(amount_cents, precision=2, currency='JPY')
-        self.assertEqual('71 544', edited, 'Incorrect conversion')
+        self.assertEqual('71.544', edited, 'Incorrect conversion')
 
     def test_amount_no_precision_with_comma_fails(self):
         """ Currency has no precision, entering an amount with comma fails """
 
-        amount_string = '8 875,90'
+        amount_string = '8.875,90'
         with self.assertRaises(ValueError):
             internal = validate_amount(amount_string, currency='JPY')
 
@@ -248,6 +248,22 @@ class TestAmountFormat(unittest.TestCase):
         a = validate_amount(amount_string, precision=4)
         self.assertEqual(49030000, a, 'Positive value validated wrongly')
 
+    def test_thousand_separator_not_at_start(self):
+        """ Converting amount to edited does not have leading separator """
+
+        ldb = locale.localeconv()
+        amount_string = edited_amount(48765, currency="EUR")
+        self.assertNotEqual(ldb['mon_thousands_sep'] + "487,65", amount_string,
+                            "Separator at position 1")
+
+    def test_thousand_separator_zero_decimals(self):
+        """ Converting amount to edited does not have leading separator """
+
+        ldb = locale.localeconv()
+        amount_string = edited_amount(765, currency="JPY")
+        self.assertNotEqual(ldb['mon_thousands_sep'] + "765", amount_string,
+                            "Separator at position 1")
+
 
 class AmountHolder():
 
@@ -317,7 +333,7 @@ class TestWTFormsAmountField(unittest.TestCase):
         amount_form.amount.data = 1276
         self.assertEqual(1276, amount_form.amount.data,
                          'Internal amount returned incorrect')
-        self.assertEqual('1 276', amount_form.amount._value(),
+        self.assertEqual('1.276', amount_form.amount._value(),
                          'External amount wrong')
 
     @unittest.skipIf(not wtforms_present, 'No wtforms amountfield found')
