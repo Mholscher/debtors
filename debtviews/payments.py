@@ -292,16 +292,29 @@ class PaymentAssignReverseView(MethodView):
     """ A payment was assigned and assignment(s) need to be reversed 
 
     It is immaterial what the payment was assigned to, each assignment
-    (whether it was to a bill or anaother payment) will be reversed.
+    (whether it was to a bill or another payment) will be reversed.
     """
 
     def get(self, payment_id=None):
         """ Gather assignments for payment and show these to the user.
 
-        The user can select reversible assignements to process
+        The user can select reversible assignments to process
         """
 
-        return "Get payment assignments for " + str(payment_id)
+        try:
+            payment = IncomingAmounts.get_payment_by_id(payment_id)
+        except IncomingAmountNotFoundError as iafe:
+            abort(404, str(iafe))
+        payment_dict = PaymentDict(payment)
+
+        assignments = payment.list_assignments()
+
+        for assignment in assignments:
+            assignment.amount = edited_amount(assignment.amount_assigned,
+                                              currency=assignment.ccy)
+
+        return render_template("assignmentreverse.html", payment=payment_dict,
+                               assignment_list=assignments)
 
 class PaymentReverseView(MethodView):
     """ A reversal of a previous payment must be processed manually """

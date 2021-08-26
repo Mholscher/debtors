@@ -1222,6 +1222,108 @@ class TestAssignmentReversal(unittest.TestCase):
         self.assertEqual(ia104.payment_amount, 0, "Amount not zero after reversal")
 
 
+class TestAssignmentReversalTransactions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.ia38 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=4456,
+                               creditor_iban= 'NL08INGB0212977892',
+                               client_name='T. Sommerzeel',
+                               our_ref='Ref TB22',
+                               bank_ref='11987')
+        self.ia38.add()
+        self.ia39 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               client_name='T. den Oude',
+                               our_ref='Snn34')
+        self.ia39.add()
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.camthandler = None
+        parser = None
+        self.infile.close()
+        #delete_amountq(self)
+        db.session.flush()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_get_one_assignment(self):
+        """ Get one assignment if there is only one """
+
+        self.ia38.assign_to_amount(self.ia39)
+        ia39_id = self.ia39.id
+        ia38_id = self.ia38.id
+        db.session.commit()
+        rv = self.app.get("/assignment/" + str(ia38_id) + "/reverse")
+        self.assertIn(str(ia39_id).encode(), rv.data,
+                      "Assigned not shown")
+
+    def test_get_more_assigned(self):
+        """ With more assignments, we see all """
+
+        bl01 = Bills(date_sale=date(year=2021, month=6, day=18),
+                          date_bill=date(year=2021, month=6, day=19),
+                          billing_ccy='EUR',
+                          status='issued')
+        bl01.add()
+        bll13 = BillLines(short_desc='Spoon', unit_price=18, number_of=2)
+        bl01.lines.append(bll13)
+        bl02 = Bills(date_sale=date(year=2021, month=7, day=8),
+                          date_bill=date(year=2021, month=7, day=9),
+                          billing_ccy='EUR',
+                          status='issued')
+        bl02.add()
+        bll14 = BillLines(short_desc='Bucket', unit_price=4, number_of=1)
+        bl02.lines.append(bll14)
+        ia38_id = self.ia38.id
+        db.session.flush()
+        aa28 = self.ia38.assign_to_bill(bl01)
+        aa29 = self.ia38.assign_to_bill(bl02)
+        bl01_id = bl01.bill_id
+        bl02_id = bl02.bill_id
+        db.session.commit()
+        aa28_id = aa28.id
+        aa29_id = aa29.id
+        rv = self.app.get("/assignment/" + str(ia38_id) + "/reverse")
+        self.assertIn(str(bl01_id).encode(), rv.data,
+                      "First assigned not shown")
+        self.assertIn(str(bl02_id).encode(), rv.data,
+                      "Second assigned not shown")
+        self.assertIn(str(aa28_id).encode(), rv.data,
+                      "First assignment id not shown")
+        self.assertIn(str(aa29_id).encode(), rv.data,
+                      "Second assignment id not shown")
+
+    def test_reverse_assign_non_existing_payment_fails(self):
+        """ Reversing assignments for non existing payment fails """
+
+        rv = self.app.get("/assignment/1/reverse")
+        self.assertEqual("404 NOT FOUND", rv.status, 
+                         "Assignment reverse returns wrong status")
+        self.assertIn(b"No payment", rv.data, "Message not correct")
+
+
 class TestPaymentAccounting(unittest.TestCase):
 
     def setUp(self):

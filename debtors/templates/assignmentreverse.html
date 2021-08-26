@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from 'fields.html' import fld %}
+{% from 'nolabel.html' import nolabel %}
+
+{% block title %}
+  <title>Assignment for {{payment.id}} reversal</title>
+{% endblock %}
+
+{% block content %}
+
+<h2>Payment information</h2>
+
+{% include "paymenthead.html" %}
+<br/>
+<br/>
+<form action={{ url_for('.assign_reverse', payment_id=payment.id) }} method="POST" class="inlineform">
+<table>
+<tr><th>Assignment</th><th>Assigned to</th><th>for amount</th><th>Reverse?</th></tr>
+    {% for assignment in assignment_list %}
+<tr><td>{{ assignment.id }}</td><td>{% if assignment.bill %}
+Bill {{assignment.bill.bill_id}}{% else %}Amount {{assignment.to_amount.id}}{% endif %}</td><td> {{ assignment.amount }}</td>
+<td><input type="checkbox" name="{{assignment.id}}" id="{{assignment.id}}" value="{{assignment.id}}" checked/></td>
+</tr>{% endfor %}
+</table>
+<input type="submit" value="Reverse selection" id="unpay"/>
+</td>
+</form>
+{% endblock content %}
+
