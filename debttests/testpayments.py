@@ -19,6 +19,7 @@ import unittest
 from datetime import datetime, date
 from dateutil import parser
 from dateutil.tz import tzoffset
+from werkzeug.datastructures import ImmutableMultiDict
 from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
@@ -906,8 +907,11 @@ class TestAssignToPayment(unittest.TestCase):
         """ We can assign to amount through a method """
 
         aa15 = self.ia38.assign_to_amount(self.ia39)
+        db.session.flush()
+        aa31 = AssignedAmounts.get_by_id(aa15.id)
         self.assertEqual(aa15.amount_assigned, self.ia38.payment_amount,
                          "No assignment found")
+        self.assertTrue(aa31, "Not able to fetch assigned amount")
 
     def test_cannot_assign_zero_amount(self):
         """ We cannot assign if from amount is zero  """
@@ -1220,6 +1224,7 @@ class TestAssignmentReversal(unittest.TestCase):
         al05 = db.session.query(AssignedAmounts).filter_by(from_amount=ia103).all()
         self.assertFalse(al05, "Assigned amount not removed")
         self.assertEqual(ia104.payment_amount, 0, "Amount not zero after reversal")
+        self.assertFalse(ia103.fully_assigned, "Fully assigned not reversed")
 
 
 class TestAssignmentReversalTransactions(unittest.TestCase):
@@ -1322,6 +1327,33 @@ class TestAssignmentReversalTransactions(unittest.TestCase):
         self.assertEqual("404 NOT FOUND", rv.status, 
                          "Assignment reverse returns wrong status")
         self.assertIn(b"No payment", rv.data, "Message not correct")
+
+    def test_reverse_assignement(self):
+        """ Reverse one assignment """
+
+        self.ia38.assign_to_amount(self.ia39)
+        ia39_id = self.ia39.id
+        ia38_id = self.ia38.id
+        db.session.commit()
+        ia38_assignment = self.ia38.used_in[0]
+        ad1 = {"assign" +  str(ia38_assignment.id) : str(ia38_assignment.id)}
+        rv=self.app.post("/assignment/" + str(ia38_id) + "/reverse",
+                         data=ImmutableMultiDict(ad1))
+        aa30 = db.session.query(AssignedAmounts).filter_by(id=ia38_assignment.id)\
+                    .first()
+        self.assertFalse(aa30, "Assignment still exists")
+
+    def test_post_assignment_reverse_non_existing_fails(self):
+        """ Posting an invalid assignment reference fails
+
+        This also works when the assignment number exists, but is for another
+        payment. No separate test
+        """
+
+        ad1 = {"assign1" : "1"}
+        rv=self.app.post("/assignment/" + str(self.ia38.id) + "/reverse",
+                         data=ImmutableMultiDict(ad1))
+        self.assertIn("404", rv.status, "Non existing assignment not refused")
 
 
 class TestPaymentAccounting(unittest.TestCase):

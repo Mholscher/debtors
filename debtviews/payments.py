@@ -28,7 +28,8 @@ from flask.views import MethodView
 from clientmodels.clients import Clients
 from debtors import db
 from debtviews.monetary import edited_amount
-from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError)
+from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError,
+                                 AssignedAmounts)
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
@@ -315,6 +316,36 @@ class PaymentAssignReverseView(MethodView):
 
         return render_template("assignmentreverse.html", payment=payment_dict,
                                assignment_list=assignments)
+
+    def post(self, payment_id=None):
+        """ Reverse a list of assignments for a payment """
+
+        payment = IncomingAmounts.get_payment_by_id(payment_id)
+
+        assignments_selected = request.form
+
+        for id, assignment_id in assignments_selected.items():
+            if id.startswith("assign"):
+                assigned_amount = None
+                for assignment in payment.used_in:
+                    if str(assignment.id) == assignment_id:
+                        assigned_amount = assignment
+                        break
+                else:
+                    abort(404, "Assignment not found")
+
+                if assigned_amount:
+                    assigned_amount.reverse_assignment()
+
+        payment_dict = PaymentDict(payment)
+
+        db.session.commit()
+
+        assignments = payment.list_assignments()
+
+        return render_template("assignmentreverse.html", payment=payment_dict,
+                               assignment_list=assignments)
+
 
 class PaymentReverseView(MethodView):
     """ A reversal of a previous payment must be processed manually """

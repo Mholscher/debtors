@@ -19,7 +19,7 @@
     {% for assignment in assignment_list %}
 <tr><td>{{ assignment.id }}</td><td>{% if assignment.bill %}
 Bill {{assignment.bill.bill_id}}{% else %}Amount {{assignment.to_amount.id}}{% endif %}</td><td> {{ assignment.amount }}</td>
-<td><input type="checkbox" name="{{assignment.id}}" id="{{assignment.id}}" value="{{assignment.id}}" checked/></td>
+<td><input type="checkbox" name="assign{{assignment.id}}" id="assign{{assignment.id}}" value="{{assignment.id}}" checked/></td>
 </tr>{% endfor %}
 </table>
 <input type="submit" value="Reverse selection" id="unpay"/>

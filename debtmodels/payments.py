@@ -118,6 +118,12 @@ class IncomingAmountIsNotAReversal(ValueError):
     pass
 
 
+class AssignedAmountNotFound(ValueError):
+    """ An assigned amount was requested that does not exist """
+
+    pass
+
+
 def validate_currency(currency):
     """ Validate the currency on ISO 2417 """
 
@@ -616,4 +622,17 @@ class AssignedAmounts(db.Model):
             self.bill.assignment_reversal()
         if self.to_amount:
             self.to_amount.reverse_assignment_for(self.amount_assigned)
+        self.from_amount.fully_assigned = False
         db.session.delete(self)
+
+    @staticmethod
+    def get_by_id(assignment_id=None):
+        """ Get the assignment with id assignment_id  """
+
+        assignment = db.session.query(AssignedAmounts).\
+            filter_by(id=assignment_id).first()
+
+        if assignment:
+            return assignment
+
+        raise AssignedAmountNotFound("An assigned amount requested was not found")
