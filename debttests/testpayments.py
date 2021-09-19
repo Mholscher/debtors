@@ -24,7 +24,8 @@ from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
 from debtviews.payments import (PaymentAccounting, AssignmentAccounting,
-                                PaymentReversalAccounting)
+                                PaymentReversalAccounting,
+                                AssignmentReversalAccounting)
 from debttests.helpers import (delete_test_clients, add_addresses,
     create_clients, spread_created_at, create_bills, add_lines_to_bills,
     delete_test_bills, add_debtor_preferences, delete_amountq,
@@ -1085,6 +1086,29 @@ class TestAssignToPayment(unittest.TestCase):
             ia73.assign_reversal_to_payment(ia74)
 
 
+    def test_assign_reversal_cannot_be_reversed(self):
+        """ An assignment of a reversal cannot be reversed """
+
+        #ia107 = IncomingAmounts(payment_ccy='EUR',
+                               #payment_amount=12500,
+                               #debcred='Cr',
+                               #creditor_iban= 'NL08INGB0212952803',
+                               #client_name='ING Testrekening',
+                               #our_ref='Reverse fail',
+                               #bank_ref='Terugboeking betaling')
+        ia108 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='021514017743280167000000001').first()
+        ia109 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               debcred='Cr',
+                               rvslind=True)
+        db.session.flush()
+        aa33 = ia108.assign_to_amount(ia109)
+        db.session.flush()
+        with  self.assertRaises(ValueError):
+            ia108.reverse_assignment(aa33)
+
+
 class TestAssignmentReversal(unittest.TestCase):
 
     def setUp(self):
@@ -1183,7 +1207,7 @@ class TestAssignmentReversal(unittest.TestCase):
         self.assertEqual(len(al03), 2, "Too many/little amounts returned")
 
     def test_reverse_assignment(self):
-        """ Reversing assignment deletes assignment row """
+        """ Reversing assignment logically deletes assignment row """
 
         ia102 = IncomingAmounts(payment_ccy='JPY',
                                 payment_amount=2535,
@@ -1199,7 +1223,7 @@ class TestAssignmentReversal(unittest.TestCase):
         ia102.reverse_assignment(aa27)
         db.session.flush()
         al04 = db.session.query(AssignedAmounts).filter_by(from_amount=ia102).all()
-        self.assertFalse(al04, "Assigned amount not removed")
+        self.assertTrue(al04[0].reversed, "Assigned amount not reversed")
         self.assertNotEqual(self.bll4.status, 'paid',
                             "The status of the bill is still paid")
         self.assertEqual(self.bll4.total(), 1880, "The bill has wrong debt")
@@ -1222,9 +1246,52 @@ class TestAssignmentReversal(unittest.TestCase):
         db.session.flush()
         ia103.reverse_assignment(aa28)
         al05 = db.session.query(AssignedAmounts).filter_by(from_amount=ia103).all()
-        self.assertFalse(al05, "Assigned amount not removed")
         self.assertEqual(ia104.payment_amount, 0, "Amount not zero after reversal")
         self.assertFalse(ia103.fully_assigned, "Fully assigned not reversed")
+        self.assertTrue(aa28.reversed, "Assignment not set to reversed")
+
+    def test_reversal_not_in_assignments(self):
+        """ After reversal, an assignment does not appear in the list """
+
+        ia103 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=2535,
+                                creditor_iban= 'NL08INGB0212977817',
+                                client_name='T. Heerziel',
+                                our_ref='Ref 2assi',
+                                bank_ref='11987')
+        ia103.add()
+        ia104 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=0)
+        ia104.add()
+        db.session.flush()
+        aa28 = ia103.assign_to_amount(ia104)
+        db.session.flush()
+        ia103.reverse_assignment(aa28)
+        al05 = ia103.list_assignments()
+        self.assertNotIn(aa28, al05, "Assigned amount in list after reversal")
+
+
+    def test_reversal_creates_accounting(self):
+        """ An assignment reversal leads to accounting """
+
+        ia105 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=2235,
+                                creditor_iban= 'NL08INGB0212977817',
+                                client_name='T. Temin',
+                                our_ref='Ref 3assi',
+                                bank_ref='11989')
+        ia105.add()
+        ia106 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=0)
+        ia106.add()
+        db.session.flush()
+        aa32 = ia105.assign_to_amount(ia106)
+        db.session.flush()
+        ia105.reverse_assignment(aa32)
+        ara01 = AssignmentReversalAccounting(aa32)
+        self.assertEqual(ara01["journal"]["extkey"][:13], "assignreverse",
+                         "Incorrect external key")
+        self.assertEqual(len(ara01["journal"]["postings"]), 2, "Wrong number of postings")
 
 
 class TestAssignmentReversalTransactions(unittest.TestCase):
@@ -1341,7 +1408,7 @@ class TestAssignmentReversalTransactions(unittest.TestCase):
                          data=ImmutableMultiDict(ad1))
         aa30 = db.session.query(AssignedAmounts).filter_by(id=ia38_assignment.id)\
                     .first()
-        self.assertFalse(aa30, "Assignment still exists")
+        self.assertTrue(aa30.reversed, "Assignment still exists")
 
     def test_post_assignment_reverse_non_existing_fails(self):
         """ Posting an invalid assignment reference fails

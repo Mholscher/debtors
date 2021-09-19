@@ -412,7 +412,7 @@ class PaymentAccounting(AccountingTemplate):
 
     The accounting is created as a dictionary, ready to be shipped as a 
     JSON formatted file.
-    
+
     This class assumes that GLedger is being used. Subclass or replace to
     use a different GL system.
     TODO Where and when do the accounting?
@@ -455,7 +455,7 @@ class PaymentReversalAccounting(AccountingTemplate):
 
     This class assumes that GLedger is being used. Subclass or replace to
     use a different GL system.
-'''
+    '''
 
     def journal_entries(self, journal_dict, reversal):
         """ Create the postings for a payment reversal """
@@ -525,6 +525,61 @@ class AssignmentAccounting(AccountingTemplate):
                              assignment.ccy,
                              "amount" : str(assignment.amount_assigned),
                              "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        posting_list.append(posting_receipt)
+        journal_dict["postings"] = posting_list
+        return journal_dict
+
+
+class AssignmentReversalAccounting(AccountingTemplate):
+    """ Create posting for reversal of assignment """
+
+    def journal_entries(self, journal_dict, reversal):
+        """ Create the postings
+
+    The journal_dict passed in will be filled with the accounting for
+    assignment and the journal key set.
+
+        :journal_dict: The freshly created dictionary for the ledger system
+        :reversal: The assignment reversed
+
+    """
+
+        journal_dict["extkey"] = "assignreverse" + str(reversal.id)
+        posting_list = []
+        if reversal.bill:
+            posting_debt = {"account" : "income", "currency" : 
+                             reversal.ccy,
+                             "amount" : str(reversal.amount_assigned),
+                             "debitcredit" : "Db",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        elif reversal.to_amount:
+            posting_debt = {"account" : "receipts", "currency" : 
+                             reversal.ccy,
+                             "amount" : str(reversal.amount_assigned),
+                             "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        else:
+            raise ValueError("Assignment to unknown target")
+        posting_list.append(posting_debt)
+        if (reversal.to_amount
+            and reversal.ccy != reversal.to_amount.payment_ccy):
+            posting_ccy_from = {"account" : "convertccy", "currency" : 
+                             reversal.ccy,
+                             "amount" : str(reversal.amount_assigned),
+                             "debitcredit" : "Cr",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_to = {"account" : "convertccy", "currency" : 
+                             reversal.to_amount.payment_ccy,
+                             "amount" : str(reversal.to_amount.payment_amount),
+                             "debitcredit" : "Db",
+                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_list.append(posting_ccy_to)
+            posting_list.append(posting_ccy_from)
+        posting_receipt = {"account" : "receipts", "currency" : 
+                             reversal.ccy,
+                             "amount" : str(reversal.amount_assigned),
+                             "debitcredit" : "Db",
                              "valuedate" : datetime.now().strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list

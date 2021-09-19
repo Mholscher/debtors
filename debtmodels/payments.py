@@ -83,16 +83,21 @@ class NoSupportedArgumentError(ValueError):
 
 
 class CannotAssignZeroAmountToAmount(ValueError):
+    """ A zero amount cannot be assigned """
 
     pass
 
 
 class AToAmountIsRequiredError(ValueError):
+    """ To assign to a foreign currency, we need the amount in foreign 
+    currency """
 
     pass
 
 
 class AmountInOtherCcyRequiredError(ValueError):
+    """ Assigning to an amount in other currency needs the amount in 
+    that currency """
 
     pass
 
@@ -103,10 +108,12 @@ class CanOnlyReverseEqualAmountError(ValueError):
 
 
 class CanNotReverseToAssignedAmount(ValueError):
+    """ Amount we want to reverse is assigned """
 
     pass
 
 class ReverseRequiredOppositeDebcred(ValueError):
+    """ Trying to reverse an amount with an amount having same debit/credit """
 
     pass
 
@@ -114,6 +121,12 @@ class ReverseRequiredOppositeDebcred(ValueError):
 class IncomingAmountIsNotAReversal(ValueError):
     """ An incoming amount which was requested as a reversal is not a
     reversal """
+
+    pass
+
+
+class AssignmentOfReversalNotPossible(ValueError):
+    """ We cannot (yet) reverse assignment of a reversal """
 
     pass
 
@@ -177,7 +190,7 @@ class IncomingAmounts(db.Model):
     client_name = db.Column(db.String(30))
     fully_assigned = db.Column(db.Boolean(), default=False)
     creditor_iban = db.Column(db.String(40), nullable=True, index=True)
-    client = db.relationship('Clients', backref='payments')
+    client = db.relationship(Clients, backref='payments')
     amount_queued = db.relationship('AmountQueued', uselist=False,
                                     backref='incoming_amount',
                                     cascade='all, delete')
@@ -286,9 +299,9 @@ class IncomingAmounts(db.Model):
                     break
 
     def list_assignments(self):
-        """ Return all assignments """
+        """ Return assignments that have not been reversed """
 
-        return self.used_in
+        return [x for x in self.used_in if not x.reversed]
 
     def assigned(self):
         """ Total up the amount assigned to this payment """
@@ -299,7 +312,11 @@ class IncomingAmounts(db.Model):
         return assigned_total
 
     def change_client(self, new_client):
-        """ Change the client the payment is assigned to """
+        """ Change the client the payment is assigned to
+
+            :new_client: The client this amount will be assigned to
+
+        """
 
         if self.assigned():
             raise CanNotAttachIfMoneyAssignedError("Cannot attach\
@@ -344,6 +361,10 @@ class IncomingAmounts(db.Model):
         assignments table and the amount assigned to is updated
 
             :to_amount: The amount we want to assign the current amount to
+            :other_ccy: The currency of the amount assigned to, only use if it is
+                different from the currency of this amount
+            :other_amount: the amount in the other currency. Only fill if there is
+                a currency difference
 
         """
 
@@ -410,6 +431,8 @@ class IncomingAmounts(db.Model):
 
         """
 
+        if self.rvslind:
+            raise AssignmentOfReversalNotPossible("Cannot reverse assignment of a reversal")
         assigned_amount.reverse_assignment()
 
     def reverse_assignment_for(self, amount):
@@ -582,6 +605,7 @@ class AssignedAmounts(db.Model):
         :bill: If assigned to a bill the bill that is assigned to
         :amount_id_to: If assigned to another incoming amount, the id of the
             amount to which we assigned it
+        :reversed: This assignment was reversed and has been promoted to history
         :to_amount: The amount (in new ccy if applicable) on the new amount
         :from_amount: The incoming amount (payment) that is assigned in this
 
@@ -598,6 +622,7 @@ class AssignedAmounts(db.Model):
     amount_id_to = db.Column(db.Integer, db.ForeignKey('payments.id'),
                              nullable=True)
     amount_to = db.Column(db.Integer, default=0)
+    reversed = db.Column(db.Boolean, nullable=True, default=False)
     bill = db.relationship('Bills', backref='assignments')
     from_amount = db.relationship('IncomingAmounts', uselist=False,
                                   foreign_keys=[amount_id],
@@ -613,7 +638,7 @@ class AssignedAmounts(db.Model):
 
     def reverse_assignment(self):
         """ This assignment is to be reversed 
-        
+
         The assignment will be deleted and all steps taken when assigning
         will need to be wiped out.
         """
@@ -623,7 +648,7 @@ class AssignedAmounts(db.Model):
         if self.to_amount:
             self.to_amount.reverse_assignment_for(self.amount_assigned)
         self.from_amount.fully_assigned = False
-        db.session.delete(self)
+        self.reversed = True
 
     @staticmethod
     def get_by_id(assignment_id=None):
