@@ -117,6 +117,8 @@ The fields on the assigned amount are:
 | bill id                | the debtors system | optional  | None     |
 |                        | or user input      |           |          |
 +------------------------+--------------------+-----------+----------+
+| reversed               | user input         | optional  | False    |
++------------------------+--------------------+-----------+----------+
 | amount id of the new   | user input         | optional  | None     |
 | amount                 |                    |           |          |
 +------------------------+--------------------+-----------+----------+
@@ -202,12 +204,14 @@ The assignment(s) are accessed via the original payment, whose assignment(s) are
 
 When the selection is submitted, assignments are reversed by removing the assignments, This entails:
 
-*   removing the assignment proper from the database
+*   removing the assignment proper from the database (by logical delete)
 *   reversing any accounting done for assignment
 *   if assignment was to a bill, the bill status will be set to issued (from paid)
 *   if assignment was to an amount, the amount will be deducted from the available amount for assignment on the amount assigned to
 
 Reversal from assignments to amount can only be done if the amount assigned to is not itself assigned. If it is, this assignment needs to be reversed first.
+
+Reversal assignment has very specific limitations. I have chosen not to reverse assignments of payment reversals.
 
 .. _multicurrency:
 

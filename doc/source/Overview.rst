@@ -24,6 +24,8 @@ Sometimes money paid into the account used to receive the moneys, can not be rec
 
 If an amount is overpaid, it can be returned or kept to reconcile with future payments due. If an amount is not sufficient for paying a debt, it is kept as a credit amount on the invoice, which is of course not considered paid.
 
+.. _overdue_processing:
+
 Non payment: overdue processing
 -------------------------------
 

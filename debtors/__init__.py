@@ -48,4 +48,5 @@ app.register_blueprint(debtapi)
 import clientmodels.clients
 import debtmodels.debtbilling
 import debtmodels.payments
+import debtmodels.overdue
 from . import views
