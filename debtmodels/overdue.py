@@ -3,8 +3,8 @@
 #    This file is part of Debtors.
 
 #    Debtors is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 
 #    Debtors is distributed in the hope that it will be useful,
@@ -17,7 +17,7 @@
 
 """ This module holds the generic code for overdue processing.
 
-Overdue processing has a bit which handles the scheduling and storage of 
+Overdue processing has a bit which handles the scheduling and storage of
 items pertaining to the scheduling. That is this module. There is also
 a module holding the so-called processors, that implement the steps of
 overdue processing.
@@ -47,6 +47,11 @@ class DuplicateStepNameError(ValueError):
     pass
 
 
+class ProcessorAlreadyExistsError(BaseException):
+    """ Just create one instance of a processor """
+
+    pass
+
 class OverdueSteps(db.Model):
     """ This class holds the information to identify an overdue steps
 
@@ -56,7 +61,8 @@ class OverdueSteps(db.Model):
 
         :id: The number of the step. These will be executed in ascending order.
         :number_of_days: The number of days after which this step will be done
-        :step_name: The user facing name of this step (e.g. debtor becomes dubious)
+        :step_name: The user facing name of this step (e.g. debtor becomes
+        dubious)
         :processor: the key to the processor responsible for executing the step
 
     """
@@ -88,17 +94,19 @@ class OverdueSteps(db.Model):
             raise StepMustHaveNameError("A step name is required")
         for step in self.get_by_name(name):
             if not step.id == self.id:
-                raise DuplicateStepNameError(f"A step with {name} already exists")
+                raise DuplicateStepNameError(
+                    f"A step with {name} already exists")
         return name
-        
 
     @staticmethod
     def get_by_id(step_id):
         """ Get the step with id step_id """
 
-        other_step = db.session.query(OverdueSteps).filter_by(id=step_id).first()
+        other_step = db.session.query(OverdueSteps).filter_by(id=step_id).\
+            first()
         if other_step:
-            raise DuplicateStepIdError(f"The step with id {step_id} already exists")
+            raise DuplicateStepIdError(
+                f"The step with id {step_id} already exists")
         return other_step
 
     @staticmethod
@@ -106,3 +114,18 @@ class OverdueSteps(db.Model):
         """ Get a steps by name """
 
         return db.session.query(OverdueSteps).filter_by(step_name=name).all()
+
+
+class OverdueProcessor(object):
+
+    all_processors = dict()
+
+    def __init__(self):
+
+        try:
+            self.all_processors[self.processor_key]
+            raise ProcessorAlreadyExistsError(
+                "Create only one processor per type")
+        except KeyError:
+            pass
+        self.all_processors[self.processor_key] = self
