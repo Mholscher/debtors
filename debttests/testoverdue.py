@@ -86,5 +86,66 @@ class TestCreateOverdueRule(unittest.TestCase):
             st06.add()
             db.session.flush()
 
+    def test_cannot_change_name_to_existing(self):
+        """ We cannot change the name of a step to an existing name """
 
-#class TestAbstractProcessor(unittest.TestCase):
+        st07 = OverdueSteps(id=150, number_of_days=120, 
+                            step_name="Lesser step")
+        st07.add()
+        db.session.flush()
+
+        with self.assertRaises(ValueError):
+            st07.step_name="Baby step"
+
+
+class TestOverdueStep_functions(unittest.TestCase):
+
+    def setUp(self):
+
+        self.st08 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="Baby step",
+                                processor="babyproc")
+        self.st08.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+
+    def test_overdue_days_list(self):
+        """ Get overdue dates and id of step """
+
+        steps = OverdueSteps.get_days_list()
+        self.assertEqual(steps[0].id, 100, "First step not correct in list")
+
+    def test_days_list(self):
+        """ Order of days list is correct """
+
+        st09 =OverdueSteps(id=50, number_of_days=35,
+                           step_name="Second",
+                           processor="second")
+        st09.add()
+        db.session.flush()
+        steps = OverdueSteps.get_days_list()
+        self.assertEqual(steps[1].id, 100, "First step not correct in list")
+        self.assertEqual(steps[0].id, 50, "Second step not correct in list")
+        self.assertEqual(steps[0].processor, "second", "processor not there")
+
+    def test_date_list_from_given_date(self):
+        """ Create a date list for checking where we are in overdue """
+
+        st10 =OverdueSteps(id=50, number_of_days=35,
+                           step_name="Second",
+                           processor="second")
+        st10.add()
+        db.session.flush()
+        steps = OverdueSteps.get_date_list(from_date=date(2021, 10, 2))
+        self.assertEqual(steps[1][0], date(2021, 10, 27),
+                         "Date not correct")
+        self.assertEqual(steps[0][0], date(2021, 11, 6),
+                         "Date not correct")
+        self.assertEqual(steps[0][2], "second", "processor not correct")
+
+
+if __name__ == '__main__' :
+    unittest.main()

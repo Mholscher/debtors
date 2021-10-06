@@ -19,12 +19,13 @@
 
 Overdue processing has a bit which handles the scheduling and storage of
 items pertaining to the scheduling. That is this module. There is also
-a module holding the so-called processors, that implement the steps of
+a module holding the so-called processors, that implement example steps of
 overdue processing.
 """
 
+from datetime import date, timedelta
 from debtors import db
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, load_only
 from debtmodels.debtbilling import Bills
 from debtmodels.payments import IncomingAmounts
 
@@ -61,8 +62,7 @@ class OverdueSteps(db.Model):
 
         :id: The number of the step. These will be executed in ascending order.
         :number_of_days: The number of days after which this step will be done
-        :step_name: The user facing name of this step (e.g. debtor becomes
-        dubious)
+        :step_name: The user facing name of this step (e.g. debtor becomes dubious)
         :processor: the key to the processor responsible for executing the step
 
     """
@@ -111,12 +111,38 @@ class OverdueSteps(db.Model):
 
     @staticmethod
     def get_by_name(name):
-        """ Get a steps by name """
+        """ Get a step by name """
 
         return db.session.query(OverdueSteps).filter_by(step_name=name).all()
 
+    @classmethod
+    def get_days_list(cls):
+        """ Get a list of days and steps ordered by number of days """
+
+        return db.session.query(OverdueSteps).\
+            options(load_only("number_of_days","id")).\
+            order_by(cls.number_of_days.desc()).all()
+
+    @classmethod
+    def get_date_list(cls, from_date=date.today):
+        """ Get a list of dates and steps ordered by date """
+
+        days_list = cls.get_days_list()
+        result = []
+        for each in days_list:
+            overdue_entry = (from_date + timedelta(days=each.number_of_days),
+                             each.id, each.processor)
+            result.append(overdue_entry)
+        return result
+
 
 class OverdueProcessor(object):
+    """ Abstract ancestor for overdue processors
+
+    A processor inheriting from this class will be usable in the overdue
+    processes defined in this module. Any specific behaviours are of
+    course the responsibility of the subclass.
+    """
 
     all_processors = dict()
 
@@ -129,3 +155,11 @@ class OverdueProcessor(object):
         except KeyError:
             pass
         self.all_processors[self.processor_key] = self
+
+    def execute(self, bill=None):
+        """ This ,method executes the code needed for this step.
+
+        Every processor should implement this method.
+        """
+
+        raise NotImplementedError("A subclass should implement this method")

@@ -25,6 +25,18 @@ The module debtmodels accounting
 .. automodule:: debtmodels.accounting
    :members:
 
+The module debtmodels overdue
+-----------------------------
+
+.. automodule:: debtmodels.overdue
+   :members:
+
+The module debtmodels overdue_processors
+----------------------------------------
+
+.. automodule:: debtmodels.overdue_processors
+   :members:
+
 The module debtviews bills
 --------------------------
 
@@ -83,6 +95,12 @@ The module debtviews physicalbill
 ---------------------------------
 
 .. automodule:: debtviews.physicalbill
+   :members:
+
+The module debtviews outputenvironments
+---------------------------------------
+
+.. automodule:: debtviews.outputenvironments
    :members:
 
 The module debtviews payments

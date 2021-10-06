@@ -73,3 +73,5 @@ class TestFirstLetterProcess(unittest.TestCase):
         self.assertTrue(exists("output/fl" + str(self.bll4.bill_id)),
                                "First letter file does not exist")
 
+if __name__ == '__main__' :
+    unittest.main()

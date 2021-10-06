@@ -2133,3 +2133,7 @@ class TestPaymentReversal(unittest.TestCase):
         db.session.commit()
         rv = self.app.get("/payment/reverse/" + ia93_id_str )
         self.assertIn(b"Assigned", rv.data, "No assignment remark")
+
+
+if __name__ == '__main__' :
+    unittest.main()

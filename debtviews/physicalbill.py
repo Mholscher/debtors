@@ -26,42 +26,12 @@ into printable data.
 from datetime import date
 from email.message import EmailMessage
 from json import dumps
-from jinja2 import Environment, PackageLoader
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills, DebtorPreferences
 from debtmodels.accounting import AccountingTemplate
-
-rtfenvironment = Environment(
-    loader=PackageLoader('debtors', 'templates'),
-    block_start_string='<%', block_end_string='%>',
-    variable_start_string='<<', variable_end_string='>>',
-    trim_blocks=True, lstrip_blocks=True,
-    autoescape=False)
-
-htmlenvironment = Environment(
-    loader=PackageLoader('debtors', 'templates'),
-    autoescape=True)
-
-def rtf(to_encode):
-    """ This routine transcripts Unicode strings to be usable in
-    rtf (rich text format) files.
-
-    rtf supports Unicode, but not so nice. 
-    You can enter codepoints in decimal (e.g. \\u233 is é), and after that 
-    you have to insert a replacement character. The replacement character is simply the question mark for debtors.
-    """
-
-    result = ""
-    if not to_encode:
-        return to_encode
-    for letter in to_encode:
-        i = ord(letter)
-        if i < 128:
-            result = result + letter
-        else:
-            result = result + "\\u" + str(i) + '?'
-    return result
+from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
+                                          rtf)
 
 
 class BillDictView(dict):
