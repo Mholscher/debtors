@@ -29,3 +29,8 @@ class FirstLetterProcessor(OverdueProcessor):
 
         with open("output/fl" + str(bill.bill_id), "wt") as first_letter:
             first_letter.write("First letter for " + str(bill.bill_id))
+
+    def text(self, bill=None):
+        """ Return the rendered text for a letter """
+
+        return b""

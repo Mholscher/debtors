@@ -103,6 +103,12 @@ The module debtviews outputenvironments
 .. automodule:: debtviews.outputenvironments
    :members:
 
+The module debtviews physicaloverdue
+------------------------------------
+
+.. automodule:: debtviews.physicaloverdue
+   :members:
+
 The module debtviews payments
 ---------------------------------
 

@@ -22,13 +22,14 @@ code more than once.
 """
 
 from datetime import datetime, date
+from debtors import db
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
 from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
-from debtmodels.payments import AmountQueued
-from debtors import db
+from debtmodels.payments import (AmountQueued, IncomingAmounts,
+                                 AssignedAmounts)
 
 
 def create_clients(instance):
@@ -210,6 +211,28 @@ def create_bills(instance):
                           status='paid')
     instance.clt5.bills.append(instance.bll6)
     instance.bills.append(instance.bll6)
+    create_bills_overdue(instance)
+
+def create_bills_overdue(instance):
+    """ Add some bills required for testing overdue """
+
+    instance.bll7 = Bills(date_sale=date(year=2020, month=3, day=23),
+                          date_bill=None,
+                          billing_ccy='JPY',
+                          status='issued')
+    instance.clt5.bills.append(instance.bll7)
+    instance.bills.append(instance.bll7)
+
+def create_payments_for_overdue(instance):
+    """ Add received payments to a client having an overdue bill """
+
+    instance.ia110 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=28,
+                               creditor_iban= 'NL08INGB0212977892',
+                               client_name='T. Gebraltas',
+                               our_ref='Ref Undef',
+                               bank_ref='320098')
+    instance.ia110.change_client(instance.bll4.client)
 
 
 def add_lines_to_bills(instance):
@@ -276,6 +299,13 @@ def add_lines_to_bills(instance):
                         measured_in='pcs',
                         unit_price=566)
     bill.lines.append(bill_line)
+    bill = instance.bll7
+    bill_line = BillLines(short_desc='Fi5',
+                        long_desc='Milk cartons',
+                        number_of=34,
+                        measured_in='pcs',
+                        unit_price=66)
+    bill.lines.append(bill_line)
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """
@@ -299,6 +329,16 @@ def delete_test_bills(instance):
     bills = db.session.query(Bills).all()
     for bill in bills:
         db.session.delete(bill)
+
+def delete_test_payments(instance):
+    """ Delete all payments created for a test """
+
+    assignments = db.session.query(AssignedAmounts).all()
+    for assignment in assignments:
+        db.session.delete(assignment)
+    payments = db.session.query(IncomingAmounts).all()
+    for amount in payments:
+        db.session.delete(amount)
 
 def delete_test_prefs(instance):
     """ Delete all preferences created for a test """
