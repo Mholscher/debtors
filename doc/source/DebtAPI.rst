@@ -115,6 +115,12 @@ The module debtviews payments
 .. automodule:: debtviews.payments
    :members:
 
+The module debtviews physicalentities
+-------------------------------------
+
+.. automodule:: debtviews.physicalentities
+   :members:
+
 The module debtors processCAMT
 ------------------------------
 

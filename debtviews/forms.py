@@ -57,7 +57,8 @@ class RequiredIfAny(ValueError):
     """ WTForms validator for a required field
 
     It replaces a DataRequired validator, where we can only see the
-    field is required if this same field is filled. Here a field can be empty if none of the other fields are filled. However, if one other field (any)
+    field is required if this same field is filled. Here a field can be empty
+    if none of the other fields are filled. However, if one other field (any)
     is filled, this field becomes required.
     """
 
@@ -100,8 +101,9 @@ class BillLineForm(FlaskForm):
 
     line_id = HiddenField('Line id')
     bill_id = HiddenField('Bill id')
-    short_desc = StringField('Short description', 
-                             validators=[RequiredIfAny(),                                                            Length(min=1, max=10)])
+    short_desc = StringField('Short description',
+                             validators=[RequiredIfAny(),
+                                         Length(min=1, max=10)])
     long_desc = StringField('Description', validators=[Length(max=40)])
     number_of = IntegerField('Number of units', validators=[RequiredIfAny()])
     measured_in = StringField('Measured in')
@@ -160,6 +162,7 @@ class PaymentForm(FlaskForm):
     creditor_iban = StringField('Creditors IBAN', validators=[Length(max=35)])
     client_name = StringField('Client name (from bank)')
 
+
 class PaymentCreateForm(PaymentForm):
     """ The part of the form for creating a payment """
 
@@ -173,6 +176,7 @@ class ClientAttachForm(FlaskForm):
     client_id = StringField('Client number')
     attach = SubmitField('Attach client')
 
+
 class FindClientForm(FlaskForm):
     """ Form for finding clients through different predicates """
 
@@ -181,12 +185,14 @@ class FindClientForm(FlaskForm):
     find_bank_account = StringField('Bankaccount')
     search_client = SubmitField('Find client debt')
 
+
 class FindPaymentByRef(FlaskForm):
     """ The form to find payments to assign to """
 
     find_our_ref = StringField("Our reference")
     find_bank_ref = StringField("Bank reference")
     search_payment = SubmitField("Find payment")
+
 
 class OtherPaymentForm(FlaskForm):
     id = HiddenField("Other payment id")

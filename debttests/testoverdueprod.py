@@ -110,7 +110,6 @@ class TestCreateOverdueDict(unittest.TestCase):
 
         view = OverdueDictView(bill_id=self.bll4.bill_id)
         other_bills = view["morebills"]
-        #self.assertIn(self.bll7, other_bills, "Bill expected not found")
         bill7 = [bill for bill in other_bills
                  if bill["bill_id"] == self.bll7.bill_id][0]
         self.assertEqual("Yen", bill7["billing_ccy"], "Currency not correct")
@@ -122,33 +121,41 @@ class TestCreateOverdueDict(unittest.TestCase):
                          bill7["date_sale"], "Due date not correct")
 
 
-#class TestFirstLetterContent(unittest.TestCase):
+class TestFirstLetterContent(unittest.TestCase):
 
-    #def setUp(self):
+    def setUp(self):
 
-        #self.flp05 = FirstLetterProcessor()
-        #create_clients(self)
-        #add_addresses(self)
-        #create_bills(self)
-        #add_lines_to_bills(self)
-        #db.session.flush()
+        self.flp05 = FirstLetterProcessor()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
 
-    #def tearDown(self):
+    def tearDown(self):
 
-        #OverdueProcessor.all_processors.clear()
-        #db.session.rollback()
-        #delete_test_bills(self)
-        #delete_test_prefs(self)
-        #delete_test_clients(self)
-        #db.session.commit()
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
 
-    #def test_instantiated_template_in_output(self):
-        #""" The template is in the output """
+    def test_instantiated_template_in_output(self):
+        """ The template is in the output """
 
-        #bill = self.bll4
-        #template = "firstletter.rtf"
-        #template_text = PaperLetter(template_name=template, bill=bill)
-        #self.assertIn(b"Testcompany", template_text, "Testcompany not in text")
+        bill = self.bll4
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertIn("Testcompany", template_text.text, "Testcompany not in text")
+
+    def test_data_in_template(self):
+        """ The data passed in from the datbase is in the text """
+
+        bill = self.bll4
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertIn(str(self.bll4.bill_id), template_text.text, "Bill id  not in text")
 
 
 if __name__ == '__main__' :

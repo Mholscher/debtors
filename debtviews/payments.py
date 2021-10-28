@@ -28,12 +28,12 @@ from flask.views import MethodView
 from clientmodels.clients import Clients
 from debtors import db
 from debtviews.monetary import edited_amount
-from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError,
-                                 AssignedAmounts)
+from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError)
 from debtmodels.debtbilling import Bills, BillNotFoundError
 from debtmodels.accounting import AccountingTemplate
 from debtviews.forms import (PaymentForm, PaymentCreateForm, ClientAttachForm,
-    FindClientForm, FindPaymentByRef, OtherPaymentForm)
+                             FindClientForm, FindPaymentByRef,
+                             OtherPaymentForm)
 from debtviews.wtformsmonetary import AmountField
 from clientviews.forms import ClientSearchForm
 
@@ -63,6 +63,7 @@ class PaymentDict(dict):
         self["creditor_iban"] = payment.creditor_iban
         self["assigned"] = payment.assigned()
 
+
 class PaymentView(MethodView):
     """ This class shows the data of one payment on the web. """
 
@@ -88,7 +89,7 @@ class PaymentView(MethodView):
 
         return render_template('payment.html', form=payment_form,
                                form2=payment_update_form,
-                               payment=payment, client=payment.client, 
+                               payment=payment, client=payment.client,
                                search_form=client_search_form)
 
     def post(self, payment_id=None):
@@ -105,11 +106,11 @@ class PaymentView(MethodView):
             payment_value_date = payment_form.value_date.data
             payment_our_ref = payment_form.our_ref.data
             if not payment_id:
-                payment = IncomingAmounts(payment_ccy = payment_ccy,
-                                        payment_amount= payment_amount,
-                                        debcred = payment_debcred,
-                                        value_date = payment_value_date,
-                                        our_ref = payment_our_ref)
+                payment = IncomingAmounts(payment_ccy=payment_ccy,
+                                          payment_amount=payment_amount,
+                                          debcred=payment_debcred,
+                                          value_date=payment_value_date,
+                                          our_ref=payment_our_ref)
                 payment.add()
                 del AmountField.get_currency
                 db.session.commit()
@@ -124,7 +125,7 @@ class PaymentView(MethodView):
 
         return render_template('payment.html', form=payment_form,
                                form2=payment_update_form,
-                               payment=payment, client=payment.client, 
+                               payment=payment, client=payment.client,
                                search_form=client_search_form)
 
     def _get_currency(field):
@@ -161,10 +162,11 @@ class PaymentUpdateView(MethodView):
 
         return redirect(url_for('.payment_update', payment_id=payment_id))
 
+
 class PaymentAssignView(MethodView):
     """ A payment may be assigned to a bill or a payment
 
-    The operator may search for bills in a few ways. Once the 
+    The operator may search for bills in a few ways. Once the
     bill to be paid is found, it can be paid.
 
     If the payment is to be assigned to another payment, the
@@ -187,21 +189,20 @@ class PaymentAssignView(MethodView):
 
         # process input search arguments for finding bill(s)
 
-        name=request.args.get("find_name", None)
-        client_id=request.args.get("find_number", None)
-        account_nr=request.args.get("find_bank_account", None)
+        name = request.args.get("find_name", None)
+        client_id = request.args.get("find_number", None)
+        account_nr = request.args.get("find_bank_account", None)
         search_values = (name, client_id, account_nr)
         search_results = []
 
         if any(search_values):
             search_results =\
                 IncomingAmounts.get_bill_targets(name=name,
-                                             client_id=client_id,
-                                             account_nr=account_nr)
+                                                 client_id=client_id,
+                                                 account_nr=account_nr)
         for bill in search_results:
             bill.billing_amount = edited_amount(bill.total(),
- 
-                                               currency=bill.billing_ccy)
+                                                currency=bill.billing_ccy)
 
         if name:
             client_search_form.find_name.data = name
@@ -216,7 +217,6 @@ class PaymentAssignView(MethodView):
         bank_ref = request.args.get("find_bank_ref", None)
 
         payments_temp = payments_found = []
-        to_payment_forms = []
 
         if our_ref or bank_ref:
             payments_temp =\
@@ -290,7 +290,7 @@ class PaymentAssignToPayment(MethodView):
 
 
 class PaymentAssignReverseView(MethodView):
-    """ A payment was assigned and assignment(s) need to be reversed 
+    """ A payment was assigned and assignment(s) need to be reversed
 
     It is immaterial what the payment was assigned to, each assignment
     (whether it was to a bill or another payment) will be reversed.
@@ -363,7 +363,6 @@ class PaymentReverseView(MethodView):
 
         name = request.args.get("find_name", None)
         client_number = request.args.get("find_number", None)
-        #account = request.args.get("find_bank_account", None)
 
         search_results = []
         client_search_form = FindClientForm()
@@ -371,8 +370,6 @@ class PaymentReverseView(MethodView):
             client_search_form.find_name.data = name
         if client_number:
             client_search_form.find_number.data = client_number
-        #if account:
-        #    client_search_form.find_bank_account.data = account
         search_values = (name, client_number)
 
         payments_found = []
@@ -381,13 +378,13 @@ class PaymentReverseView(MethodView):
             reversible = IncomingAmounts.find_reversible_payments(
                 payment_reversal)
             payments_found = [PaymentDict(to_convert) for to_convert
-                              in  reversible]
+                              in reversible]
         else:
             if client_number:
                 # the user entered a client number
                 try:
                     client_found = Clients.get_by_id(client_number)
-                except ValueError as ve:
+                except ValueError:
                     client_found = None
                 if client_found:
                     payments_found = client_found.payments
@@ -396,7 +393,7 @@ class PaymentReverseView(MethodView):
                 payments_found = IncomingAmounts.get_payments_by_name(name,
                                      amount=payment_reversal.payment_amount,
                                      ccy=payment_reversal.payment_ccy)
- 
+
         payment_form = FindPaymentByRef()
 
         return render_template("paymentreverse.html",
@@ -410,7 +407,7 @@ class PaymentReverseView(MethodView):
 class PaymentAccounting(AccountingTemplate):
     """ Create accounting for a payment
 
-    The accounting is created as a dictionary, ready to be shipped as a 
+    The accounting is created as a dictionary, ready to be shipped as a
     JSON formatted file.
 
     This class assumes that GLedger is being used. Subclass or replace to
@@ -431,17 +428,18 @@ class PaymentAccounting(AccountingTemplate):
         if payment.payment_amount == 0:
             raise ValueError("Can not do accounting for zero amount")
         posting_list = []
-        posting_debt = {"account" : "debt", "currency" : 
-                             payment.payment_ccy,
-                             "amount" : str(payment.payment_amount),
-                             "debitcredit" : "Cr",
-                             "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_debt = {"account": "debt", "currency":
+                        payment.payment_ccy,
+                        "amount": str(payment.payment_amount),
+                        "debitcredit": "Cr",
+                        "valuedate": payment.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_debt)
-        posting_receipt = {"account" : "receipts", "currency" : 
-                             payment.payment_ccy,
-                             "amount" : str(payment.payment_amount),
-                             "debitcredit" : "Db",
-                             "valuedate" : payment.value_date.strftime("%Y-%m-%d")}
+        posting_receipt = {"account": "receipts", "currency":
+                           payment.payment_ccy,
+                           "amount": str(payment.payment_amount),
+                           "debitcredit": "Db",
+                           "valuedate":
+                           payment.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict
@@ -450,7 +448,7 @@ class PaymentAccounting(AccountingTemplate):
 class PaymentReversalAccounting(AccountingTemplate):
     ''' Create postings for the reversal from the bank for a payment.
 
-    The accounting is created as a dictionary, ready to be shipped as a 
+    The accounting is created as a dictionary, ready to be shipped as a
     JSON formatted file.
 
     This class assumes that GLedger is being used. Subclass or replace to
@@ -464,17 +462,18 @@ class PaymentReversalAccounting(AccountingTemplate):
         if reversal.payment_amount == 0:
             raise ValueError("Can not do accounting for zero amount")
         posting_list = []
-        posting_debt = {"account" : "debt", "currency" : 
-                             reversal.payment_ccy,
-                             "amount" : str(reversal.payment_amount),
-                             "debitcredit" : "Cr",
-                             "valuedate" : reversal.value_date.strftime("%Y-%m-%d")}
+        posting_debt = {"account": "debt", "currency":
+                        reversal.payment_ccy,
+                        "amount": str(reversal.payment_amount),
+                        "debitcredit": "Cr",
+                        "valuedate": reversal.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_debt)
-        posting_receipt = {"account" : "receipts", "currency" : 
-                             reversal.payment_ccy,
-                             "amount" : str(reversal.payment_amount),
-                             "debitcredit" : "Db",
-                             "valuedate" : reversal.value_date.strftime("%Y-%m-%d")}
+        posting_receipt = {"account": "receipts", "currency":
+                           reversal.payment_ccy,
+                           "amount": str(reversal.payment_amount),
+                           "debitcredit": "Db",
+                           "valuedate":
+                               reversal.value_date.strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict
@@ -493,39 +492,42 @@ class AssignmentAccounting(AccountingTemplate):
         journal_dict["extkey"] = "assign" + str(assignment.id)
         posting_list = []
         if assignment.bill:
-            posting_debt = {"account" : "income", "currency" : 
-                             assignment.ccy,
-                             "amount" : str(assignment.amount_assigned),
-                             "debitcredit" : "Cr",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_debt = {"account": "income", "currency":
+                            assignment.ccy,
+                            "amount": str(assignment.amount_assigned),
+                            "debitcredit": "Cr",
+                            "valuedate": datetime.now().strftime("%Y-%m-%d")}
         elif assignment.to_amount:
-            posting_debt = {"account" : "receipts", "currency" : 
-                             assignment.ccy,
-                             "amount" : str(assignment.amount_assigned),
-                             "debitcredit" : "Db",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_debt = {"account": "receipts", "currency":
+                            assignment.ccy,
+                            "amount": str(assignment.amount_assigned),
+                            "debitcredit": "Db",
+                            "valuedate": datetime.now().strftime("%Y-%m-%d")}
         else:
             raise ValueError("Assignment to unknown target")
         posting_list.append(posting_debt)
         if (assignment.to_amount
             and assignment.ccy != assignment.to_amount.payment_ccy):
-            posting_ccy_from = {"account" : "convertccy", "currency" : 
-                             assignment.ccy,
-                             "amount" : str(assignment.amount_assigned),
-                             "debitcredit" : "Db",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
-            posting_ccy_to = {"account" : "convertccy", "currency" : 
-                             assignment.to_amount.payment_ccy,
-                             "amount" : str(assignment.to_amount.payment_amount),
-                             "debitcredit" : "Cr",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_from = {"account": "convertccy", "currency":
+                                assignment.ccy,
+                                "amount": str(assignment.amount_assigned),
+                                "debitcredit": "Db",
+                                "valuedate":
+                                    datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_to = {"account": "convertccy", "currency":
+                              assignment.to_amount.payment_ccy,
+                              "amount":
+                                  str(assignment.to_amount.payment_amount),
+                              "debitcredit": "Cr",
+                              "valuedate":
+                                  datetime.now().strftime("%Y-%m-%d")}
             posting_list.append(posting_ccy_to)
             posting_list.append(posting_ccy_from)
-        posting_receipt = {"account" : "receipts", "currency" : 
-                             assignment.ccy,
-                             "amount" : str(assignment.amount_assigned),
-                             "debitcredit" : "Cr",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        posting_receipt = {"account": "receipts", "currency":
+                           assignment.ccy,
+                           "amount": str(assignment.amount_assigned),
+                           "debitcredit": "Cr",
+                           "valuedate": datetime.now().strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict
@@ -540,47 +542,49 @@ class AssignmentReversalAccounting(AccountingTemplate):
     The journal_dict passed in will be filled with the accounting for
     assignment and the journal key set.
 
-        :journal_dict: The freshly created dictionary for the ledger system
-        :reversal: The assignment reversed
+       :journal_dict: The freshly created dictionary for the ledger system
+       :reversal: The assignment reversed
 
     """
 
         journal_dict["extkey"] = "assignreverse" + str(reversal.id)
         posting_list = []
         if reversal.bill:
-            posting_debt = {"account" : "income", "currency" : 
-                             reversal.ccy,
-                             "amount" : str(reversal.amount_assigned),
-                             "debitcredit" : "Db",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_debt = {"account": "income", "currency":
+                            reversal.ccy,
+                            "amount": str(reversal.amount_assigned),
+                            "debitcredit": "Db",
+                            "valuedate": datetime.now().strftime("%Y-%m-%d")}
         elif reversal.to_amount:
-            posting_debt = {"account" : "receipts", "currency" : 
-                             reversal.ccy,
-                             "amount" : str(reversal.amount_assigned),
-                             "debitcredit" : "Cr",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_debt = {"account": "receipts", "currency":
+                            reversal.ccy,
+                            "amount": str(reversal.amount_assigned),
+                            "debitcredit": "Cr",
+                            "valuedate": datetime.now().strftime("%Y-%m-%d")}
         else:
             raise ValueError("Assignment to unknown target")
         posting_list.append(posting_debt)
         if (reversal.to_amount
             and reversal.ccy != reversal.to_amount.payment_ccy):
-            posting_ccy_from = {"account" : "convertccy", "currency" : 
-                             reversal.ccy,
-                             "amount" : str(reversal.amount_assigned),
-                             "debitcredit" : "Cr",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
-            posting_ccy_to = {"account" : "convertccy", "currency" : 
-                             reversal.to_amount.payment_ccy,
-                             "amount" : str(reversal.to_amount.payment_amount),
-                             "debitcredit" : "Db",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_from = {"account": "convertccy", "currency":
+                                reversal.ccy,
+                                "amount": str(reversal.amount_assigned),
+                                "debitcredit": "Cr",
+                                "valuedate":
+                                    datetime.now().strftime("%Y-%m-%d")}
+            posting_ccy_to = {"account": "convertccy", "currency":
+                              reversal.to_amount.payment_ccy,
+                              "amount": str(reversal.to_amount.payment_amount),
+                              "debitcredit": "Db",
+                              "valuedate":
+                                  datetime.now().strftime("%Y-%m-%d")}
             posting_list.append(posting_ccy_to)
             posting_list.append(posting_ccy_from)
-        posting_receipt = {"account" : "receipts", "currency" : 
-                             reversal.ccy,
-                             "amount" : str(reversal.amount_assigned),
-                             "debitcredit" : "Db",
-                             "valuedate" : datetime.now().strftime("%Y-%m-%d")}
+        posting_receipt = {"account": "receipts", "currency":
+                           reversal.ccy,
+                           "amount": str(reversal.amount_assigned),
+                           "debitcredit": "Db",
+                           "valuedate": datetime.now().strftime("%Y-%m-%d")}
         posting_list.append(posting_receipt)
         journal_dict["postings"] = posting_list
         return journal_dict

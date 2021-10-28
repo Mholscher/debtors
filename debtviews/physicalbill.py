@@ -32,15 +32,16 @@ from debtmodels.debtbilling import Bills, DebtorPreferences
 from debtmodels.accounting import AccountingTemplate
 from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
                                           rtf)
+from debtviews.physicalentities import GeneralCorrespondence
 
 
-class BillDictView(dict):
+class BillDictView(dict, GeneralCorrespondence):
     """ This class edits the information of a bill into a dictionary
 
-    The dictionary is the input for the view (MVC view) when we 
+    The dictionary is the input for the view (MVC view) when we
     want to create 'physical' billing artefact.
 
-    As billing artefacts want string representations, we gather the 
+    As billing artefacts want string representations, we gather the
     conversions to string in this class.
     """
 
@@ -48,59 +49,9 @@ class BillDictView(dict):
 
         self.bill = Bills.get_bill_by_id(bill_id)
         self.client = self.bill.client
-        self["bill"] = self._create_bill_dict()
-        self["client"] = self._create_client_dict()
+        self["bill"] = self._create_bill_dict(self.bill)
+        self["client"] = self._create_client_dict(self.client)
         self["date"] = rtf(date.today().strftime("%d %B %Y"))
-
-    def _create_bill_dict(self):
-        """ Create the dictionary view of the bill """
-
-        bill_dict = {"bill_id" : self.bill.bill_id,
-                     "date_sale" : rtf(self.bill.date_sale.strftime("%d-%m-%Y")),
-                     "billing_ccy" : currencytable[self.bill.billing_ccy]["CcyNm"]}
-        bill_dict["lines"] = []
-        self.total = 0
-        for line in self.bill.lines:
-            bill_dict["lines"].append(self._create_line_dict(line))
-            self.total += line.number_of * line.unit_price
-        bill_dict["total"] = edited_amount(self.total, 
-                                           currency=self.bill.billing_ccy)
-        return bill_dict
-
-    def _create_client_dict(self):
-        """ Create the dictionary view of the client """
-
-        client_dict = {"initials" : rtf(self.client.initials),
-                       "surname" : rtf(self.client.surname) }
-        address = self.client.postal_address()
-        if address:
-            if address.po_box:
-                client_dict["po_box"] = address.po_box
-            else:
-                client_dict["street"] = address.street
-                client_dict["house_number"] = address.house_number
-            client_dict["postcode"] = address.postcode
-            client_dict["town_or_village"] = address.town_or_village
-        email = self.client.preferred_mail()
-        if email:
-            client_dict['email'] = email
-        return client_dict
-
-    def _create_line_dict(self, line):
-        """ We create the line dictionary for one bill line """
-
-        line_dict = {"id" : line.line_id,
-                     "short_desc" : rtf(line.short_desc),
-                     "number_of" : line.number_of,
-                     "unit_price" : edited_amount(line.unit_price,
-                                            currency=self.bill.billing_ccy),
-                     "total" : edited_amount(line.number_of * line.unit_price,
-                                    currency=self.bill.billing_ccy)}
-        if line.long_desc:
-            line_dict["long_desc"] = rtf(line.long_desc)
-        if line.measured_in:
-            line_dict["measured_in"] = rtf(str(line.measured_in))
-        return line_dict
 
 
 class PaperBill(object):
@@ -125,10 +76,11 @@ class PaperBill(object):
         with open("output/bill" + str(self.bill_id), 'w') as f:
             f.write(self.text)
 
+
 class HTMLMailBill(object):
     """ This class creates a HTML mail bill.
 
-    The bill can be stored as text on the file system and be sent 
+    The bill can be stored as text on the file system and be sent
     immediately to an SMTP server to be sent to the client.
     TODO Create the link to the SMTP server
     """
@@ -144,9 +96,11 @@ class HTMLMailBill(object):
         self.multipart_message = EmailMessage()
         self.multipart_message['From'] = 'billing@debtorscompany.com'
         self.multipart_message['To'] = bill_dict['client']['email']
-        self.multipart_message['Subject'] = 'Your bill ' + str(bill_dict['bill']['bill_id'])
+        self.multipart_message['Subject'] = 'Your bill '\
+            + str(bill_dict['bill']['bill_id'])
         self.multipart_message.set_content(self.html)
-        self.multipart_message.replace_header('Content-type', 'text/html ; charset = "UTF-8"')
+        self.multipart_message.replace_header('Content-type',
+                                              'text/html ; charset = "UTF-8"')
         self.html_message = EmailMessage()
         self.html_message.set_content(self.text)
         self.multipart_message.add_alternative(self.text)
@@ -174,21 +128,21 @@ class BillAccounting(AccountingTemplate):
         case the creation of a bill.
         """
 
-        journal_dict["extkey"] = "bill" + str(bill.bill_id) 
+        journal_dict["extkey"] = "bill" + str(bill.bill_id)
         if bill.total() == 0:
             raise ValueError("Do not account for zero debt")
         posting_list = []
-        posting_sales = {"account" : "sales", "currency" : 
-                             bill.billing_ccy,
-                             "amount" : str(bill.total()),
-                             "debitcredit" : "Cr",
-                             "valuedate" : bill.date_sale.strftime("%Y-%m-%d")}
+        posting_sales = {"account": "sales", "currency":
+                         bill.billing_ccy,
+                         "amount": str(bill.total()),
+                         "debitcredit": "Cr",
+                         "valuedate": bill.date_sale.strftime("%Y-%m-%d")}
         posting_list.append(posting_sales)
-        posting_debt = {"account" : "debt", "currency" : 
-                             bill.billing_ccy,
-                             "amount" : str(bill.total()),
-                             "debitcredit" : "Db",
-                             "valuedate" : bill.date_sale.strftime("%Y-%m-%d")}
+        posting_debt = {"account": "debt", "currency":
+                        bill.billing_ccy,
+                        "amount": str(bill.total()),
+                        "debitcredit": "Db",
+                        "valuedate": bill.date_sale.strftime("%Y-%m-%d")}
         posting_list.append(posting_debt)
         journal_dict["postings"] = posting_list
         return journal_dict
@@ -204,7 +158,6 @@ class BillAccounting(AccountingTemplate):
         with open("output/" + str(self["journal"]["extkey"]), 'w') as f:
             f.write(self.as_json())
 
- 
 
 class BillReplaceAccounting(BillAccounting):
     """ This class creates an accounting transaction for a replaced bill
@@ -219,7 +172,7 @@ class BillReplaceAccounting(BillAccounting):
         """
 
         journal_dict = super().journal_entries(journal_dict, bill)
-        journal_dict["extkey"] = "billr" + str(bill.bill_id) 
+        journal_dict["extkey"] = "billr" + str(bill.bill_id)
         for posting in journal_dict["postings"]:
             if posting["debitcredit"] == 'Db':
                 posting["debitcredit"] = 'Cr'
