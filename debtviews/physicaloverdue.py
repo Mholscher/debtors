@@ -22,6 +22,7 @@ are not the "end-all" with respect to overdue processing, just examples of
 a way to process overdue and its output.
 """
 
+from datetime import date
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
@@ -51,6 +52,7 @@ class OverdueDictView(dict, GeneralCorrespondence):
         self["morebills"] = self._create_bill_list()
         self["client"] = self._create_client_dict(self.client)
         self["payments"] = self._create_payment_list()
+        self["date"] = rtf(date.today().strftime("%d %B %Y")) 
 
     def _create_payment_list(self):
         """ Create a list of payments from the client not fully assigned """
@@ -69,7 +71,8 @@ class OverdueDictView(dict, GeneralCorrespondence):
                         "payment_ccy":
                             currencytable[payment.payment_ccy]["CcyNm"],
                         "payment_amount":
-                            edited_amount(payment.payment_amount)}
+                            edited_amount(payment.payment_amount,
+                                          currency=payment.payment_ccy)}
         payment_dict["debcred"] = payment.debcred
         payment_dict["value_date"] =\
             rtf(payment.value_date.strftime("%d-%m-%Y"))

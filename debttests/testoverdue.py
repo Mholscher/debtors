@@ -23,14 +23,17 @@ from debtors import app, db
 
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
-from debtmodels.overdue import OverdueSteps, OverdueProcessor
+from debtmodels.overdue import (OverdueSteps, OverdueProcessor, OverdueActions,
+                                BillStatusWrongError)
 from debtviews.payments import (PaymentAccounting, AssignmentAccounting,
                                 PaymentReversalAccounting,
                                 AssignmentReversalAccounting)
-from debttests.helpers import (delete_test_clients, add_addresses,
-    create_clients, spread_created_at, create_bills, add_lines_to_bills,
-    delete_test_bills, add_debtor_preferences, delete_amountq,
-    delete_test_prefs)
+from debttests.helpers import (create_clients, add_addresses,
+                               create_bills, add_lines_to_bills,
+                               delete_test_bills, delete_test_prefs,
+                               delete_test_clients, create_payments_for_overdue,
+                               delete_test_payments)
+from debtmodels.overdue_processors import FirstLetterProcessor
 
 class TestCreateOverdueRule(unittest.TestCase):
 
@@ -98,7 +101,7 @@ class TestCreateOverdueRule(unittest.TestCase):
             st07.step_name="Baby step"
 
 
-class TestOverdueStep_functions(unittest.TestCase):
+class TestOverdueStepFunctions(unittest.TestCase):
 
     def setUp(self):
 
@@ -140,11 +143,86 @@ class TestOverdueStep_functions(unittest.TestCase):
         st10.add()
         db.session.flush()
         steps = OverdueSteps.get_date_list(from_date=date(2021, 10, 2))
-        self.assertEqual(steps[1][0], date(2021, 10, 27),
+        self.assertEqual(steps[1][0], date(2021, 9, 7),
                          "Date not correct")
-        self.assertEqual(steps[0][0], date(2021, 11, 6),
+        self.assertEqual(steps[0][0], date(2021, 8, 28),
                          "Date not correct")
         self.assertEqual(steps[0][2], "second", "processor not correct")
+
+
+class TestOverdueActions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.flp06 = FirstLetterProcessor()
+        self.st11 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st11.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_overdue_step_create_action(self):
+        """ Executing an overdue step creates history record """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        self.flp06.execute(bill=self.bll4, processor_data=current_processor_data)
+        oa01 = db.session.query(OverdueActions).first()
+        self.assertTrue(oa01, "No action created")
+
+    def test_no_action_until_date(self):
+        """ If the date is not yet reached, take no action  """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 8))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        self.flp06.execute(bill=self.bll4, processor_data=current_processor_data)
+        oa01 = db.session.query(OverdueActions).first()
+        self.assertFalse(oa01, "Action created early")
+
+    def test_empty_dates_list_fails(self):
+        """ No processors defined fails """
+
+        current_processor_data = tuple()
+        with self.assertRaises(ValueError):
+            self.flp06.execute(bill=self.bll4,
+                               processor_data=current_processor_data)
+
+    def test_only_overdue_for_issued_bill(self):
+        """ Only for issued bills overdue action is taken """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 2))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        with self.assertRaises(BillStatusWrongError):
+            self.flp06.execute(bill=self.bll6,
+                               processor_data=current_processor_data)
 
 
 if __name__ == '__main__' :

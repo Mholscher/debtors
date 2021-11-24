@@ -17,6 +17,8 @@
 
 import os, os.path
 import unittest
+from os.path import exists
+from datetime import date
 from debtors import db
 from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
@@ -24,7 +26,8 @@ from debttests.helpers import (create_clients, add_addresses,
                                delete_test_clients, create_payments_for_overdue,
                                delete_test_payments)
 from debtviews.monetary import edited_amount
-from debtmodels.overdue import OverdueProcessor, ProcessorAlreadyExistsError
+from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
+                                OverdueSteps)
 from debtmodels.overdue_processors import FirstLetterProcessor
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
 
@@ -87,7 +90,8 @@ class TestCreateOverdueDict(unittest.TestCase):
         """ The payment list has a payment for the client """
 
         view = OverdueDictView(bill_id=self.bll4.bill_id)
-        self.assertEqual(edited_amount(self.ia110.payment_amount),
+        self.assertEqual(edited_amount(self.ia110.payment_amount,
+                                       currency=self.ia110.payment_ccy),
                          view["payments"][0]["payment_amount"],
                          "Payment not in list")
 
@@ -120,6 +124,63 @@ class TestCreateOverdueDict(unittest.TestCase):
         self.assertEqual(self.bll7.date_sale.strftime("%d-%m-%Y"),
                          bill7["date_sale"], "Due date not correct")
 
+class TestCreateFirstLetterProcessor(unittest.TestCase):
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+
+    def test_create_processor(self):
+        """ Create a firstletter processor """
+
+        flp01 = FirstLetterProcessor()
+        self.assertIn(flp01.processor_key, flp01.all_processors,
+                      "Processor not added to all_processors")
+
+    def test_create_second_processor_fails(self):
+        """ Can not create a duplicate processor """
+
+        flp02 = FirstLetterProcessor()
+        with self.assertRaises(ProcessorAlreadyExistsError):
+            flp03 = FirstLetterProcessor()
+
+class TestFirstLetterProcess(unittest.TestCase):
+
+    def setUp(self):
+
+        self.flp04 = FirstLetterProcessor()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.st11 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st11.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_execute(self):
+        """ Execute produces a first letter """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll4, processor_data=current_processor_data)
+        self.assertTrue(exists("output/fl" + str(self.bll4.bill_id)),
+                               "First letter file does not exist")
+
 
 class TestFirstLetterContent(unittest.TestCase):
 
@@ -130,6 +191,7 @@ class TestFirstLetterContent(unittest.TestCase):
         add_addresses(self)
         create_bills(self)
         add_lines_to_bills(self)
+        create_payments_for_overdue(self)
         db.session.flush()
 
     def tearDown(self):
@@ -137,6 +199,7 @@ class TestFirstLetterContent(unittest.TestCase):
         OverdueProcessor.all_processors.clear()
         db.session.rollback()
         delete_test_bills(self)
+        delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
@@ -155,7 +218,29 @@ class TestFirstLetterContent(unittest.TestCase):
         bill = self.bll4
         template = "firstletter.rtf"
         template_text = PaperLetter(template_name=template, bill=bill)
-        self.assertIn(str(self.bll4.bill_id), template_text.text, "Bill id  not in text")
+        self.assertIn("Yen", template_text.text,
+                      "Bill currency  not in text")
+
+    def test_other_bill_other_currency(self):
+        """ Bill in a different currency shows currency """
+
+        bill = self.bll4
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertIn("Euro", template_text.text,
+                      "Differing bill currency  not in text")
+
+    def test_payment_on_doc(self):
+        """ An unassigned payment from the bill's client is in the letter """
+
+        bill = self.bll4
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertIn("28", template_text.text,
+                      "Payment amount not in text")
+        self.assertNotIn(",28", template_text.text,
+                      "Payment amount wrongly formatted")
+
 
 
 if __name__ == '__main__' :

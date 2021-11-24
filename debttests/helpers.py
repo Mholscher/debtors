@@ -193,8 +193,8 @@ def create_bills(instance):
                           status='new')
     instance.clt3.bills.append(instance.bll3)
     instance.bills.append(instance.bll3)
-    instance.bll4 = Bills(date_sale=date(year=2020, month=3, day=18),
-                          date_bill=None,
+    instance.bll4 = Bills(date_sale=date(year=2020, month=2, day=18),
+                          date_bill=date(year=2020, month=2, day=18),
                           billing_ccy='JPY',
                           status='issued')
     instance.clt5.bills.append(instance.bll4)
@@ -206,7 +206,7 @@ def create_bills(instance):
     instance.clt5.bills.append(instance.bll5)
     instance.bills.append(instance.bll5)
     instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=2),
-                          date_bill=datetime(year=2020, month=3, day=2),
+                          date_bill=date(year=2020, month=3, day=2),
                           billing_ccy='EUR',
                           status='paid')
     instance.clt5.bills.append(instance.bll6)
@@ -334,11 +334,11 @@ def delete_test_payments(instance):
     """ Delete all payments created for a test """
 
     assignments = db.session.query(AssignedAmounts).all()
-    for assignment in assignments:
-        db.session.delete(assignment)
+    for assigned_amount in assignments:
+        db.session.delete(assigned_amount)
     payments = db.session.query(IncomingAmounts).all()
-    for amount in payments:
-        db.session.delete(amount)
+    for payment in payments:
+        db.session.delete(payment)
 
 def delete_test_prefs(instance):
     """ Delete all preferences created for a test """

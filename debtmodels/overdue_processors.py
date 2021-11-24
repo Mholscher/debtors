@@ -16,6 +16,7 @@
 #    along with Debtors.  If not, see <http://www.gnu.org/licenses/>.
 
 from debtmodels.overdue import OverdueSteps, OverdueProcessor
+from debtviews.physicaloverdue import PaperLetter
 
 class FirstLetterProcessor(OverdueProcessor):
 
@@ -24,13 +25,10 @@ class FirstLetterProcessor(OverdueProcessor):
         self.processor_key = "firstletter"
         super().__init__()
 
-    def execute(self, bill=None):
+    def _execute(self, bill=None):
         """ Execute first letter processing for a bill """
 
-        with open("output/fl" + str(bill.bill_id), "wt") as first_letter:
-            first_letter.write("First letter for " + str(bill.bill_id))
-
-    def text(self, bill=None):
-        """ Return the rendered text for a letter """
-
-        return b""
+        self.first_letter = PaperLetter(template_name="firstletter.rtf",
+                                   bill=bill)
+        with open("output/fl" + str(bill.bill_id), "wt") as letter_file:
+            letter_file.write(self.first_letter.text)

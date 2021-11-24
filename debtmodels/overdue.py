@@ -23,11 +23,10 @@ a module holding the so-called processors, that implement example steps of
 overdue processing.
 """
 
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from debtors import db
 from sqlalchemy.orm import validates, load_only
 from debtmodels.debtbilling import Bills
-from debtmodels.payments import IncomingAmounts
 
 
 class DuplicateStepIdError(ValueError):
@@ -48,10 +47,17 @@ class DuplicateStepNameError(ValueError):
     pass
 
 
+class BillStatusWrongError(ValueError):
+    """ A bill must have an unpaid/unissued status to be in overdue """
+
+    pass
+
+
 class ProcessorAlreadyExistsError(BaseException):
     """ Just create one instance of a processor """
 
     pass
+
 
 class OverdueSteps(db.Model):
     """ This class holds the information to identify an overdue steps
@@ -62,10 +68,13 @@ class OverdueSteps(db.Model):
 
         :id: The number of the step. These will be executed in ascending order.
         :number_of_days: The number of days after which this step will be done
-        :step_name: The user facing name of this step (e.g. debtor becomes dubious)
+        :step_name: The user facing name of this step (e.g. debtor becomes
+            dubious)
         :processor: the key to the processor responsible for executing the step
 
     """
+
+    VALID_OVERDUE_STATUSES = [Bills.ISSUED]
 
     __tablename__ = "overduesteps"
 
@@ -92,8 +101,8 @@ class OverdueSteps(db.Model):
 
         if not name or name == "":
             raise StepMustHaveNameError("A step name is required")
-        for step in self.get_by_name(name):
-            if not step.id == self.id:
+        for step in self.__class__.get_days_list():
+            if step.step_name == name and step.id != self.id:
                 raise DuplicateStepNameError(
                     f"A step with {name} already exists")
         return name
@@ -110,17 +119,24 @@ class OverdueSteps(db.Model):
         return other_step
 
     @staticmethod
+    def get_by_processor(processor):
+        """ Get a step by name """
+
+        return db.session.query(OverdueSteps).filter_by(processor=processor)\
+            .first()
+
+    @staticmethod
     def get_by_name(name):
         """ Get a step by name """
 
-        return db.session.query(OverdueSteps).filter_by(step_name=name).all()
+        return db.session.query(OverdueSteps).filter_by(step_name=name).first()
 
     @classmethod
     def get_days_list(cls):
         """ Get a list of days and steps ordered by number of days """
 
         return db.session.query(OverdueSteps).\
-            options(load_only("number_of_days","id")).\
+            options(load_only("number_of_days", "id")).\
             order_by(cls.number_of_days.desc()).all()
 
     @classmethod
@@ -130,10 +146,42 @@ class OverdueSteps(db.Model):
         days_list = cls.get_days_list()
         result = []
         for each in days_list:
-            overdue_entry = (from_date + timedelta(days=each.number_of_days),
-                             each.id, each.processor)
+            overdue_entry = (from_date - timedelta(days=each.number_of_days),
+                             each.step_name, each.processor)
             result.append(overdue_entry)
         return result
+
+
+class OverdueActions(db.Model):
+    """ This class models the history of overdue actions
+
+    It jots down per bill what actions are taken and at what date
+
+        :id: The sequence number of the action
+        :bill_id: The bill on which this action is taken
+        :step_id: The id of the overdue action step
+        :date_action: The date the action was taken
+        :bill: The bill this action is executed for
+        :step: The action executed
+
+    """
+    __tablename__ = "overdueactions"
+
+    id = db.Column(db.Integer, db.Sequence("ovdaction-sequence"),
+                   primary_key=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey("bill.bill_id"),
+                        nullable=False)
+    step_id = db.Column(db.Integer, db.ForeignKey("overduesteps.id"),
+                        nullable=False)
+    date_action = db.Column(db.DateTime, nullable=False,
+                            default=datetime.now)
+    bill = db.relationship("Bills", backref="overdue_actions")
+    step = db.relationship("OverdueSteps")
+
+    def add(self):
+        """ Add this action to the session """
+
+        db.session.add(self)
 
 
 class OverdueProcessor(object):
@@ -142,6 +190,8 @@ class OverdueProcessor(object):
     A processor inheriting from this class will be usable in the overdue
     processes defined in this module. Any specific behaviours are of
     course the responsibility of the subclass.
+
+    Each processor need a key which is equal to the OverdueSteps.processor.
     """
 
     all_processors = dict()
@@ -156,10 +206,36 @@ class OverdueProcessor(object):
             pass
         self.all_processors[self.processor_key] = self
 
-    def execute(self, bill=None):
-        """ This ,method executes the code needed for this step.
+    def execute(self, bill=None, processor_data=None):
+        """ This method executes the private parts of the step and what each
+        step needs to do.
+
+        Processors only need to create a _execute method, doing the
+        parts that are unique tot that step
+        """
+
+        if not processor_data:
+            raise ValueError("No processor data available!")
+        if bill.status not in OverdueSteps.VALID_OVERDUE_STATUSES:
+            raise BillStatusWrongError(f"Bill status {bill.status} incorrect")
+        if bill.date_bill > processor_data[0]:
+            return
+        self._execute(bill=bill)
+        result = self.add_step_to(bill)
+        return result
+
+    def _execute(self, bill=None):
+        """ This method executes the code needed for this step.
 
         Every processor should implement this method.
         """
 
         raise NotImplementedError("A subclass should implement this method")
+
+    def add_step_to(self, bill):
+        """ This method creates the history record for executing the step """
+
+        current_step = OverdueSteps.get_by_processor(self.processor_key)
+        current_action = OverdueActions(bill=bill, step=current_step)
+        current_action.add()
+        return current_action
