@@ -16,7 +16,7 @@
 #    along with Debtors.  If not, see <http://www.gnu.org/licenses/>.
 
 from debtmodels.overdue import OverdueSteps, OverdueProcessor
-from debtviews.physicaloverdue import PaperLetter
+from debtviews.physicaloverdue import PaperLetter, HTMLMailFirstOverdue
 
 class FirstLetterProcessor(OverdueProcessor):
 
@@ -32,3 +32,8 @@ class FirstLetterProcessor(OverdueProcessor):
                                    bill=bill)
         with open("output/fl" + str(bill.bill_id), "wt") as letter_file:
             letter_file.write(self.first_letter.text)
+            
+        if bill.client.debtor_prefs\
+            and bill.client.debtor_prefs[0].letter_medium == "mail":
+            self.first_mail = HTMLMailFirstOverdue(bill.bill_id)
+            self.first_mail.write_file()

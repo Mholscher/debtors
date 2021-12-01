@@ -20,9 +20,9 @@ from os.path import exists
 from datetime import datetime, date
 import unittest
 from debtors import db
-from debttests.helpers import delete_test_clients, add_addresses,\
-    create_clients, spread_created_at, create_bills, add_lines_to_bills,\
-    delete_test_bills, add_debtor_preferences
+from debttests.helpers import (delete_test_clients, add_addresses,
+    create_clients, spread_created_at, create_bills, add_lines_to_bills,
+    delete_test_bills)
 from debtmodels.debtbilling import Bills, BillLines
 from debtviews.physicalbill import rtfenvironment, BillDictView, PaperBill,\
     HTMLMailBill, BillAccounting, BillReplaceAccounting, create_physical_bill
@@ -312,7 +312,6 @@ class TestCreateAnyBill(unittest.TestCase):
         add_addresses(self)
         create_bills(self)
         add_lines_to_bills(self)
-        add_debtor_preferences(self)
         db.session.flush()
 
     def tearDown(self):

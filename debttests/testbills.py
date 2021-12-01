@@ -25,7 +25,7 @@ from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
 from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at , create_bills, add_lines_to_bills,\
-    delete_test_bills, delete_test_prefs, add_debtor_preferences
+    delete_test_bills, delete_test_prefs
 
 
 class TestCreateBill(unittest.TestCase):
@@ -255,7 +255,7 @@ class TestBillFunctions(unittest.TestCase):
         db.session.flush()
 
         bill08_new = db.session.query(Bills).filter_by(bill_id=bill08_id).first()
-        self.assertEqual(len(bill08_new.client.bills), 4, 'Wrong no. of bills')
+        self.assertEqual(len(bill08_new.client.bills), 5, 'Wrong no. of bills')
         self.assertEqual(len(self.clt2.bills), 0, 'Unexpected bill on client')
 
     def test_get_only_issued_bills(self):
@@ -268,7 +268,7 @@ class TestBillFunctions(unittest.TestCase):
         db.session.flush()
 
         list_issued = Bills.get_bills_with_status(self.clt1, [Bills.ISSUED])
-        self.assertEqual(len(list_issued), 1, 'Wrong no. of issued bills')
+        self.assertEqual(len(list_issued), 2, 'Wrong no. of issued bills')
 
     def test_return_outstanding_bills(self):
         """ We can return a list of outstanding bills for a client """
@@ -431,10 +431,6 @@ class TestBillTransactions(unittest.TestCase):
         """ We can replace debtor preferences to the database """
 
         clt1_id = self.clt1.id
-        prfs7 = DebtorPreferences(client=self.clt1,
-                                  bill_medium='mail',
-                                  letter_medium='mail')
-        db.session.commit()
         rv = self.app.post('/api/10/bill/new', json=self.bill_dict)
         self.assertEqual(rv.status_code, 200, 'Failure')
         debtor_preferences = db.session.query(DebtorPreferences).\
@@ -493,7 +489,7 @@ class TestBillTransactions(unittest.TestCase):
                            follow_redirects=True)
         self.assertEqual(200, rv.status_code, 'Error code')
         clt1 = Clients.get_by_id(clt1_id)
-        self.assertEqual(len(clt1.bills), 3, 'Wrong number of bills')
+        self.assertEqual(len(clt1.bills), 4, 'Wrong number of bills')
 
     def test_new_bill_replaces_non_existing(self):
         """ Replacing a non-existent bill fails  """
@@ -797,7 +793,6 @@ class TestDebtPreferences(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
-        add_debtor_preferences(self)
         db.session.flush()
 
     def tearDown(self):

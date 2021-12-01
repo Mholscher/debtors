@@ -28,8 +28,7 @@ from debtviews.payments import (PaymentAccounting, AssignmentAccounting,
                                 AssignmentReversalAccounting)
 from debttests.helpers import (delete_test_clients, add_addresses,
     create_clients, spread_created_at, create_bills, add_lines_to_bills,
-    delete_test_bills, add_debtor_preferences, delete_amountq,
-    delete_test_prefs)
+    delete_test_bills, delete_amountq, delete_test_prefs)
 from debtors.processCAMT import CAMT53Handler
 from xml.sax import ContentHandler, make_parser, parse
 

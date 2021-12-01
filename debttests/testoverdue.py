@@ -214,14 +214,14 @@ class TestOverdueActions(unittest.TestCase):
     def test_only_overdue_for_issued_bill(self):
         """ Only for issued bills overdue action is taken """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 2))
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
                 break
         self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
         with self.assertRaises(BillStatusWrongError):
-            self.flp06.execute(bill=self.bll6,
+            self.flp06.execute(bill=self.bll2,
                                processor_data=current_processor_data)
 
 

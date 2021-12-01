@@ -164,10 +164,12 @@ def add_addresses(instance):
     instance.ba6 = BankAccounts(iban='NL95INGB0696154021',
                                 client_name=None)
     instance.clt6.accounts.append(instance.ba6)
+    add_debtor_preferences(instance)
 
 def delete_test_clients(instance):
     """ Delete clients and dependants added in create_clients """
 
+    db.session.query(DebtorPreferences).delete()
     client_list =\
         db.session.query(Clients).filter(Clients.surname.in_(instance.client_list)).all()
     for client in client_list:
@@ -208,9 +210,15 @@ def create_bills(instance):
     instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=2),
                           date_bill=date(year=2020, month=3, day=2),
                           billing_ccy='EUR',
-                          status='paid')
+                          status='issued')
     instance.clt5.bills.append(instance.bll6)
     instance.bills.append(instance.bll6)
+    instance.bll8 = Bills(date_sale=date(year=2020, month=2, day=18),
+                          date_bill=date(year=2020, month=2, day=18),
+                          billing_ccy = 'EUR',
+                          status='issued')
+    instance.clt1.bills.append(instance.bll8)
+    instance.bills.append(instance.bll8)
     create_bills_overdue(instance)
 
 def create_bills_overdue(instance):
@@ -233,6 +241,14 @@ def create_payments_for_overdue(instance):
                                our_ref='Ref Undef',
                                bank_ref='320098')
     instance.ia110.change_client(instance.bll4.client)
+
+    instance.ia111 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=144,
+                               creditor_iban= 'NL08INGB0212955892',
+                               client_name='T. Funderthun',
+                               our_ref='Ref 8',
+                               bank_ref='320155')
+    instance.ia111.change_client(instance.clt1)
 
 
 def add_lines_to_bills(instance):
@@ -304,7 +320,7 @@ def add_lines_to_bills(instance):
                         long_desc='Milk cartons',
                         number_of=34,
                         measured_in='pcs',
-                        unit_price=66)
+                        unit_price=660)
     bill.lines.append(bill_line)
 
 def add_debtor_preferences(instance):

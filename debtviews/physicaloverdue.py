@@ -23,6 +23,7 @@ a way to process overdue and its output.
 """
 
 from datetime import date
+from email.message import EmailMessage
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
@@ -87,7 +88,8 @@ class OverdueDictView(dict, GeneralCorrespondence):
         """
 
         return [self._create_other_bill_dict(bill)
-                for bill in self.client.bills if bill != self.bill]
+                for bill in self.client.bills if bill != self.bill
+                and bill.status == Bills.ISSUED]
 
     def _create_other_bill_dict(self, bill):
         """ Returns a bill dictionary for a bill """
@@ -113,3 +115,37 @@ class PaperLetter():
         self.template = rtfenvironment.get_template(template_name)
         bill_dict = OverdueDictView(bill.bill_id)
         self.text = self.template.render(bill_dict)
+
+class HTMLMailFirstOverdue(object):
+    """ This class creates a HTML mail for bills overdue.
+
+    The overdue mail can be stored as text on the file system and be sent
+    immediately to an SMTP server to be sent to the client.
+    TODO Create the link to the SMTP server
+    """
+
+    def __init__(self, bill_id):
+
+        self.bill_id = bill_id
+        overdue_dict = OverdueDictView(bill_id)
+        first_mail_template = htmlenvironment.get_template('mailfom.txt')
+        self.text = first_mail_template.render(overdue_dict)
+        html_template = htmlenvironment.get_template('mailfom.html')
+        self.html = html_template.render(overdue_dict)
+        self.multipart_message = EmailMessage()
+        self.multipart_message['From'] = 'billing@debtorscompany.com'
+        self.multipart_message['To'] = overdue_dict['client']['email']
+        self.multipart_message['Subject'] = 'Your bill '\
+            + str(overdue_dict['bill']['bill_id'])
+        self.multipart_message.set_content(self.html)
+        self.multipart_message.replace_header('Content-type',
+                                              'text/html ; charset = "UTF-8"')
+        self.html_message = EmailMessage()
+        self.html_message.set_content(self.text)
+        self.multipart_message.add_alternative(self.text)
+
+    def write_file(self):
+        """ Writes the text of the bill to a file """
+
+        with open("output/mailfom" + str(self.bill_id), 'w') as f:
+            f.write(self.multipart_message.as_string())

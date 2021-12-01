@@ -17,7 +17,7 @@
 
 """ Module to hold the contenthandler to process a camt message """
 
-from xml.sax import ContentHandler, make_parser, parse
+from xml.sax import ContentHandler, parse
 from dateutil.parser import parse as dt_parse
 from debtviews.monetary import internal_amount
 from debtmodels.payments import (IncomingAmounts, IncomingAmountsList,

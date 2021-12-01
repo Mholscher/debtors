@@ -40,8 +40,8 @@ class TestCreateOverdueDict(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
-        create_payments_for_overdue(self)
         add_lines_to_bills(self)
+        create_payments_for_overdue(self)
         db.session.flush()
 
     def tearDown(self):
@@ -181,6 +181,19 @@ class TestFirstLetterProcess(unittest.TestCase):
         self.assertTrue(exists("output/fl" + str(self.bll4.bill_id)),
                                "First letter file does not exist")
 
+    def test_mail_if_preference_mail(self):
+        """ If letter preference of client is mail, also mail is made """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll8, processor_data=current_processor_data)
+        self.assertTrue(exists("output/mailfom" + str(self.bll8.bill_id)),
+                               "First letter mail does not exist")
+
 
 class TestFirstLetterContent(unittest.TestCase):
 
@@ -241,6 +254,57 @@ class TestFirstLetterContent(unittest.TestCase):
         self.assertNotIn(",28", template_text.text,
                       "Payment amount wrongly formatted")
 
+    def test_bill_status_limited_to_issued(self):
+        """ Only issued bills appear on a first letter """
+
+        bill = self.bll4
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertNotIn(str(self.bll5.bill_id), template_text.text,
+                         "Paid bill in text")
+
+
+class TestFirstLetterMailContent(unittest.TestCase):
+
+    def setUp(self):
+        self.flp06 = FirstLetterProcessor()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st12 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st12.add()
+        db.session.flush()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_bill_id_in_mail(self):
+        """ The id of a bill needs to be present in the mail """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {flp06.processor_key} found")
+        self.flp06.execute(self.bll8, processor_data=current_processor_data)
+        with open("output/mailfom" + str(self.bll8.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertIn(str(self.bll8.bill_id), mail_text,
+                      "Open bill not in text")
+        self.assertNotIn(str(self.bll1.bill_id), mail_text,
+                         "Paid bill in text")
 
 
 if __name__ == '__main__' :

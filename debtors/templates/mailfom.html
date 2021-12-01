@@ -1,0 +1,55 @@
+{% extends "printbase.html" %}
+
+{% block content %}
+<br/><br/>
+<table>
+
+<tr><td>To: </td><td>{{client.initials}} {{client.surname}}</td></tr>
+<tr><td></td><td>{% if client.po_box -%}	Po box {{ client.po_box }}{%- else %}        {{ client.street}} {{client.house_number}}{%- endif %} </td></tr>
+<tr><td></td><td>{{ client.postcode }} {{ client.town_or_village }} </td></tr>
+<tr><td></td><td>{{ client.country }} </td></tr>
+</table>
+<br/><br/>
+
+<div class="just_right">Wommeveen,{{date}}</div><br/><br/>
+
+Referring to : Your order {{bill.bill_id}}<br/><br/>
+
+At {{ bill.date_sale }} we sent you an invoice a purchase with us. We have not
+ yet received payment, though the date payment was due has passed.<br/><br/>
+
+All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.<br/><br/>
+
+<table>
+<tbody>
+<tr><th class="order">Bill/payment</th><th class="order">Dated</th><th class="order">Billing or payment amount</th></tr>
+<tr>
+<td class="order">Bill {{ bill.bill_id }} (overdue) </td>
+<td class="order">{{ bill.date_sale }}</td>
+<td class="order">{{ bill.total }}</td>
+</tr>
+{% for obill in morebills %}
+<tr>
+<td class="order">Bill {{obill.bill_id}}</td>
+<td class="order">{{ obill.date_sale }}</td>
+<td class="order"> {% if obill.billing_ccy != bill.billing_ccy %} {{ obill.billing_ccy }} {% endif %}{{obill.total }}</td>
+</tr>
+{% endfor -%}
+{% for payment in payments %}
+<tr>
+<td class="order"> Payment {{payment.id}} at {{ payment.value_date }}</td>
+<td class="order">{{ payment.value_date }}</td>
+<td class="order"> {% if payment.payment_ccy != bill.billing_ccy %} {{ payment.payment_ccy }} {% endif %}{{payment.payment_amount }}</td>
+</tr>
+{%endfor -%}
+</tbody>
+</table><br/><br/>
+
+Please pay immediately. The due date was in the past.<br/><br/>
+
+Debtors Testcompany,<br/><br/><br/><br/>
+
+
+J.F. Wallybun, sales manager<br/>
+
+{% endblock content %}
