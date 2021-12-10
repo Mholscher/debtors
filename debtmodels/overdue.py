@@ -176,7 +176,7 @@ class OverdueActions(db.Model):
     date_action = db.Column(db.DateTime, nullable=False,
                             default=datetime.now)
     bill = db.relationship("Bills", backref="overdue_actions")
-    step = db.relationship("OverdueSteps")
+    step = db.relationship("OverdueSteps", uselist=False)
 
     def add(self):
         """ Add this action to the session """
@@ -219,6 +219,11 @@ class OverdueProcessor(object):
         if bill.status not in OverdueSteps.VALID_OVERDUE_STATUSES:
             raise BillStatusWrongError(f"Bill status {bill.status} incorrect")
         if bill.date_bill > processor_data[0]:
+            return
+        current_step = OverdueSteps.get_by_processor(self.processor_key)
+        step_done = OverdueActions.query.filter_by(bill=bill).\
+            filter_by(step=current_step).first()
+        if step_done:
             return
         self._execute(bill=bill)
         result = self.add_step_to(bill)

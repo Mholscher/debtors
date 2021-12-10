@@ -224,6 +224,25 @@ class TestOverdueActions(unittest.TestCase):
             self.flp06.execute(bill=self.bll2,
                                processor_data=current_processor_data)
 
+    def test_overdue_step_executed_once(self):
+        """ Any overdue step is only executed once for a bill """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        self.flp06.execute(bill=self.bll4,
+                           processor_data=current_processor_data)
+        self.flp06.execute(bill=self.bll4,
+                           processor_data=current_processor_data)
+        first_steps = db.session.query(OverdueActions).\
+            filter_by(bill_id=self.bll4.bill_id).\
+            filter_by(step_id=100).\
+            all()
+        self.assertEqual(len(first_steps), 1, "First step not executed once")
+
 
 if __name__ == '__main__' :
     unittest.main()

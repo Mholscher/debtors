@@ -263,6 +263,17 @@ class TestFirstLetterContent(unittest.TestCase):
         self.assertNotIn(str(self.bll5.bill_id), template_text.text,
                          "Paid bill in text")
 
+    def test_assigned_payment_not_in_letter(self):
+        """ An assigned amount should not be in the letter  """
+
+        self.ia111.assign_to_amount(self.ia112)
+        self.assertTrue(self.ia111.fully_assigned, "Open amount on payment")
+        bill = self.bll8
+        template = "firstletter.rtf"
+        template_text = PaperLetter(template_name=template, bill=bill)
+        self.assertNotIn(str(self.ia111.id), template_text.text,
+                         "Assigned amount in text")
+
 
 class TestFirstLetterMailContent(unittest.TestCase):
 
@@ -305,6 +316,38 @@ class TestFirstLetterMailContent(unittest.TestCase):
                       "Open bill not in text")
         self.assertNotIn(str(self.bll1.bill_id), mail_text,
                          "Paid bill in text")
+
+    def test_payment_in_mail(self):
+        """ A first letter mail must contain payments """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {flp06.processor_key} found")
+        self.flp06.execute(self.bll8, processor_data=current_processor_data)
+        with open("output/mailfom" + str(self.bll8.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertIn(str(self.ia111.id), mail_text,
+                      "Payment not found in mail")
+
+    def test_assigned_payment_not_in_mail(self):
+        """ An assigned payment should not be in mail """
+
+        self.ia111.assign_to_amount(self.ia112)
+        self.assertTrue(self.ia111.fully_assigned, "Open amount on payment")
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {flp06.processor_key} found")
+        self.flp06.execute(self.bll8, processor_data=current_processor_data)
+        with open("output/mailfom" + str(self.bll8.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertNotIn(str(self.ia111.id), mail_text,
+                      "Assigned payment found in mail")
 
 
 if __name__ == '__main__' :

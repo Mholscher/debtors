@@ -58,7 +58,8 @@ class OverdueDictView(dict, GeneralCorrespondence):
     def _create_payment_list(self):
         """ Create a list of payments from the client not fully assigned """
 
-        payment_list = self.bill.client.payments
+        payment_list = [payment for payment in self.bill.client.payments
+                        if not payment.fully_assigned]
         payment_list_dict = []
         for payment in payment_list:
             payment_dict = self._create_payment_dict(payment)

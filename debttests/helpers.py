@@ -250,6 +250,10 @@ def create_payments_for_overdue(instance):
                                bank_ref='320155')
     instance.ia111.change_client(instance.clt1)
 
+    instance.ia112 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=0,
+                               our_ref='Ref Undef')
+    instance.ia112.change_client(instance.bll4.client)
 
 def add_lines_to_bills(instance):
     """ Add lines to the bills in the instance
