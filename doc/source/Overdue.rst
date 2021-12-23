@@ -111,7 +111,7 @@ Overdue processing can be be paused and resumed. A process that is paused has a 
 | start date of the      | user input         | Mandatory | Today    |
 | block                  |                    |           |          |
 +------------------------+--------------------+-----------+----------+
-| end date of the        | user input         | Optional  | Today    |
+| end date of the        | user input         | Optional  | None     |
 | block                  |                    |           |          |
 +------------------------+--------------------+-----------+----------+
 

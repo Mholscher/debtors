@@ -27,6 +27,7 @@ from email.message import EmailMessage
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
+from debtmodels.overdue import add_transfer_date
 from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
                                           rtf)
 from debtviews.physicalentities import GeneralCorrespondence
@@ -50,10 +51,16 @@ class OverdueDictView(dict, GeneralCorrespondence):
         self.bill = Bills.query.filter_by(bill_id=bill_id).first()
         self.client = self.bill.client
         self["bill"] = self._create_bill_dict(self.bill)
+        self._add_transfer_date(self["bill"], self.bill)
         self["morebills"] = self._create_bill_list()
         self["client"] = self._create_client_dict(self.client)
         self["payments"] = self._create_payment_list()
-        self["date"] = rtf(date.today().strftime("%d %B %Y")) 
+        self["date"] = rtf(date.today().strftime("%d %B %Y"))
+
+    def _add_transfer_date(self, bill_dict, bill):
+        """ Add the transfer date to bill data """
+
+        add_transfer_date(bill_dict, bill.date_bill)
 
     def _create_payment_list(self):
         """ Create a list of payments from the client not fully assigned """

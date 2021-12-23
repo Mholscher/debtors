@@ -18,7 +18,7 @@
 import os, os.path
 import unittest
 from os.path import exists
-from datetime import date
+from datetime import date, timedelta
 from debtors import db
 from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
@@ -28,7 +28,10 @@ from debttests.helpers import (create_clients, add_addresses,
 from debtviews.monetary import edited_amount
 from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
                                 OverdueSteps)
-from debtmodels.overdue_processors import FirstLetterProcessor
+from debtmodels.overdue_processors import (FirstLetterProcessor, 
+                                           SecondLetterProcessor,
+                                           DebtTransferProcessor)
+from debtmodels.debtbilling import Bills
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
 
 
@@ -124,10 +127,20 @@ class TestCreateOverdueDict(unittest.TestCase):
         self.assertEqual(self.bll7.date_sale.strftime("%d-%m-%Y"),
                          bill7["date_sale"], "Due date not correct")
 
+
 class TestCreateFirstLetterProcessor(unittest.TestCase):
+
+    def setUp(self):
+
+        self.st21 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st21.add()
+        db.session.flush()
 
     def tearDown(self):
 
+        db.session.rollback()
         OverdueProcessor.all_processors.clear()
 
     def test_create_processor(self):
@@ -144,11 +157,11 @@ class TestCreateFirstLetterProcessor(unittest.TestCase):
         with self.assertRaises(ProcessorAlreadyExistsError):
             flp03 = FirstLetterProcessor()
 
+
 class TestFirstLetterProcess(unittest.TestCase):
 
     def setUp(self):
 
-        self.flp04 = FirstLetterProcessor()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -158,6 +171,7 @@ class TestFirstLetterProcess(unittest.TestCase):
                                 processor="firstletter")
         self.st11.add()
         db.session.flush()
+        self.flp04 = FirstLetterProcessor()
 
     def tearDown(self):
 
@@ -167,6 +181,16 @@ class TestFirstLetterProcess(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+
+    def test_processor_has_auxiliary_data(self):
+        """ A processor must have its data  """
+
+        self.assertEqual(self.flp04.processor_data[2], "firstletter",
+                         "No processor name in data")
+        self.assertEqual(self.flp04.processor_data[0], date.today() - timedelta(days=25),
+                         "No number of days in data")
+        self.assertEqual(self.flp04.processor_data[1], "First Letter",
+                         "Name not correct in data")
 
     def test_execute(self):
         """ Execute produces a first letter """
@@ -199,6 +223,11 @@ class TestFirstLetterContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.st22 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st22.add()
+        db.session.flush()
         self.flp05 = FirstLetterProcessor()
         create_clients(self)
         add_addresses(self)
@@ -278,7 +307,10 @@ class TestFirstLetterContent(unittest.TestCase):
 class TestFirstLetterMailContent(unittest.TestCase):
 
     def setUp(self):
-        self.flp06 = FirstLetterProcessor()
+
+        self.st23 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -289,6 +321,7 @@ class TestFirstLetterMailContent(unittest.TestCase):
                                 processor="firstletter")
         self.st12.add()
         db.session.flush()
+        self.flp06 = FirstLetterProcessor()
 
     def tearDown(self):
 
@@ -348,6 +381,247 @@ class TestFirstLetterMailContent(unittest.TestCase):
             mail_text = e_mail.read()
         self.assertNotIn(str(self.ia111.id), mail_text,
                       "Assigned payment found in mail")
+
+
+class TestCreateSecondLetterProcessor(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        self.st13 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st13.add()
+        db.session.flush()
+        self.flp07 = FirstLetterProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_create_second_letter_processor_step(self):
+        """ Create a second letter processor and add to all processors """
+
+        self.st14 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st14.add()
+        db.session.flush()
+        slp01 = SecondLetterProcessor()
+        self.assertIn(slp01, OverdueProcessor.all_processors.values())
+        steps = db.session.query(OverdueSteps).all()
+        self.assertIn(self.st13, steps, "First letter processor missing")
+        self.assertIn(self.st14, steps, "Second letter processor missing")
+        second_letter_step = [step for step in steps if step.id == 110][0]
+        self.assertTrue(second_letter_step, 
+                        "Invalid id on second letter step")
+
+    def test_processor_order_on_list(self):
+        """ The list holds processors in date order, reversed """
+
+        self.st15 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st15.add()
+        slp02 = SecondLetterProcessor()
+        db.session.flush()
+        steps = OverdueSteps.get_days_list()
+        self.assertEqual(steps[0], self.st15, "First step not second letter")
+        self.assertEqual(steps[1], self.st13, "Second step not first letter")
+
+
+class TestSecondLetterProcess(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st16 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st16.add()
+        self.st17 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st17.add()
+        self.st27 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st27.add()
+        db.session.flush()
+        self.flp08 = FirstLetterProcessor()
+        self.slp03 = SecondLetterProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_execute(self):
+        """ Execute produces a second letter """
+
+        self.bll10 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt5.bills.append(self.bll10)
+        self.bills.append(self.bll10)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp03.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp03, "No key {slp03.processor_key} found")
+        self.slp03.execute(self.bll10, processor_data=current_processor_data)
+        self.assertTrue(exists("output/sl" + str(self.bll10.bill_id)),
+                               "Second letter file does not exist")
+
+
+class TestSecondLetterContent(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st18 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st18.add()
+        self.st19 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st19.add()
+        self.st20 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st20.add()
+        self.bll10 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt5.bills.append(self.bll10)
+        self.bills.append(self.bll10)
+        db.session.flush()
+        self.flp09 = FirstLetterProcessor()
+        self.slp04 = SecondLetterProcessor()
+        self.dtp02 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_transfer_date_in_letter(self):
+        """ The second overdue letter contains the transfer date """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 5, 14))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp04, "No key {slp04.processor_key} found")
+        self.slp04.execute(self.bll10, processor_data=current_processor_data)
+        self.assertTrue(exists("output/sl" + str(self.bll10.bill_id)),
+                               "Second letter file does not exist")
+        with open("output/sl" + str(self.bll10.bill_id)) as slf:
+            letter_text = slf.read()
+        transfer_date = \
+            (self.bll10.date_bill + timedelta(days=60)).strftime("%d %B %Y")
+        self.assertIn(transfer_date, letter_text,
+                      "No transfer date in second letter")
+
+    def test_other_data_in_letter(self):
+        """ Expected data about bills, payments in letter """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 5, 14))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp04, "No key {slp04.processor_key} found")
+        self.slp04.execute(self.bll10, processor_data=current_processor_data)
+        with open("output/sl" + str(self.bll10.bill_id)) as slf:
+            letter_text = slf.read()
+        self.assertIn(str(self.bll4.bill_id), letter_text,
+                      "Not all debt in letter")
+        self.assertIn(str(self.bll6.bill_id), letter_text,
+                      "Not all debt in letter")
+        self.assertNotIn(str(self.bll5.bill_id), letter_text,
+                         "Bill not in debt in letter")
+        self.assertIn(str(self.ia112.id), letter_text,
+                      "Open payment not in letter")
+
+
+
+
+class TestCreateDebtTransferProcessor(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st24 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st24.add()
+        self.st25 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st25.add()
+        self.st26 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st26.add()
+        db.session.flush()
+        self.flp10 = FirstLetterProcessor()
+        self.slp05 = SecondLetterProcessor()
+        self.dtp01 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_get_transfer_date(self):
+        """ We can get the transfer date from the transfer processor """
+
+        tf_date = self.dtp01.transfer_date(date(2021, 12,2))
+        self.assertEqual(tf_date, (date(2021, 12, 2)
+                                   + timedelta(days=60)).strftime("%d %B %Y"),
+                         "Incorrect date for transfer")
 
 
 if __name__ == '__main__' :

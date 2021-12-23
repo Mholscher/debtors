@@ -205,10 +205,16 @@ class OverdueProcessor(object):
         except KeyError:
             pass
         self.all_processors[self.processor_key] = self
+        temp_data = OverdueSteps.get_by_processor(self.processor_key)
+        self.processor_data = (date.today() - 
+                               timedelta(days=temp_data.number_of_days),
+                               temp_data.step_name,
+                               temp_data.processor,
+                               temp_data.number_of_days)
+
 
     def execute(self, bill=None, processor_data=None):
-        """ This method executes the private parts of the step and what each
-        step needs to do.
+        """This method executes the code needed for this step.
 
         Processors only need to create a _execute method, doing the
         parts that are unique tot that step
@@ -230,7 +236,7 @@ class OverdueProcessor(object):
         return result
 
     def _execute(self, bill=None):
-        """ This method executes the code needed for this step.
+        """ This method executes the private parts of the step.
 
         Every processor should implement this method.
         """
@@ -244,3 +250,14 @@ class OverdueProcessor(object):
         current_action = OverdueActions(bill=bill, step=current_step)
         current_action.add()
         return current_action
+
+def add_transfer_date(bill_dict, date_bill):
+    """ Add a transfer date to the bill dictionary """
+    #TODO is returning empty for transfer_date useful?
+    #TODO this wants to be in physicaloverdue.py
+
+    for key, processor in OverdueProcessor.all_processors.items():
+        if hasattr(processor, "transfer_date"):
+            bill_dict["transferdate"] = processor.transfer_date(date_bill)
+    if "transferdate" not in bill_dict:
+        bill_dict["transferdate"] = ""

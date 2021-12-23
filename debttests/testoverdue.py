@@ -159,12 +159,12 @@ class TestOverdueActions(unittest.TestCase):
         create_bills(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
-        self.flp06 = FirstLetterProcessor()
         self.st11 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
                                 processor="firstletter")
         self.st11.add()
         db.session.flush()
+        self.flp06 = FirstLetterProcessor()
 
     def tearDown(self):
 
