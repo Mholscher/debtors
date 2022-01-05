@@ -27,11 +27,11 @@ from debttests.helpers import (create_clients, add_addresses,
                                delete_test_payments)
 from debtviews.monetary import edited_amount
 from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
-                                OverdueSteps)
+                                OverdueSteps, OverdueActions)
 from debtmodels.overdue_processors import (FirstLetterProcessor, 
                                            SecondLetterProcessor,
                                            DebtTransferProcessor)
-from debtmodels.debtbilling import Bills
+from debtmodels.debtbilling import Bills, BillLines
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
 
 
@@ -577,6 +577,103 @@ class TestSecondLetterContent(unittest.TestCase):
                       "Open payment not in letter")
 
 
+class TestSecondMailContent(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st28 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st28.add()
+        self.st29 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st29.add()
+        self.st30 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st30.add()
+        self.bll11 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll11)
+        self.bills.append(self.bll11)
+        bill_line = BillLines(short_desc='reed',
+                        long_desc='A hobo reed for you',
+                        number_of=12,
+                        measured_in='Pcs',
+                        unit_price=234)
+        self.bll11.lines.append(bill_line)
+        db.session.flush()
+        self.flp11 = FirstLetterProcessor()
+        self.slp06 = SecondLetterProcessor()
+        self.dtp03 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_bills_in_mail(self):
+        """ The mail needs to show the overdue bill and other bills in debt """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 5, 14))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp06, "No key {slp06.processor_key} found")
+        self.slp06.execute(self.bll11, processor_data=current_processor_data)
+        with open("output/mailsom" + str(self.bll11.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertIn(str(self.bll11.bill_id), mail_text,
+                      "Oversue  bill not in text")
+        self.assertIn(str(self.bll8.bill_id), mail_text,
+                      "Open bill not in text")
+        self.assertNotIn(str(self.bll1.bill_id), mail_text,
+                         "Paid bill in text")
+
+    def test_payment_in_mail(self):
+        """ The overview needs to show any unassigned payments """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 5, 14))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp06, "No key {slp06.processor_key} found")
+        self.slp06.execute(self.bll11, processor_data=current_processor_data)
+        with open("output/mailsom" + str(self.bll11.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertIn(str(self.ia111.id), mail_text,
+                      "Payment not found in mail")
+
+    def test_payment_assigned_not_in_mail(self):
+        """ The overview needs to show no assigned payments """
+
+        self.ia111.assign_to_amount(self.ia112)
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 5, 14))
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.slp06, "No key {slp06.processor_key} found")
+        self.slp06.execute(self.bll11, processor_data=current_processor_data)
+        with open("output/mailsom" + str(self.bll11.bill_id), "rt") as e_mail:
+            mail_text = e_mail.read()
+        self.assertNotIn(str(self.ia111.id), mail_text,
+                      "Payment found in mail")
 
 
 class TestCreateDebtTransferProcessor(unittest.TestCase):
@@ -622,6 +719,76 @@ class TestCreateDebtTransferProcessor(unittest.TestCase):
         self.assertEqual(tf_date, (date(2021, 12, 2)
                                    + timedelta(days=60)).strftime("%d %B %Y"),
                          "Incorrect date for transfer")
+
+    def test_debt_transfer_processor_on_list(self):
+        """ The debt transfer processor is in the dates list """
+
+        steps = OverdueSteps.get_days_list()
+        self.assertEqual(steps[1], self.st25, "Second letter not in place")
+        self.assertEqual(steps[2], self.st24, "First letter not in place")
+        self.assertEqual(steps[0], self.st26, "Debt transfer not in place")
+
+
+class TestDebtTransferProcess(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st31 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st31.add()
+        self.st32 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st32.add()
+        self.st33 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st33.add()
+        db.session.flush()
+        self.flp12 = FirstLetterProcessor()
+        self.slp07 = SecondLetterProcessor()
+        self.dtp04 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_process_executed(self):
+        """ The debt transfer process is ecxecuted """
+
+        self.bll12 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll12)
+        self.bills.append(self.bll12)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 22))
+        for proc_data in dates_list:
+            if proc_data[2] == self.dtp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.dtp04, "No key {self.dtp04.processor_key} found")
+        self.dtp04.execute(self.bll12, processor_data=current_processor_data)
+        action = db.session.query(OverdueActions).\
+            filter_by(step=self.st33).first()
+        self.assertEqual(action.bill, self.bll12, "Action not transfer for bill")
+        self.assertTrue(exists("output/dtm" + str(self.bll12.bill_id)),
+                               "Debt transfer letter file does not exist")
+        self.assertTrue(exists("output/maildtm" + str(self.bll12.bill_id)),
+                               "Debt transfer mail file does not exist")
 
 
 if __name__ == '__main__' :

@@ -94,7 +94,7 @@ Debtor becomes dubious
 
 There is no outgoing communication is this step. The bill is marked as dubious and accounting is made to reduce the debt and increase the dubious debtors account for the amount not received.
 
-The client is marked as a debtor risk.
+The client is marked as a debtor risk. *This may have legal consequences or impediments; verify with your lawyers!*
 
 .. _debt_blocked:
 

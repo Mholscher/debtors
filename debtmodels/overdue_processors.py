@@ -17,7 +17,9 @@
 
 from datetime import date, timedelta
 from debtmodels.overdue import OverdueSteps, OverdueProcessor
-from debtviews.physicaloverdue import PaperLetter, HTMLMailFirstOverdue
+from debtviews.physicaloverdue import (PaperLetter, HTMLMailFirstOverdue,
+                                       HTMLMailSecondOverdue,
+                                       HTMLMailDebtTransfer)
 
 class FirstLetterProcessor(OverdueProcessor):
 
@@ -58,6 +60,11 @@ class SecondLetterProcessor(OverdueProcessor):
         with open("output/sl" + str(bill.bill_id), "wt") as letter_file:
             letter_file.write(self.second_letter.text)
 
+        if bill.client.debtor_prefs\
+            and bill.client.debtor_prefs[0].letter_medium == "mail":
+            self.second_mail = HTMLMailSecondOverdue(bill.bill_id)
+            self.second_mail.write_file()
+
 class DebtTransferProcessor(OverdueProcessor):
 
     def __init__(self):
@@ -67,7 +74,15 @@ class DebtTransferProcessor(OverdueProcessor):
 
     def _execute(self, bill=None):
 
-        pass
+        self.transfer_letter = PaperLetter(template_name="transferletter.rtf",
+                                         bill=bill)
+        with open("output/dtm" + str(bill.bill_id), "wt") as letter_file:
+            letter_file.write(self.transfer_letter.text)
+
+        if bill.client.debtor_prefs\
+            and bill.client.debtor_prefs[0].letter_medium == "mail":
+            self.transfer_mail = HTMLMailDebtTransfer(bill.bill_id)
+            self.transfer_mail.write_file()
 
     def transfer_date(self, date_bill):
         """ Calculate the transfer date for a bill date """

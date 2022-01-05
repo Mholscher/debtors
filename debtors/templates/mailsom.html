@@ -15,10 +15,13 @@
 
 Referring to : Your order {{bill.bill_id}}<br/><br/>
 
-At {{ bill.date_sale }} we sent you an invoice a purchase with us. We have not
- yet received payment, though the date payment was due has passed.<br/><br/>
+At {{ bill.date_sale }} we sent you an invoice for a purchase with us. We have not
+ yet received payment.We will be passing this debt to the agency Debt Recovery Agency
+ if we have not received payment at {{ bill.transferdate }}. The agency will contact
+ you and if you have any enquiries about this debt you can contact them.<br/><br/>
 
-All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.<br/><br/>
+The debt this mail is about is detailed below. All amounts are in {{bill.billing_ccy}}
+unless mentioned otherwise.<br/><br/>
 
 <table>
 <tbody>

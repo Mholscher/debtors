@@ -13,21 +13,23 @@ To: 	{{client.initials}} {{client.surname}}
 
 Referring to : Your order {{bill.bill_id}}
 
-At {{ bill.date_sale }} we sent you an invoice a purchase with us. We have not
-yet received payment, though the date payment was due has passed.
+At {{ bill.date_sale }} we sent you an invoice for a purchase with us. We have not
+ yet received payment and as previously announced we will be passing this debt 
+ to the agency Debt Recovery Agency.The agency will contact you and if you have any
+ enquiries about this debt you can contact them.
 
-All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.
+The debt this mail is about is detailed below. All amounts are in {{bill.billing_ccy}}
+unless mentioned otherwise.
 
 Bill {{ bill.bill_id }} (overdue): {{bill.total}}
 {% for obill in morebills -%}
-Bill {{ obill.bill_id }} : {% if obill.billing_ccy != bill.billing_ccy %} {{ obil.billing_ccy }} {% endif %} {{ obill.total }}
+Bill {{ obill.bill_id }} : {% if obill.billing_ccy != bill.billing_ccy %} {{ obill.billing_ccy }} {% endif %} {{ obill.total }}
 {% endfor %}
 {% for payment in payments -%}
 Payment {{ payment.id }} : {% if payment.payment_ccy != bill.billing_ccy %} {{ payment.payment_ccy }} {% endif %} {{ payment.payment_amount }}
 {% endfor %}
 
 
-Please pay immediately. The due date is in the past.
 
 Debtors Testcompany,
 

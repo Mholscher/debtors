@@ -124,21 +124,23 @@ class PaperLetter():
         bill_dict = OverdueDictView(bill.bill_id)
         self.text = self.template.render(bill_dict)
 
-class HTMLMailFirstOverdue(object):
-    """ This class creates a HTML mail for bills overdue.
 
-    The overdue mail can be stored as text on the file system and be sent
-    immediately to an SMTP server to be sent to the client.
-    TODO Create the link to the SMTP server
+class HTMLMailTemplate(object):
+    """ This class contains a template for producing mailsom
+
+    The idea is to create a mail file having HTML and text parts
+    (multipart_message)
     """
 
-    def __init__(self, bill_id):
+    def __init__(self, bill_id, mail_source_stem):
 
         self.bill_id = bill_id
         overdue_dict = OverdueDictView(bill_id)
-        first_mail_template = htmlenvironment.get_template('mailfom.txt')
-        self.text = first_mail_template.render(overdue_dict)
-        html_template = htmlenvironment.get_template('mailfom.html')
+        text_mail_template =\
+            htmlenvironment.get_template(mail_source_stem + '.txt')
+        self.text = text_mail_template.render(overdue_dict)
+        html_template =\
+            htmlenvironment.get_template(mail_source_stem + '.html')
         self.html = html_template.render(overdue_dict)
         self.multipart_message = EmailMessage()
         self.multipart_message['From'] = 'billing@debtorscompany.com'
@@ -152,8 +154,59 @@ class HTMLMailFirstOverdue(object):
         self.html_message.set_content(self.text)
         self.multipart_message.add_alternative(self.text)
 
+
+class HTMLMailFirstOverdue(HTMLMailTemplate):
+    """ This class creates a HTML mail for bills overdue.
+
+    The overdue mail can be stored as text on the file system and be sent
+    immediately to an SMTP server to be sent to the client.
+    TODO Create the link to the SMTP server
+    """
+
+    def __init__(self, bill_id):
+
+        super().__init__(bill_id, "mailfom")
+
     def write_file(self):
         """ Writes the text of the bill to a file """
 
         with open("output/mailfom" + str(self.bill_id), 'w') as f:
+            f.write(self.multipart_message.as_string())
+
+
+class HTMLMailSecondOverdue(HTMLMailTemplate):
+    """ This class creates a HTML mail for bills overdue.
+
+    The overdue mail can be stored as text on the file system and be sent
+    immediately to an SMTP server to be sent to the client.
+    TODO Create the link to the SMTP server
+    """
+
+    def __init__(self, bill_id):
+
+        super().__init__(bill_id, "mailsom")
+
+    def write_file(self):
+        """ Writes the text of the bill to a file """
+
+        with open("output/mailsom" + str(self.bill_id), 'w') as f:
+            f.write(self.multipart_message.as_string())
+
+
+class HTMLMailDebtTransfer(HTMLMailTemplate):
+    """ This class creates a HTML mail for bills overdue.
+
+    The overdue mail can be stored as text on the file system and be sent
+    immediately to an SMTP server to be sent to the client.
+    TODO Create the link to the SMTP server
+    """
+
+    def __init__(self, bill_id):
+
+        super().__init__(bill_id, "maildtm")
+
+    def write_file(self):
+        """ Writes the text of the bill to a file """
+
+        with open("output/maildtm" + str(self.bill_id), 'w') as f:
             f.write(self.multipart_message.as_string())
