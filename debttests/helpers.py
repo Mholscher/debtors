@@ -225,7 +225,7 @@ def create_bills_overdue(instance):
     """ Add some bills required for testing overdue """
 
     instance.bll7 = Bills(date_sale=date(year=2020, month=3, day=23),
-                          date_bill=None,
+                          date_bill=date(year=2020, month=3, day=25),
                           billing_ccy='JPY',
                           status='issued')
     instance.clt5.bills.append(instance.bll7)

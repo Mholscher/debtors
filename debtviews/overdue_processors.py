@@ -19,7 +19,8 @@ from datetime import date, timedelta
 from debtmodels.overdue import OverdueSteps, OverdueProcessor
 from debtviews.physicaloverdue import (PaperLetter, HTMLMailFirstOverdue,
                                        HTMLMailSecondOverdue,
-                                       HTMLMailDebtTransfer)
+                                       HTMLMailDebtTransfer,
+                                       JSONDebtTransfer)
 
 class FirstLetterProcessor(OverdueProcessor):
 
@@ -27,11 +28,6 @@ class FirstLetterProcessor(OverdueProcessor):
 
         self.processor_key = "firstletter"
         super().__init__()
-        temp_data = OverdueSteps.get_by_processor(self.processor_key)
-        self.processor_data = (date.today() - 
-                               timedelta(days=temp_data.number_of_days),
-                               temp_data.step_name,
-                               temp_data.processor)
 
     def _execute(self, bill=None):
         """ Execute first letter processing for a bill """
@@ -83,6 +79,9 @@ class DebtTransferProcessor(OverdueProcessor):
             and bill.client.debtor_prefs[0].letter_medium == "mail":
             self.transfer_mail = HTMLMailDebtTransfer(bill.bill_id)
             self.transfer_mail.write_file()
+
+        self.transfer_message = JSONDebtTransfer(bill_id=bill.bill_id)
+        self.transfer_message.write_file()
 
     def transfer_date(self, date_bill):
         """ Calculate the transfer date for a bill date """

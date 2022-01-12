@@ -25,13 +25,13 @@ All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.<br/><br/>
 <tr><th class="order">Bill/payment</th><th class="order">Dated</th><th class="order">Billing or payment amount</th></tr>
 <tr>
 <td class="order">Bill {{ bill.bill_id }} (overdue) </td>
-<td class="order">{{ bill.date_sale }}</td>
+<td class="order">{{ bill.date_bill }}</td>
 <td class="order">{{ bill.total }}</td>
 </tr>
 {% for obill in morebills %}
 <tr>
 <td class="order">Bill {{obill.bill_id}}</td>
-<td class="order">{{ obill.date_sale }}</td>
+<td class="order">{{ obill.date_bill }}</td>
 <td class="order"> {% if obill.billing_ccy != bill.billing_ccy %} {{ obill.billing_ccy }} {% endif %}{{obill.total }}</td>
 </tr>
 {% endfor -%}

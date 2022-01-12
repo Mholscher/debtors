@@ -206,11 +206,11 @@ class OverdueProcessor(object):
             pass
         self.all_processors[self.processor_key] = self
         temp_data = OverdueSteps.get_by_processor(self.processor_key)
-        self.processor_data = (date.today() - 
+        self.processor_data = [date.today() - 
                                timedelta(days=temp_data.number_of_days),
                                temp_data.step_name,
                                temp_data.processor,
-                               temp_data.number_of_days)
+                               temp_data.number_of_days]
 
 
     def execute(self, bill=None, processor_data=None):

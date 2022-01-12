@@ -13,7 +13,7 @@ To: 	{{client.initials}} {{client.surname}}
 
 Referring to : Your order {{bill.bill_id}}
 
-At {{ bill.date_sale }} we sent you an invoice a purchase with us. We have not
+At {{ bill.date_bill }} we sent you an invoice a purchase with us. We have not
 yet received payment, though the date payment was due has passed.
 
 All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.

@@ -24,6 +24,7 @@ a way to process overdue and its output.
 
 from datetime import date
 from email.message import EmailMessage
+import json
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
@@ -105,6 +106,8 @@ class OverdueDictView(dict, GeneralCorrespondence):
         bill_dict = {"bill_id": bill.bill_id,
                      "date_sale": rtf(bill.date_sale.strftime("%d-%m-%Y")),
                      "billing_ccy": currencytable[bill.billing_ccy]["CcyNm"]}
+        if bill.date_bill:
+            bill_dict["date_bill"] = rtf(bill.date_bill.strftime("%d %B %Y"))
         bill_dict["lines"] = []
         total = 0
         for line in bill.lines:
@@ -210,3 +213,24 @@ class HTMLMailDebtTransfer(HTMLMailTemplate):
 
         with open("output/maildtm" + str(self.bill_id), 'w') as f:
             f.write(self.multipart_message.as_string())
+
+
+class JSONDebtTransfer():
+    """ This creates the *example* transfer message
+
+    This message is in the JSON format, but your debt recovery agency
+    may want the message in another format, or with different data. YMMV
+    """
+
+    def __init__(self, bill_id):
+
+        self.bill_id = bill_id
+        overdue_dict = OverdueDictView(bill_id)
+        self.transfer_message = json.dumps(overdue_dict)
+
+    def write_file(self):
+        """ Writes the generated json to a file """
+
+        with open("output/trfmsg" + str(self.bill_id) + ".json",
+                  'w') as f:
+            f.write(self.transfer_message)

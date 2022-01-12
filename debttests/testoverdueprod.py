@@ -28,7 +28,7 @@ from debttests.helpers import (create_clients, add_addresses,
 from debtviews.monetary import edited_amount
 from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
                                 OverdueSteps, OverdueActions)
-from debtmodels.overdue_processors import (FirstLetterProcessor, 
+from debtviews.overdue_processors import (FirstLetterProcessor, 
                                            SecondLetterProcessor,
                                            DebtTransferProcessor)
 from debtmodels.debtbilling import Bills, BillLines
@@ -124,8 +124,9 @@ class TestCreateOverdueDict(unittest.TestCase):
                                        currency=self.bll7.billing_ccy),
                                        bill7["total"],
                                        "Amount not correct")
-        self.assertEqual(self.bll7.date_sale.strftime("%d-%m-%Y"),
-                         bill7["date_sale"], "Due date not correct")
+        #print(self.bll7.date_bill.strftime("%d %B %Y"), bill7)
+        self.assertEqual(self.bll7.date_bill.strftime("%d %B %Y"), 
+                         bill7["date_bill"], "Bill date not correct")
 
 
 class TestCreateFirstLetterProcessor(unittest.TestCase):
@@ -789,6 +790,26 @@ class TestDebtTransferProcess(unittest.TestCase):
                                "Debt transfer letter file does not exist")
         self.assertTrue(exists("output/maildtm" + str(self.bll12.bill_id)),
                                "Debt transfer mail file does not exist")
+
+    def test_file_output_transfer(self):
+        """ A file is made with data of the transfer """
+
+        self.bll13 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll13)
+        self.bills.append(self.bll13)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 22))
+        for proc_data in dates_list:
+            if proc_data[2] == self.dtp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.dtp04, "No key {self.dtp04.processor_key} found")
+        self.dtp04.execute(self.bll13, processor_data=current_processor_data)
+        self.assertTrue(exists("output/trfmsg" + str(self.bll13.bill_id)
+                               + ".json"), "No debt transfer data")
 
 
 if __name__ == '__main__' :

@@ -31,10 +31,10 @@ The module debtmodels overdue
 .. automodule:: debtmodels.overdue
    :members:
 
-The module debtmodels overdue_processors
+The module debtviews overdue_processors
 ----------------------------------------
 
-.. automodule:: debtmodels.overdue_processors
+.. automodule:: debtviews.overdue_processors
    :members:
 
 The module debtviews bills

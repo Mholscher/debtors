@@ -33,7 +33,7 @@ from debttests.helpers import (create_clients, add_addresses,
                                delete_test_bills, delete_test_prefs,
                                delete_test_clients, create_payments_for_overdue,
                                delete_test_payments)
-from debtmodels.overdue_processors import FirstLetterProcessor
+from debtviews.overdue_processors import FirstLetterProcessor
 
 class TestCreateOverdueRule(unittest.TestCase):
 

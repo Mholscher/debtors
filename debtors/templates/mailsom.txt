@@ -13,7 +13,7 @@ To: 	{{client.initials}} {{client.surname}}
 
 Referring to : Your order {{bill.bill_id}}
 
-At {{ bill.date_sale }} we sent you an invoice for a purchase with us. We have not
+At {{ bill.date_bill }} we sent you an invoice for a purchase with us. We have not
  yet received payment. When we have not received payment by {{ bill.transferdate }},
  we will be passing this debt  to the agency Debt Recovery Agency.The agency will
  contact you and if you have any enquiries about this debt you can contact them.

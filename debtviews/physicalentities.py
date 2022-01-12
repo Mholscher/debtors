@@ -35,6 +35,9 @@ class GeneralCorrespondence():
                          rtf(bill.date_sale.strftime("%d-%m-%Y")),
                      "billing_ccy":
                          currencytable[bill.billing_ccy]["CcyNm"]}
+        if bill.date_bill:
+            bill_dict["date_bill"] = rtf(bill.date_bill.strftime("%d %B %Y"))
+
         bill_dict["lines"] = []
         self.total = 0
         for line in bill.lines:
