@@ -812,5 +812,159 @@ class TestDebtTransferProcess(unittest.TestCase):
                                + ".json"), "No debt transfer data")
 
 
+class TestTransferMessageContent(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st34 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st34.add()
+        self.st35 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st35.add()
+        self.st36 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st36.add()
+        db.session.flush()
+        self.flp13 = FirstLetterProcessor()
+        self.slp08 = SecondLetterProcessor()
+        self.dtp05 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_data_in_letter(self):
+        """ Data like bill id and bill date in letter """
+
+        self.bll14 = Bills(date_sale=date(year=2020, month=1, day=12),
+                              date_bill=date(year=2020, month=1, day=13),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll14)
+        self.bills.append(self.bll14)
+        bill_line = BillLines(short_desc='Mouthpiece',
+                        long_desc='A mouthpiece for trumpet',
+                        number_of=2,
+                        measured_in='Pcs',
+                        unit_price=1234)
+        self.bll14.lines.append(bill_line)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 8, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.dtp05.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.dtp05, "No key {dtp05.processor_key} found")
+        self.dtp05.execute(self.bll14, processor_data=current_processor_data)
+        with open("output/dtm" + str(self.bll14.bill_id), "rt") as letter:
+            text = letter.read()
+        self.assertIn(str(self.bll14.bill_id), text,
+                      "Overdue  bill not in text")
+        self.assertIn(str(self.bll8.bill_id), text,
+                      "Open bill not in text")
+        self.assertNotIn(str(self.bll1.bill_id), text,
+                         "Paid bill in text")
+        self.assertIn('2.468', text, "Amount debt not in text")
+        self.assertIn(self.bll14.date_bill.strftime("%d %B %Y"),
+                      text, "Amount debt not in text")
+        self.assertIn(str(self.bll8.bill_id), text,
+                      "Other bill not in letter")
+        self.assertIn(str(self.ia111.id), text,
+                      "Payment not in letter")
+
+    def test_data_in_mail(self):
+        """ Data like bill id and bill date in mail """
+
+        self.bll15 = Bills(date_sale=date(year=2020, month=1, day=12),
+                              date_bill=date(year=2020, month=1, day=13),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll15)
+        self.bills.append(self.bll15)
+        bill_line = BillLines(short_desc='Mouthpiece',
+                        long_desc='A mouthpiece for trumpet',
+                        number_of=2,
+                        measured_in='Pcs',
+                        unit_price=1234)
+        self.bll15.lines.append(bill_line)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 8, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.dtp05.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.dtp05, "No key {dtp05.processor_key} found")
+        self.dtp05.execute(self.bll15, processor_data=current_processor_data)
+        with open("output/maildtm" + str(self.bll15.bill_id), "rt") as e_mail:
+            text = e_mail.read()
+        self.assertIn(str(self.bll15.bill_id), text,
+                      "Overdue  bill not in text")
+        self.assertIn(str(self.bll8.bill_id), text,
+                      "Open bill not in text")
+        self.assertNotIn(str(self.bll1.bill_id), text,
+                         "Paid bill in text")
+        self.assertIn('2.468', text, "Amount debt not in text")
+        self.assertIn(self.bll15.date_bill.strftime("%d %B %Y"),
+                      text, "Amount debt not in text")
+        self.assertIn(str(self.bll8.bill_id), text,
+                      "Other bill not in letter")
+        self.assertIn(str(self.ia111.id), text,
+                      "Payment not in letter")
+
+    def test_json_content(self):
+        """ Data like bill id and bill date in json """
+
+        self.bll16 = Bills(date_sale=date(year=2020, month=1, day=10),
+                              date_bill=date(year=2020, month=1, day=12),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll16)
+        self.bills.append(self.bll16)
+        bill_line = BillLines(short_desc='Mouthpiece',
+                        long_desc='A mouthpiece for trombone',
+                        number_of=2,
+                        measured_in='Pcs',
+                        unit_price=1734)
+        self.bll16.lines.append(bill_line)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 8, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.dtp05.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.dtp05, "No key {dtp05.processor_key} found")
+        self.dtp05.execute(self.bll16, processor_data=current_processor_data)
+        with open("output/trfmsg" + str(self.bll16.bill_id) + ".json", "rt") as trfmsg:
+            json_text = trfmsg.read()
+        self.assertIn(str(self.bll16.bill_id), json_text,
+                      "Overdue  bill not in json")
+        self.assertIn(str(self.bll8.bill_id), json_text,
+                      "Open bill not in json")
+        self.assertNotIn(str(self.bll1.bill_id), json_text,
+                         "Paid bill in json")
+        self.assertIn('3.468', json_text, "Amount debt not in json")
+        self.assertIn(self.bll16.date_bill.strftime("%d %B %Y"),
+                      json_text, "Bill date not correct in json")
+        self.assertIn(str(self.bll8.bill_id), json_text,
+                      "Other bill not in json")
+        self.assertIn(str(self.ia111.id), json_text,
+                      "Payment not in json")
+
+
 if __name__ == '__main__' :
     unittest.main()
