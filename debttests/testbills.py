@@ -17,11 +17,12 @@
 
 import unittest
 from json import dumps
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy.exc import IntegrityError
 from debtors import app, db
 from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
-from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
+from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
+                                    DebtorSignal)
 from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import delete_test_clients, add_addresses,\
     create_clients, spread_created_at , create_bills, add_lines_to_bills,\
@@ -308,6 +309,7 @@ class TestConvertToTagged(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        db.session.flush()
 
     def tearDown(self):
 
@@ -784,6 +786,111 @@ class TestBillLineFunctions(unittest.TestCase):
             totals.append(line.total())
         self.assertIn(75, totals, 'Line not correctly calculated')
         self.assertIn(340, totals, 'Line not correctly calculated')
+
+
+class TestDebtorSignal(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_signal_exist(self):
+        """ A signal is reported """
+
+        sig01 = DebtorSignal(client=self.clt1,
+                             date_start=date.today())
+        self.assertEqual(sig01.client_has_signal(self.clt1), sig01,
+                         "No/Wrong signal returned")
+
+    def test_bill_refused_if_signal(self):
+        """ If a signal is present, no bill can be created """
+
+        sig02 = DebtorSignal(client=self.clt1,
+                             date_start=date(year=2020, month=3, day=2))
+        with self.assertRaises(ValueError):
+            bll5 = Bills(client_id=self.clt1.id,
+                         billing_ccy="JPY",
+                         date_sale=date(year=2021, month=10, day=4))
+        with self.assertRaises(ValueError): 
+            bll6 = Bills(client=self.clt1,
+                         billing_ccy="JPY",
+                         date_sale=date(year=2021, month=10, day=4))
+
+    def test_api_has_signal(self):
+        """ Bill information should return signal for client """
+
+        sig03 = DebtorSignal(client=self.clt1,
+                             date_start=date.today())
+        bld3 = BillDict(self.bll8)
+        self.assertIn("signal", bld3, "No signal in dict")
+        self.assertIn(date.today().strftime("%d-%m-%Y"), bld3["signal"],
+                      "No/incorrect date in dictionary")
+
+    def test_more_than_one_signal(self):
+        """ The oldest signal date is returned when there are 2 signals """
+
+        sig04 = DebtorSignal(client=self.clt1,
+                             date_start=date.today())
+        second_date = date.today() - timedelta(days=2)
+        sig05 = DebtorSignal(client=self.clt1,
+                             date_start=second_date)
+        bld4 = BillDict(self.bll8)
+        self.assertIn(second_date.strftime("%d-%m-%Y"), bld4["signal"],
+                      "No/incorrect date in dictionary")
+
+    def test_signal_ended_is_not_reported(self):
+        """ A signal that has ended is not reported """
+
+        second_date = date.today() - timedelta(days=2)
+        sig07 = DebtorSignal(client=self.clt1,
+                             date_start=second_date,
+                             date_end=date.today() - timedelta(days=1))
+        bld5 = BillDict(self.bll8)
+        self.assertNotIn("signal", bld5,
+                      "Incorrect date in dictionary")
+
+    def test_return_signals_being_actual(self):
+        """ Return all signals in force for bill """
+
+        sig08 = DebtorSignal(client=self.clt1,
+                             date_start=date.today() - timedelta(days=4))
+        second_date = date.today() - timedelta(days=2)
+        sig09 = DebtorSignal(client=self.clt1,
+                             date_start=second_date)
+        signals = DebtorSignal.signals_for(self.bll8)
+        self.assertIn(sig08, signals,
+                      "Signal not in list for bill")
+        self.assertIn(sig09, signals,
+                      "Signal not in list for bill")
+
+    def test_only_return_signals_being_actual(self):
+        """ Return signals in force for bill """
+
+        sig10 = DebtorSignal(client=self.clt1,
+                             date_start=date.today() - timedelta(days=4),
+                             date_end=date.today() - timedelta(days=2))
+        second_date = date.today() - timedelta(days=2)
+        sig11 = DebtorSignal(client=self.clt1,
+                             date_start=second_date)
+        signals = DebtorSignal.signals_for(self.bll8)
+        self.assertNotIn(sig10, signals,
+                      "Ended signal in list for bill")
+        self.assertIn(sig11, signals,
+                      "Signal not in list for bill")
 
 
 class TestDebtPreferences(unittest.TestCase):

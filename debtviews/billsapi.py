@@ -15,10 +15,12 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with debtors.  If not, see <http://www.gnu.org/licenses/>.
 
+from datetime import date
 from flask import jsonify, abort, request
 from flask.views import MethodView
 #import debtors
-from debtmodels.debtbilling import Bills, db, InvalidDataError
+from debtmodels.debtbilling import (Bills, db, InvalidDataError,
+                                    DebtorSignal)
 from clientmodels.clients import Clients, db as cdb, NoClientFoundError
 
 
@@ -83,6 +85,13 @@ class BillDict(dict):
         if bill.prev_bill:
             self['bill-replaced'] = bill.prev_bill
         self['status'] = bill.STATUS_NAME[bill.status]
+        signals = DebtorSignal.signals_for(bill=bill)
+        if signals:
+            dates = [signal.date_start for signal in signals]
+            if dates:
+                signal_date = min(dates)
+                self["signal"] = ["dubious",
+                              signal_date.strftime("%d-%m-%Y")]
 
 
 class BillListDict(dict):

@@ -23,6 +23,7 @@
 
 """
 
+from datetime import date
 from dateutil.parser import parse
 from sqlalchemy import event
 from sqlalchemy.orm import validates, Session
@@ -97,6 +98,12 @@ class ShortNameSearchStringError(ValueError):
     pass
 
 
+class ClientHasSignalError(InvalidDataError):
+    """ The client has a debtors signal (dubious debtor) """
+
+    pass
+
+
 class Bills(db.Model):
     """ Bill models the bill sent to the client.
 
@@ -141,6 +148,17 @@ class Bills(db.Model):
                             cascade='all, delete')
     client = db.relationship('Clients', backref='bills')
     __table_args__ = (db.Index('bystatus', 'status'),)
+
+    def __init__(self, **kwargs):
+
+        if "client_id" in kwargs:
+            client = Clients.get_by_id(kwargs["client_id"])
+            if DebtorSignal.client_has_signal(client):
+                raise ClientHasSignalError("Client has signal")
+        elif "client" in kwargs:
+            if DebtorSignal.client_has_signal(kwargs["client"]):
+                raise ClientHasSignalError("Client has signal")
+        super().__init__(**kwargs)
 
     def add(self):
         """ Add the bill to the session """
@@ -414,6 +432,44 @@ class BillLines(db.Model):
         if line_dict.get("unit-price"):
             line.unit_price = line_dict["unit-price"]
         bill.lines.append(line)
+
+
+class DebtorSignal(db.Model):
+
+    __table_name__ = "debtsignals"
+    id = db.Column(db.Integer, db.Sequence("signal_seq"),
+                   primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), index=True)
+    date_start = db.Column(db.Date, nullable=False)
+    date_end = db.Column(db.Date, nullable=True, server_default=None)
+    client = db.relationship('Clients', uselist=False, backref='signals')
+
+    def add(self):
+        """ Add this signal to the session """
+
+        db.session.add(self)
+
+    @classmethod
+    def client_has_signal(cls, client):
+        """ Does the client passed have a signal? 
+
+        the routine returns the signal or none for no signal found.
+        """
+
+        return db.session.query(cls).filter_by(client=client).first()
+
+    @classmethod
+    def signals_for(cls, bill, as_of=date.today()):
+        """ This routine returns signals for as_of date
+
+        It returns a list of signals with client, start and end dates of 
+        the signal.
+        """
+
+        client_signals = db.session.query(cls).filter_by(client=bill.client).all()
+        client_signals = [signal for signal in client_signals
+                           if not signal.date_end or signal.date_end >= date.today()]
+        return client_signals
 
 
 class DebtorPreferences(db.Model):
