@@ -24,9 +24,10 @@ from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
 from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
                                     DebtorSignal)
 from debtviews.billsapi import BillDict, BillListDict
-from debttests.helpers import delete_test_clients, add_addresses,\
-    create_clients, spread_created_at , create_bills, add_lines_to_bills,\
-    delete_test_bills, delete_test_prefs
+from debttests.helpers import (delete_test_clients, add_addresses,
+    create_clients, spread_created_at , create_bills, add_lines_to_bills,
+    delete_test_bills, delete_test_prefs, create_debtor_signals,
+    delete_debtor_signals)
 
 
 class TestCreateBill(unittest.TestCase):
@@ -891,6 +892,54 @@ class TestDebtorSignal(unittest.TestCase):
                       "Ended signal in list for bill")
         self.assertIn(sig11, signals,
                       "Signal not in list for bill")
+
+
+class TestSignalFunctions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_debtor_signals(self)
+        db.session.flush()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_debtor_signals(self)
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_signal_appears(self):
+        """ A signal should appear on the bill page """
+
+        rv = self.app.get("/bill/" + str(self.bll8.bill_id))
+        self.assertEqual(rv.status_code, 200, "Get failed")
+        self.assertIn(str(self.sig12.date_start.strftime("%d %B %Y")).encode(),
+                      rv.data, "Signal start date not in response")
+        self.assertNotIn(str(self.sig13.date_start.strftime("%d %B %Y")).encode(),
+                      rv.data, "Ended signal in response")
+
+    def test_2_on_screen(self):
+        """ All current signals appear on screen """
+
+        self.sig14 = DebtorSignal(client=self.bll8.client,
+                                  date_start=date.today() - timedelta(days=4),
+                                  date_end=None)
+        db.session.flush()
+
+        rv = self.app.get("/bill/" + str(self.bll8.bill_id))
+        self.assertEqual(rv.status_code, 200, "Get failed")
+        self.assertIn(str(self.sig12.date_start.strftime("%d %B %Y")).encode(),
+                      rv.data, "Signal start date not in response")
+        self.assertIn(str(self.sig14.date_start.strftime("%d %B %Y")).encode(),
+                      rv.data, "Second signal start date not in response")
 
 
 class TestDebtPreferences(unittest.TestCase):

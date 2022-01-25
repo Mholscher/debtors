@@ -21,13 +21,14 @@ Placing these in one helper .py file helps re-use and prevents writing similar
 code more than once.
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from debtors import db
 from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
-from debtmodels.debtbilling import Bills, BillLines, DebtorPreferences
+from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
+                                    DebtorSignal)
 from debtmodels.payments import (AmountQueued, IncomingAmounts,
                                  AssignedAmounts)
 
@@ -335,6 +336,16 @@ def add_debtor_preferences(instance):
     instance.clt3.debtor_prefs.append(DebtorPreferences(bill_medium='mail',
                                                    letter_medium='post'))
 
+def create_debtor_signals(instance):
+    """ Create debtor signals """
+
+    instance.sig12 = DebtorSignal(client=instance.bll8.client,
+                                    date_start=date.today() - timedelta(days=4),
+                                    date_end=None)
+    instance.sig13 = DebtorSignal(client=instance.bll8.client,
+                                    date_start=date.today() - timedelta(days=6),
+                                    date_end=date.today() - timedelta(days=2))
+
 
 def delete_amountq(instance):
     """ Empty the amounts queue for assignment """
@@ -366,4 +377,11 @@ def delete_test_prefs(instance):
     prefs = db.session.query(DebtorPreferences).all()
     for pref in prefs:
         db.session.delete(pref)
+
+def delete_debtor_signals(instance):
+    """ Delete all signals """
+
+    signals = db.session.query(DebtorSignal).all()
+    for signal in signals:
+        db.session.delete(signal)
     

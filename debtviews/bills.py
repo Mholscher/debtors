@@ -23,7 +23,8 @@ to do so.
 """
 from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
-from debtmodels.debtbilling import Bills, BillLines, db, BillNotFoundError
+from debtmodels.debtbilling import (Bills, BillLines, db, BillNotFoundError,
+                                    DebtorSignal)
 from clientmodels.clients import Clients, NoClientFoundError
 from clientviews.forms import ClientSearchForm
 from debtviews.forms import BillCreateForm, BillChangeForm
@@ -85,7 +86,13 @@ class BillView(MethodView):
                 line.unit_price.currency = bill.billing_ccy
             line.edited_amount = edited_amount
 
+        if bill:
+            signals = DebtorSignal.signals_for(bill)
+        else:
+            signals = []
+
         return render_template('bill.html', form=bill_form, bill=bill,
+                               debtor_signals=signals,
                                search_form = client_search_form)
 
     def post(self, bill_id=None):
@@ -153,7 +160,13 @@ class BillView(MethodView):
         client_search_form = ClientSearchForm()
         flash('Validation error encountered')
 
+        if bill:
+            signals = DebtorSignal.signals_for(bill)
+        else:
+            signals = []
+
         return render_template('bill.html', form=bill_form, bill=bill,
+                               debtor_signals=signals,
                                search_form=client_search_form)
 
 

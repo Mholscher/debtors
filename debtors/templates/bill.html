@@ -37,4 +37,15 @@
 </table><br/><br/>
 {{form.update}} {{form.add_1}} {{form.add_more}}
 </form>
+{% if debtor_signals %}
+    <h2>Debtor signal(s) </h2>
+{% for signal in debtor_signals %}
+    From date {{ signal.date_start.strftime("%d %B %Y") }}
+    {% if signal.date_end %}
+    To date {{ signal.date_end.strftime("%d %B %Y") }}
+    {% else %}
+    <br/>
+    {% endif %}
+{% endfor %}
+{% endif %}
 {% endblock content %}
