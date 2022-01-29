@@ -104,6 +104,18 @@ class ClientHasSignalError(InvalidDataError):
     pass
 
 
+class SignalNotFoundError(ValueError):
+    """ There is no signal for the id supplied  """
+
+    pass
+
+
+class EndBeforeStartError(ValueError):
+    """ The start date is after the end date  """
+
+    pass
+
+
 class Bills(db.Model):
     """ Bill models the bill sent to the client.
 
@@ -449,6 +461,17 @@ class DebtorSignal(db.Model):
 
         db.session.add(self)
 
+    @validates("date_end")
+    def validate_date_end(self, key, date_end):
+        """ Validate the end date """
+
+        if date_end is None:
+            return date_end
+        if self.date_start:
+            if date_end < self.date_start:
+                raise EndBeforeStartError("End date must be on or after start date")
+        return date_end
+
     @classmethod
     def client_has_signal(cls, client):
         """ Does the client passed have a signal? 
@@ -470,6 +493,15 @@ class DebtorSignal(db.Model):
         client_signals = [signal for signal in client_signals
                            if not signal.date_end or signal.date_end >= date.today()]
         return client_signals
+
+    @staticmethod
+    def get_by_id(signal_id):
+        """ Get the signal for signal_id """
+
+        signal = db.session.query(DebtorSignal).filter_by(id=signal_id).first()
+        if signal:
+            return signal
+        raise SignalNotFoundError(f"No error with id {signal_id}")
 
 
 class DebtorPreferences(db.Model):

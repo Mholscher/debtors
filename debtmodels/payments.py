@@ -226,6 +226,8 @@ class IncomingAmounts(db.Model):
     def validate_our_reference(self, key, our_ref):
         """ Validate our reference """
 
+        if not our_ref:
+            return our_ref
         return self.validate_maxlen(our_ref)
 
     def add(self):

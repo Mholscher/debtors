@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from 'fields.html' import fld %}
+{% from 'nolabel.html' import nolabel %}
+
+{% block title %}
+<title>Debtors signal for {{ signal.client.surname }}, {{ signal.client.initials }}</title>
+{% endblock %} 
+{% block searches %}
+    {% include "clientsearch.html"%}
+{% endblock searches %}
+{% block content %}
+<form action="/signal/{{signal_form.id.data}}" method="POST" class="inlineform">
+Client {{ signal.client.initials }} {{ signal.client.surname }}
+Client number {{ signal.client.id }}
+<div class="inputline">{{fld(signal_form.date_start)}}</div>
+<div class="inputline">{{fld(signal_form.date_end)}}</div>
+{{ signal_form.change_signal }}
+</form>
+{% endblock content %}

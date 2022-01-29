@@ -27,7 +27,7 @@ from debtmodels.debtbilling import (Bills, BillLines, db, BillNotFoundError,
                                     DebtorSignal)
 from clientmodels.clients import Clients, NoClientFoundError
 from clientviews.forms import ClientSearchForm
-from debtviews.forms import BillCreateForm, BillChangeForm
+from debtviews.forms import BillCreateForm, BillChangeForm, DebtorSignalForm
 from debtviews.monetary import edited_amount
 from debtviews.wtformsmonetary import AmountField
 
@@ -220,3 +220,45 @@ class BillDetailView(MethodView):
             line.amount_edit = edited_amount
         return render_template('billdetail.html', bill=bill,
                                search_form=client_search_form)
+
+class DebtorSignalView(MethodView):
+    """ View and end a debtor signal for a client.
+
+    Debtor signals are created for bills, but applied at the client level.
+    When a bill remains unpaid to long, the client is signalled as a dubious
+    debtor. This signal can be removed here.
+    """
+    def get(self, signal_id=None):
+        """ Show the data for a selected signal """
+
+        client_search_form = ClientSearchForm()
+        signal = DebtorSignal.get_by_id(signal_id)
+        signal_form = DebtorSignalForm(obj=signal)
+        return render_template("signal.html", signal_form=signal_form,
+                               search_form=client_search_form,
+                               signal=signal)
+
+    def post(self, signal_id=None):
+        """ Post an amendment to an existing signal 
+
+        Only the start and end date are amendable.
+        """
+
+        client_search_form = ClientSearchForm()
+        signal = DebtorSignal.get_by_id(signal_id)
+        signal_form = DebtorSignalForm()
+        if signal_form.validate_on_submit():
+            if signal_form.date_start.data\
+                and (signal_form.date_start.data != signal.date_start):
+                signal.date_start = signal_form.date_start.data
+            if signal_form.date_end.data\
+                and (signal_form.date_end.data != signal.date_end):
+                signal.date_end = signal_form.date_end.data
+            db.session.commit()
+            return redirect(url_for("signal_update", signal_id=signal.id))
+
+        flash("Validation error encountered")
+        return render_template("signal.html", signal_form=signal_form,
+                               search_form=client_search_form,
+                               signal=signal)
+

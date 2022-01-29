@@ -96,6 +96,25 @@ class PaymentCcyValid(ValueError):
             raise ValidationError(self.message.format(field.data))
 
 
+class EndDateValid(ValueError):
+    """ WTForms validator for end date of a signal """
+
+    message = 'End date must be on or after start date'
+
+    def __init__(self, message=None):
+
+        if message:
+            self.message = message
+
+    def __call__(self, form, field):
+
+        if field.data is None:
+            return
+        if field.data < form.date_start.data:
+            raise ValidationError(self.message.format(field.data))
+
+
+
 class BillLineForm(FlaskForm):
     """ This class holds data for a line in the bill """
 
@@ -198,3 +217,13 @@ class OtherPaymentForm(FlaskForm):
     id = HiddenField("Other payment id")
     payment_amount = AmountField("Other currency amount")
     add_to_payment = SubmitField("Add here")
+
+
+class DebtorSignalForm(FlaskForm):
+    id = HiddenField("Signal id")
+    date_start = DateField("Start date", format="%d-%m-%Y",
+                           validators=[DataRequired()])
+    date_end = DateField("End date", format="%d-%m-%Y",
+                         validators=[EndDateValid()])
+    change_signal = SubmitField("Update signal")
+

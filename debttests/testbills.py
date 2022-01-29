@@ -941,6 +941,95 @@ class TestSignalFunctions(unittest.TestCase):
         self.assertIn(str(self.sig14.date_start.strftime("%d %B %Y")).encode(),
                       rv.data, "Second signal start date not in response")
 
+    def test_no_signal_no_text(self):
+        """ No signal for bill means no text """
+
+        rv = self.app.get("/bill/" + str(self.bll4.bill_id))
+        self.assertNotIn("Debtor signal(s)".encode(), rv.data,
+                         "Fixed signal text in page")
+
+
+class TestSignalTransactions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_debtor_signals(self)
+        db.session.commit()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_debtor_signals(self)
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_get_signal(self):
+        """ Get a signal on the page """
+
+        rv = self.app.get("/signal/" + str(self.sig12.id))
+        self.assertEqual(rv.status_code, 200, "Signal transaction failed")
+        self.assertIn(self.sig12.date_start.strftime("%d-%m-%Y").encode(),
+                      rv.data, "Start date not in response")
+
+    def test_end_date_shown(self):
+        """ An end date on a signal is shown """
+
+        rv = self.app.get("/signal/" + str(self.sig13.id))
+        self.assertEqual(rv.status_code, 200, "Signal transaction failed")
+        self.assertIn(self.sig13.date_end.strftime("%d-%m-%Y").encode(),
+                      rv.data, "End date not in response")
+
+    def test_update_end_date(self):
+        """ Set the end date of a signal """
+
+        rv = self.app.post("/signal/" + str(self.sig12.id),
+                           data={"id" : str(self.sig12.id),
+                                 "date_start" :
+                                     self.sig12.date_start.strftime("%d-%m-%Y"),
+                                 "date_end" : date.today().strftime("%d-%m-%Y")}
+                           , follow_redirects=True)
+        self.assertEqual(rv.status_code, 200, "Signal transaction failed")
+        sig15 = db.session.query(DebtorSignal).filter_by(id=self.sig12.id).\
+            first()
+        self.assertEqual(sig15.date_end, date.today(), "Date end not updated")
+
+    def test_update_start_date(self):
+        """ Set the start date of a signal """
+
+        rv = self.app.post("/signal/" + str(self.sig12.id),
+                           data={"id" : str(self.sig12.id),
+                                 "date_start" :
+                                     date.today().strftime("%d-%m-%Y")}
+                           , follow_redirects=True)
+        self.assertEqual(rv.status_code, 200, "Signal transaction failed")
+        sig16 = db.session.query(DebtorSignal).filter_by(id=self.sig12.id).\
+            first()
+        self.assertEqual(sig16.date_start, date.today(),
+                         "Date start not updated")
+
+    def test_start_before_end(self):
+        """ End date must on/after start date """
+
+        end_date = self.sig12.date_start - timedelta(days=2)
+        rv = self.app.post("/signal/" + str(self.sig12.id),
+                           data={"id" : str(self.sig12.id),
+                                 "date_start" :
+                                     self.sig12.date_start.strftime("%d-%m-%Y"),
+                                 "date_end" :
+                                     end_date.strftime("%d-%m-%Y")}
+                           , follow_redirects=True)
+        self.assertEqual(rv.status_code, 200, "Signal transaction failed")
+        self.assertIn("after start date".encode(), rv.data,
+                      "No error text found")
+
 
 class TestDebtPreferences(unittest.TestCase):
 
