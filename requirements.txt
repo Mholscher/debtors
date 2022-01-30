@@ -49,5 +49,5 @@ SQLAlchemy==1.4.29
 urllib3==1.26.7
 wcwidth==0.1.8
 Werkzeug==2.0.2
-WTForms==3.0.0
+WTForms==2.3.3
 zipp==1.0.0

@@ -11,6 +11,7 @@
 {% block content %}
 <form action="/signal/{{signal_form.id.data}}" method="POST" class="inlineform">
 Client {{ signal.client.initials }} {{ signal.client.surname }}
+<br/>
 Client number {{ signal.client.id }}
 <div class="inputline">{{fld(signal_form.date_start)}}</div>
 <div class="inputline">{{fld(signal_form.date_end)}}</div>

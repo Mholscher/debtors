@@ -224,6 +224,6 @@ class DebtorSignalForm(FlaskForm):
     date_start = DateField("Start date", format="%d-%m-%Y",
                            validators=[DataRequired()])
     date_end = DateField("End date", format="%d-%m-%Y",
-                         validators=[EndDateValid()])
+                         validators=[EndDateValid(), Optional()])
     change_signal = SubmitField("Update signal")
 
