@@ -41,7 +41,7 @@ class AccountingTemplate(dict):
         to create valid accounting for GLedger.
         """
 
-        raise NotImpelementedError("Subclass the template and implement journal_entries")
+        raise NotImplementedError("Subclass the template and implement journal_entries")
 
     def _create_journal(self, event):
         """ Create the journal for a event """

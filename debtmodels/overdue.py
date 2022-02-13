@@ -140,7 +140,7 @@ class OverdueSteps(db.Model):
             order_by(cls.number_of_days.desc()).all()
 
     @classmethod
-    def get_date_list(cls, from_date=date.today):
+    def get_date_list(cls, from_date=date.today()):
         """ Get a list of dates and steps ordered by date """
 
         days_list = cls.get_days_list()

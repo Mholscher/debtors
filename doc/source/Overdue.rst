@@ -92,9 +92,9 @@ The content of the transfer is not known, because it is dependent on the agency 
 Debtor becomes dubious
 ----------------------
 
-There is no outgoing communication is this step. The bill is marked as dubious and accounting is made to reduce the debt and increase the dubious debtors account for the amount not received.
+There is no outgoing communication is this step. The client is marked as a dubious debtor and accounting is made to reduce the debt and increase the dubious debtors account for the amount not received.
 
-The client is marked as a debtor risk. *This may have legal consequences or impediments; verify with your lawyers!*
+The **client** is marked as a debtor risk. *This may have legal consequences or impediments; verify with your lawyers!*
 
 .. _debt_blocked:
 

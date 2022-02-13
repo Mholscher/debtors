@@ -255,7 +255,6 @@ class DebtorSignalView(MethodView):
                 and (signal_form.date_end.data != signal.date_end):
                 signal.date_end = signal_form.date_end.data
             db.session.commit()
-            print(url_for("signal_update", signal_id=signal.id))
             return redirect(url_for("signal_update", signal_id=signal.id))
 
         flash("Validation error encountered")

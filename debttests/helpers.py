@@ -27,6 +27,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
+from debtmodels.overdue import OverdueSteps
 from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
                                     DebtorSignal)
 from debtmodels.payments import (AmountQueued, IncomingAmounts,
@@ -384,4 +385,10 @@ def delete_debtor_signals(instance):
     signals = db.session.query(DebtorSignal).all()
     for signal in signals:
         db.session.delete(signal)
-    
+
+def delete_overdue_steps(instance):
+    """ Delete all overdue steps """
+
+    steps = db.session.query(OverdueSteps).all()
+    for step in steps:
+        db.session.delete(step)

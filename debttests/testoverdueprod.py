@@ -24,14 +24,16 @@ from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
                                delete_test_bills, delete_test_prefs,
                                delete_test_clients, create_payments_for_overdue,
-                               delete_test_payments)
+                               delete_test_payments, delete_overdue_steps)
 from debtviews.monetary import edited_amount
 from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
                                 OverdueSteps, OverdueActions)
 from debtviews.overdue_processors import (FirstLetterProcessor, 
                                            SecondLetterProcessor,
-                                           DebtTransferProcessor)
-from debtmodels.debtbilling import Bills, BillLines
+                                           DebtTransferProcessor,
+                                           DubiousDebtorProcessor,
+                                           DubiousDebtorAccounting)
+from debtmodels.debtbilling import Bills, BillLines, DebtorSignal
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
 
 
@@ -55,6 +57,7 @@ class TestCreateOverdueDict(unittest.TestCase):
         delete_test_bills(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_overdue_has_bill_data(self):
@@ -142,6 +145,7 @@ class TestCreateFirstLetterProcessor(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        delete_overdue_steps(self)
         OverdueProcessor.all_processors.clear()
 
     def test_create_processor(self):
@@ -181,6 +185,7 @@ class TestFirstLetterProcess(unittest.TestCase):
         delete_test_bills(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_processor_has_auxiliary_data(self):
@@ -245,6 +250,7 @@ class TestFirstLetterContent(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_instantiated_template_in_output(self):
@@ -332,6 +338,7 @@ class TestFirstLetterMailContent(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_bill_id_in_mail(self):
@@ -406,6 +413,7 @@ class TestCreateSecondLetterProcessor(unittest.TestCase):
         delete_test_bills(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_create_second_letter_processor_step(self):
@@ -472,6 +480,7 @@ class TestSecondLetterProcess(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_execute(self):
@@ -535,6 +544,7 @@ class TestSecondLetterContent(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_transfer_date_in_letter(self):
@@ -624,6 +634,7 @@ class TestSecondMailContent(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_bills_in_mail(self):
@@ -711,6 +722,7 @@ class TestCreateDebtTransferProcessor(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_get_transfer_date(self):
@@ -764,6 +776,7 @@ class TestDebtTransferProcess(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_process_executed(self):
@@ -846,6 +859,7 @@ class TestTransferMessageContent(unittest.TestCase):
         delete_test_payments(self)
         delete_test_prefs(self)
         delete_test_clients(self)
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_data_in_letter(self):
@@ -964,6 +978,243 @@ class TestTransferMessageContent(unittest.TestCase):
                       "Other bill not in json")
         self.assertIn(str(self.ia111.id), json_text,
                       "Payment not in json")
+
+class TestCreateDubiousDebtor(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st37 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st37.add()
+        self.st38 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st38.add()
+        self.st39 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st39.add()
+        db.session.flush()
+        self.flp13 = FirstLetterProcessor()
+        self.slp08 = SecondLetterProcessor()
+        self.dtp05 = DebtTransferProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        delete_overdue_steps(self)
+        db.session.commit()
+
+    def test_can_create_processor(self):
+        """ We can create a dubious debtor processor """
+
+        self.st40 = OverdueSteps(id=130, number_of_days=80, 
+                                step_name="Dubious debtor",
+                                processor="dubious")
+        self.st40.add()
+        db.session.flush()
+        self.ddp01 = DubiousDebtorProcessor()
+        steps = OverdueSteps.get_by_processor("dubious")
+        self.assertTrue(steps, "Step not in list")
+        self.assertIn("dubious", self.ddp01.all_processors,
+                      "Dubious Debtor Processor not in all processors")
+
+
+class TestDubiousDebtorProcess(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st41 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st41.add()
+        self.st42 = OverdueSteps(id=110, number_of_days=40, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st42.add()
+        self.st43 = OverdueSteps(id=120, number_of_days=60, 
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st43.add()
+        self.st44 = OverdueSteps(id=130, number_of_days=80, 
+                                step_name="Dubious debtor",
+                                processor="dubious")
+        self.st44.add()
+        db.session.flush()
+        self.flp13 = FirstLetterProcessor()
+        self.slp08 = SecondLetterProcessor()
+        self.dtp05 = DebtTransferProcessor()
+        self.ddp01 = DubiousDebtorProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        delete_overdue_steps(self)
+        db.session.commit()
+
+    def test_create_dubious_signal(self):
+        """ A dubious signal is created by the processor """
+
+        bll17 = Bills(date_sale=date(year=2020, month=1, day=10),
+                      date_bill=date(year=2020, month=1, day=12),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll17.client = self.clt1
+        bll17.add()
+        db.session.commit()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 8, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll17, processor_data=current_processor_data)
+        sig17 = DebtorSignal.client_has_signal(self.clt1)
+        self.assertTrue(sig17, "No signal found")
+
+    def test_bill_set_dubious(self):
+        """ The bill that is handled is set to dubious """
+
+        bll18 = Bills(date_sale=date(year=2020, month=2, day=10),
+                      date_bill=date(year=2020, month=2, day=12),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll18.client = self.clt1
+        bll18.add()
+        db.session.commit()
+        bll18_id = bll18.bill_id
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 8, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll18, processor_data=current_processor_data)
+        bll19 = db.session.query(Bills).filter_by(bill_id=bll18_id).first()
+        self.assertEqual(bll19.status, Bills.DUBIOUS,
+                         "Bill processed not set to dubious status")
+
+    def test_other_bills_set_dubious(self):
+        """ Other outstanding bills for client needs to be marked dubious """
+
+        bll20 = Bills(date_sale=date(year=2020, month=2, day=15),
+                      date_bill=date(year=2020, month=2, day=16),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll20.client = self.clt1
+        bll20.add()
+        db.session.commit()
+        bll20_id = bll20.bill_id
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 9, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll20, processor_data=current_processor_data)
+        self.assertEqual(self.bll8.status, Bills.DUBIOUS,
+                         "Other bill not set to dubious status")
+        self.assertEqual(self.bll1.status, Bills.DUBIOUS,
+                         "Other bill not set to dubious status")
+
+    def test_paid_bills_not_harmed(self):
+        """ Paid bills should remain paid """
+
+        bll21 = Bills(date_sale=date(year=2020, month=2, day=14),
+                      date_bill=date(year=2020, month=2, day=14),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll21.client = self.clt1
+        bll21.add()
+        db.session.commit()
+        bll21_id = bll21.bill_id
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 9, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll21, processor_data=current_processor_data)
+        self.assertEqual(self.bll2.status, Bills.PAID,
+                         "Paid bill touched by dubious debtor")
+
+    def test_accounting_made(self):
+        """ Accounting is made when a contract is set to dubious """
+
+        bll22 = Bills(date_sale=date(year=2020, month=1, day=22),
+                      date_bill=date(year=2020, month=1, day=23),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll22.client = self.clt1
+        bll22.add()
+        db.session.commit()
+        bll22_id = bll22.bill_id
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 9, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll22, processor_data=current_processor_data)
+        ddac01 = DubiousDebtorAccounting(bll22)
+        post_list = ddac01["journal"]["postings"]
+        accounts = [account for posting in post_list for k, account in posting.items() if k == 'account' ]
+        self.assertIn("debt", accounts, 'No debt posting')
+        self.assertIn("dubious", accounts, "No dubious debt posting")
+        post_balance = 0
+        for posting in post_list:
+            if posting["debitcredit"] == "Cr":
+                post_balance += int(posting["amount"])
+            if posting["debitcredit"] == "Db":
+                post_balance -= int(posting["amount"])
+        self.assertEqual(post_balance, 0, "Journal doesn't balance")
+        self.assertEqual(ddac01["journal"]["extkey"],
+                         "dubious" + str(bll22.bill_id),
+                         "Invalid external key")
+
+    def test_other_bill_accounting(self):
+        """ Accounting is done for all bills """
+
+        bll23 = Bills(date_sale=date(year=2020, month=1, day=22),
+                      date_bill=date(year=2020, month=1, day=23),
+                      billing_ccy='JPY',
+                      status='issued')
+        bll23.client = self.clt1
+        bll23.add()
+        db.session.commit()
+        bll23_id = bll23.bill_id
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 9, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.ddp01.processor_key:
+                current_processor_data = proc_data
+                break
+
+        self.ddp01.execute(bll23, processor_data=current_processor_data)
+        ddac02 = DubiousDebtorAccounting(self.bll8)
+        self.assertEqual(ddac02["journal"]["extkey"],
+                         "dubious" + str(self.bll8.bill_id),
+                         "Invalid external key")
 
 
 if __name__ == '__main__' :

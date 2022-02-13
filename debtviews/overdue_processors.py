@@ -15,8 +15,10 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with Debtors.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from debtmodels.overdue import OverdueSteps, OverdueProcessor
+from debtmodels.debtbilling import DebtorSignal
+from debtmodels.accounting import AccountingTemplate
 from debtviews.physicaloverdue import (PaperLetter, HTMLMailFirstOverdue,
                                        HTMLMailSecondOverdue,
                                        HTMLMailDebtTransfer,
@@ -89,3 +91,46 @@ class DebtTransferProcessor(OverdueProcessor):
         return (date_bill + 
                 timedelta(days=self.processor_data[3])).strftime("%d %B %Y")
 
+
+class DubiousDebtorProcessor(OverdueProcessor):
+
+    def __init__(self):
+
+        self.processor_key = "dubious"
+        super().__init__()
+
+    def _execute(self, bill=None):
+
+        #create the debtorssignal
+        signal = DebtorSignal(client=bill.client,
+                             date_start=date.today())
+        signal.add()
+        outstanding_bills = bill.get_outstanding_bills(bill.client)
+        for other_bill in outstanding_bills:
+            other_bill.debtor_becomes_dubious()
+
+class DubiousDebtorAccounting(AccountingTemplate):
+    """ Create the accounting lines and external key for dubious
+
+    TODO where is this to be called?
+    """
+
+    def journal_entries(self, journal_dict, dubious_bill):
+        """ Create the accounting entries for a bill turning dubious. """
+
+        journal_dict["extkey"] = "dubious" + str(dubious_bill.bill_id)
+        posting_list = []
+        posting_debt = {"account": "debt", "currency":
+                        dubious_bill.billing_ccy,
+                        "amount": str(dubious_bill.total()),
+                        "debitcredit": "Cr",
+                        "valuedate": datetime.today().strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        posting_dubious = {"account": "dubious", "currency":
+                        dubious_bill.billing_ccy,
+                        "amount": str(dubious_bill.total()),
+                        "debitcredit": "Db",
+                        "valuedate": datetime.today().strftime("%Y-%m-%d")}
+        posting_list.append(posting_dubious)
+        journal_dict["postings"] = posting_list
+        return journal_dict

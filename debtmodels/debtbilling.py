@@ -143,8 +143,10 @@ class Bills(db.Model):
     ISSUED = 'issued'
     PAID = 'paid'
     REPLACED = 'replaced'
+    DUBIOUS = 'dubious'
     STATUS_NAME = {'new': 'New', 'issued': 'Billed, unpaid',
-                   'paid': 'Fully paid', 'replaced': 'Bill replaced'}
+                   'paid': 'Fully paid', 'replaced': 'Bill replaced',
+                   'dubious': 'Debtor dubious'}
 
     __tablename__ = 'bill'
     bill_id = db.Column(db.Integer,  db.Sequence('bill_sequence'),
@@ -218,6 +220,11 @@ class Bills(db.Model):
         """ A physical bill was produced for this bill """
 
         self.status = self.ISSUED
+
+    def debtor_becomes_dubious(self):
+        """ The debtor has become dubious, bill needs to be marked """
+
+        self.status = self.DUBIOUS
 
     def total(self):
         """ Return the total bill amount """
