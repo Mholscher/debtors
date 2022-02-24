@@ -20,7 +20,7 @@ All amounts are in {{bill.billing_ccy}} unless mentioned otherwise.
 
 Bill {{ bill.bill_id }} (overdue): {{bill.total}}
 {% for obill in morebills -%}
-Bill {{ obill.bill_id }} : {% if obill.billing_ccy != bill.billing_ccy %} {{ obil.billing_ccy }} {% endif %} {{ obill.total }}
+Bill {{ obill.bill_id }} : {% if obill.billing_ccy != bill.billing_ccy %} {{ obill.billing_ccy }} {% endif %} {{ obill.total }}
 {% endfor %}
 {% for payment in payments -%}
 Payment {{ payment.id }} : {% if payment.payment_ccy != bill.billing_ccy %} {{ payment.payment_ccy }} {% endif %} {{ payment.payment_amount }}

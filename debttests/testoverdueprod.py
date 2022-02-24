@@ -797,7 +797,8 @@ class TestDebtTransferProcess(unittest.TestCase):
         self.assertTrue(self.dtp04, "No key {self.dtp04.processor_key} found")
         self.dtp04.execute(self.bll12, processor_data=current_processor_data)
         action = db.session.query(OverdueActions).\
-            filter_by(step=self.st33).first()
+            filter_by(step=self.st33).filter_by(bill=self.bll12).\
+                first()
         self.assertEqual(action.bill, self.bll12, "Action not transfer for bill")
         self.assertTrue(exists("output/dtm" + str(self.bll12.bill_id)),
                                "Debt transfer letter file does not exist")

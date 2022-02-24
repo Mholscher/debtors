@@ -183,6 +183,14 @@ class OverdueActions(db.Model):
 
         db.session.add(self)
 
+    @classmethod
+    def last_action(cls, bill):
+        """ Get the last action performed from the table """
+
+        actions_bill = cls.query.filter_by(bill=bill).order_by(cls.step_id.desc()).all()
+        if actions_bill:
+            return actions_bill[0]
+        return None
 
 class OverdueProcessor(object):
     """ Abstract ancestor for overdue processors
@@ -231,6 +239,11 @@ class OverdueProcessor(object):
             filter_by(step=current_step).first()
         if step_done:
             return
+        outstanding_bills = bill.get_outstanding_bills(bill.client)
+        for each_bill in outstanding_bills:
+            if each_bill != bill:
+                self.add_step_to(each_bill)
+
         self._execute(bill=bill)
         result = self.add_step_to(bill)
         return result
@@ -244,20 +257,13 @@ class OverdueProcessor(object):
         raise NotImplementedError("A subclass should implement this method")
 
     def add_step_to(self, bill):
-        """ This method creates the history record for executing the step """
+        """ This method creates the history record for executing the step 
+
+        The history record is for the bill passed in, every bill processed
+        needs to be processed through this.
+        """
 
         current_step = OverdueSteps.get_by_processor(self.processor_key)
         current_action = OverdueActions(bill=bill, step=current_step)
         current_action.add()
         return current_action
-
-def add_transfer_date(bill_dict, date_bill):
-    """ Add a transfer date to the bill dictionary """
-    #TODO is returning empty for transfer_date useful?
-    #TODO this wants to be in physicaloverdue.py
-
-    for key, processor in OverdueProcessor.all_processors.items():
-        if hasattr(processor, "transfer_date"):
-            bill_dict["transferdate"] = processor.transfer_date(date_bill)
-    if "transferdate" not in bill_dict:
-        bill_dict["transferdate"] = ""

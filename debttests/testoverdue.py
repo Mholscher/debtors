@@ -33,7 +33,8 @@ from debttests.helpers import (create_clients, add_addresses,
                                delete_test_bills, delete_test_prefs,
                                delete_test_clients, create_payments_for_overdue,
                                delete_test_payments)
-from debtviews.overdue_processors import FirstLetterProcessor
+from debtviews.overdue_processors import (FirstLetterProcessor,
+                                          SecondLetterProcessor)
 
 class TestCreateOverdueRule(unittest.TestCase):
 
@@ -163,8 +164,13 @@ class TestOverdueActions(unittest.TestCase):
                                 step_name="First Letter",
                                 processor="firstletter")
         self.st11.add()
+        self.st12 = OverdueSteps(id=120, number_of_days=35, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st12.add()
         db.session.flush()
         self.flp06 = FirstLetterProcessor()
+        self.slp09 = SecondLetterProcessor()
 
     def tearDown(self):
 
@@ -242,6 +248,68 @@ class TestOverdueActions(unittest.TestCase):
             filter_by(step_id=100).\
             all()
         self.assertEqual(len(first_steps), 1, "First step not executed once")
+
+    def test_retrieve_last_overdue_action(self):
+        """ Retrieve the last executed overdue action """
+
+        self.assertFalse(OverdueActions.last_action(self.bll4), 
+                         "A step was returned where no action taken")
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        self.flp06.execute(bill=self.bll4,
+                           processor_data=current_processor_data)
+        step_flp = OverdueSteps.query.filter_by(id=100).\
+            first()
+        self.assertTrue(step_flp, "No first letter from db")
+        self.assertEqual(OverdueActions.last_action(self.bll4).step_id,
+                         step_flp.id, "Last action not First Letter")
+        for proc_data in dates_list:
+            if proc_data[2] == self.slp09.processor_key:
+                current_processor_data = proc_data
+                break
+        self.slp09.execute(bill=self.bll4,
+                           processor_data=current_processor_data)
+        step_slp = OverdueSteps.query.filter_by(id=120).\
+            first()
+        self.assertEqual(OverdueActions.last_action(self.bll4).step_id,
+                         step_slp.id, "Last action not Second Letter")
+
+    def test_no_action_returns_none(self):
+        """ Asking for last action on no action bill returns None """
+
+        self.assertFalse(OverdueActions.last_action(self.bll4),
+                         "An action is returned")
+
+    def test_action_on_other_bill(self):
+        """ Overdue action will create action for other bill """
+
+        self.bll24 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=9),
+                              billing_ccy='JPY',
+                              status='issued')
+        self.clt1.bills.append(self.bll24)
+        self.bills.append(self.bll24)
+        bill_line = BillLines(short_desc='sh34',
+                        long_desc='A pencil sharpener',
+                        number_of=2,
+                        measured_in='Pcs',
+                        unit_price=254)
+        self.bll24.lines.append(bill_line)
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 8))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp06.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp06, "No key {self.flp06.processor_key} found")
+        self.flp06.execute(bill=self.bll24,
+                           processor_data=current_processor_data)
+        self.assertEqual(OverdueActions.last_action(self.bll8).step_id, 100,
+                    "Last action not first letter for other bill")
 
 
 if __name__ == '__main__' :

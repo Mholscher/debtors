@@ -28,7 +28,7 @@ import json
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
-from debtmodels.overdue import add_transfer_date
+from debtmodels.overdue import OverdueProcessor
 from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
                                           rtf)
 from debtviews.physicalentities import GeneralCorrespondence
@@ -116,6 +116,13 @@ class OverdueDictView(dict, GeneralCorrespondence):
         bill_dict["total"] = edited_amount(total,
                                            currency=bill.billing_ccy)
         return bill_dict
+
+def add_transfer_date(bill_dict, date_bill):
+    """ Add a transfer date to the bill dictionary """
+
+    for key, processor in OverdueProcessor.all_processors.items():
+        if hasattr(processor, "transfer_date"):
+            bill_dict["transferdate"] = processor.transfer_date(date_bill)
 
 
 class PaperLetter():
