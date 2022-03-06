@@ -32,7 +32,7 @@ from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
                                delete_test_bills, delete_test_prefs,
                                delete_test_clients, create_payments_for_overdue,
-                               delete_test_payments)
+                               delete_test_payments, delete_overdue_actions)
 from debtviews.overdue_processors import (FirstLetterProcessor,
                                           SecondLetterProcessor)
 
@@ -164,7 +164,7 @@ class TestOverdueActions(unittest.TestCase):
                                 step_name="First Letter",
                                 processor="firstletter")
         self.st11.add()
-        self.st12 = OverdueSteps(id=120, number_of_days=35, 
+        self.st12 = OverdueSteps(id=120, number_of_days=25, 
                                 step_name="Second Letter",
                                 processor="secondletter")
         self.st12.add()
@@ -310,6 +310,74 @@ class TestOverdueActions(unittest.TestCase):
                            processor_data=current_processor_data)
         self.assertEqual(OverdueActions.last_action(self.bll8).step_id, 100,
                     "Last action not first letter for other bill")
+
+
+class TestOverdueActionsFunctions(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st13 = OverdueSteps(id=100, number_of_days=25, 
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st13.add()
+        self.st14 = OverdueSteps(id=120, number_of_days=35, 
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st14.add()
+        self.flp07 = FirstLetterProcessor()
+        self.slp10 = SecondLetterProcessor()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 8))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp07.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp07, "No key {self.flp07.processor_key} found")
+        self.flp07.execute(bill=self.bll4,
+                           processor_data=current_processor_data)
+
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_overdue_actions(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.commit()
+
+    def test_return_action_list_for_bill(self):
+        """ A action list is returned for a bill """
+
+        actions = OverdueActions.get_action_list(self.bll4)
+        self.assertEqual(len(actions), 1, "Too little/many actions in list")
+        self.assertEqual(actions[0].step_id, 100, "Wrong step returned")
+
+    def test_no_action_is_empty_list(self):
+        """ No action performed results in empty list """
+
+        actions = OverdueActions.get_action_list(self.bll8)
+        self.assertEqual(len(actions), 0, "List not empty")
+
+    def test_no_list_for_bill_wrong_status(self):
+        """ Only actions for bills in debt should be reported """
+
+        # Sneak in an unreportable action
+        unreportable = OverdueActions(date_action = date(year=2019, month=12,
+                                                         day=8))
+        unreportable.bill = self.bll2
+        unreportable.step = self.st13
+        db.session.flush()
+        actions = OverdueActions.get_action_list(self.bll2)
+        self.assertFalse(actions, "There are actions reported")
 
 
 if __name__ == '__main__' :

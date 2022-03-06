@@ -27,7 +27,7 @@ from clientmodels.clients import Clients, Addresses, NoPostalAddressError,\
     POSTAL_ADDRESS, RESIDENTIAL_ADDRESS, GENERAL_ADDRESS, EMail,\
         DuplicateMailError, TooManyPreferredMailsError, BankAccounts,\
         NoResidentialAddressError, NoClientFoundError
-from debtmodels.overdue import OverdueSteps
+from debtmodels.overdue import (OverdueSteps, OverdueActions)
 from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
                                     DebtorSignal)
 from debtmodels.payments import (AmountQueued, IncomingAmounts,
@@ -221,7 +221,6 @@ def create_bills(instance):
                           status='issued')
     instance.clt1.bills.append(instance.bll8)
     instance.bills.append(instance.bll8)
-    create_bills_overdue(instance)
 
 def create_bills_overdue(instance):
     """ Add some bills required for testing overdue """
@@ -232,6 +231,16 @@ def create_bills_overdue(instance):
                           status='issued')
     instance.clt5.bills.append(instance.bll7)
     instance.bills.append(instance.bll7)
+    instance.bll9 = Bills(date_sale=date(year=2020, month=1, day=23),
+                          date_bill=date(year=2020, month=1, day=25),
+                          billing_ccy='GBP',
+                          status='issued')
+    instance.clt6.bills.append(instance.bll9)
+    bill_line = BillLines(short_desc='S5',
+                        long_desc='Snap head',
+                        number_of=1,
+                        unit_price=115)
+    instance.bll9.lines.append(bill_line)
 
 def create_payments_for_overdue(instance):
     """ Add received payments to a client having an overdue bill """
@@ -321,13 +330,14 @@ def add_lines_to_bills(instance):
                         measured_in='pcs',
                         unit_price=566)
     bill.lines.append(bill_line)
-    bill = instance.bll7
-    bill_line = BillLines(short_desc='Fi5',
-                        long_desc='Milk cartons',
-                        number_of=34,
-                        measured_in='pcs',
-                        unit_price=660)
-    bill.lines.append(bill_line)
+    if hasattr(instance, "bll7"):
+        bill = instance.bll7
+        bill_line = BillLines(short_desc='Fi5',
+                            long_desc='Milk cartons',
+                            number_of=34,
+                            measured_in='pcs',
+                            unit_price=660)
+        bill.lines.append(bill_line)
 
 def add_debtor_preferences(instance):
     """ Add preferences to some of the clients """
@@ -392,3 +402,10 @@ def delete_overdue_steps(instance):
     steps = db.session.query(OverdueSteps).all()
     for step in steps:
         db.session.delete(step)
+
+def delete_overdue_actions(instance):
+    """ Delete all overdue actions """
+
+    actions = OverdueActions.query.all()
+    for action in actions:
+        db.session.delete(action)

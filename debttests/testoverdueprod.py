@@ -24,7 +24,8 @@ from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
                                delete_test_bills, delete_test_prefs,
                                delete_test_clients, create_payments_for_overdue,
-                               delete_test_payments, delete_overdue_steps)
+                               delete_test_payments, delete_overdue_steps,
+                               create_bills_overdue)
 from debtviews.monetary import edited_amount
 from debtmodels.overdue import (OverdueProcessor, ProcessorAlreadyExistsError,
                                 OverdueSteps, OverdueActions)
@@ -45,6 +46,7 @@ class TestCreateOverdueDict(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         db.session.flush()
@@ -238,6 +240,7 @@ class TestFirstLetterContent(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         db.session.flush()
@@ -321,6 +324,7 @@ class TestFirstLetterMailContent(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st12 = OverdueSteps(id=100, number_of_days=25, 
@@ -374,7 +378,10 @@ class TestFirstLetterMailContent(unittest.TestCase):
                       "Payment not found in mail")
 
     def test_assigned_payment_not_in_mail(self):
-        """ An assigned payment should not be in mail """
+        """ An assigned payment should not be in mail 
+
+        TODO this test fails sometimes, needs adjusting
+        """
 
         self.ia111.assign_to_amount(self.ia112)
         self.assertTrue(self.ia111.fully_assigned, "Open amount on payment")
@@ -398,6 +405,7 @@ class TestCreateSecondLetterProcessor(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         self.st13 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
@@ -454,6 +462,7 @@ class TestSecondLetterProcess(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st16 = OverdueSteps(id=100, number_of_days=25, 
@@ -511,6 +520,7 @@ class TestSecondLetterContent(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st18 = OverdueSteps(id=100, number_of_days=25, 
@@ -595,6 +605,7 @@ class TestSecondMailContent(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st28 = OverdueSteps(id=100, number_of_days=25, 
@@ -695,6 +706,7 @@ class TestCreateDebtTransferProcessor(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st24 = OverdueSteps(id=100, number_of_days=25, 
@@ -833,6 +845,7 @@ class TestTransferMessageContent(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st34 = OverdueSteps(id=100, number_of_days=25, 
@@ -987,6 +1000,7 @@ class TestCreateDubiousDebtor(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
         self.st37 = OverdueSteps(id=100, number_of_days=25, 
@@ -1039,21 +1053,22 @@ class TestDubiousDebtorProcess(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
-        self.st41 = OverdueSteps(id=100, number_of_days=25, 
+        self.st41 = OverdueSteps(id=100, number_of_days=25,
                                 step_name="First Letter",
                                 processor="firstletter")
         self.st41.add()
-        self.st42 = OverdueSteps(id=110, number_of_days=40, 
+        self.st42 = OverdueSteps(id=110, number_of_days=40,
                                 step_name="Second Letter",
                                 processor="secondletter")
         self.st42.add()
-        self.st43 = OverdueSteps(id=120, number_of_days=60, 
+        self.st43 = OverdueSteps(id=120, number_of_days=60,
                                 step_name="Debt transfer",
                                 processor="transfer")
         self.st43.add()
-        self.st44 = OverdueSteps(id=130, number_of_days=80, 
+        self.st44 = OverdueSteps(id=130, number_of_days=80,
                                 step_name="Dubious debtor",
                                 processor="dubious")
         self.st44.add()
@@ -1216,6 +1231,68 @@ class TestDubiousDebtorProcess(unittest.TestCase):
         self.assertEqual(ddac02["journal"]["extkey"],
                          "dubious" + str(self.bll8.bill_id),
                          "Invalid external key")
+
+
+class TestTransactionTiming(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_overdue(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        self.st41 = OverdueSteps(id=100, number_of_days=25,
+                                step_name="First Letter",
+                                processor="firstletter")
+        self.st41.add()
+        self.st42 = OverdueSteps(id=110, number_of_days=40,
+                                step_name="Second Letter",
+                                processor="secondletter")
+        self.st42.add()
+        self.st43 = OverdueSteps(id=120, number_of_days=60,
+                                step_name="Debt transfer",
+                                processor="transfer")
+        self.st43.add()
+        self.st44 = OverdueSteps(id=130, number_of_days=80,
+                                step_name="Dubious debtor",
+                                processor="dubious")
+        self.st44.add()
+        db.session.flush()
+        self.flp13 = FirstLetterProcessor()
+        self.slp08 = SecondLetterProcessor()
+        self.dtp05 = DebtTransferProcessor()
+        self.ddp01 = DubiousDebtorProcessor()
+
+    def tearDown(self):
+
+        OverdueProcessor.all_processors.clear()
+        db.session.rollback()
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        delete_overdue_steps(self)
+        db.session.commit()
+
+    def test_minimum_days_difference(self):
+        """ The triggering bill must have a minimum time between steps """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2021, 9, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp13.processor_key:
+                current_processor_data = proc_data
+                break
+        self.flp13.execute(self.bll8, processor_data=current_processor_data)
+
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp13.processor_key:
+                current_processor_data = proc_data
+                break
+        self.slp08.execute(self.bll8, processor_data=current_processor_data)
+        self.assertEqual(OverdueActions.last_action(self.bll8).step_id, 100,
+                         "Last action not first letter")
 
 
 if __name__ == '__main__' :

@@ -3,8 +3,8 @@
 #    This file is part of Debtors.
 
 #    Debtors is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 
 #    Debtors is distributed in the hope that it will be useful,
@@ -15,14 +15,23 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with Debtors.  If not, see <http://www.gnu.org/licenses/>.
 
+""" This module holds the **example** processors for the overdue processing.
+
+The imported OverdueProcessor holds a template for every processor,. The thing
+that the processors here need to implement is the _execute method. It should
+do the processing specific to the step. Also here you will find routines that
+do subprocesses, like in DubiousDebtorAccounting.
+"""
+
 from datetime import date, timedelta, datetime
-from debtmodels.overdue import OverdueSteps, OverdueProcessor
+from debtmodels.overdue import OverdueProcessor
 from debtmodels.debtbilling import DebtorSignal
 from debtmodels.accounting import AccountingTemplate
 from debtviews.physicaloverdue import (PaperLetter, HTMLMailFirstOverdue,
                                        HTMLMailSecondOverdue,
                                        HTMLMailDebtTransfer,
                                        JSONDebtTransfer)
+
 
 class FirstLetterProcessor(OverdueProcessor):
 
@@ -35,7 +44,7 @@ class FirstLetterProcessor(OverdueProcessor):
         """ Execute first letter processing for a bill """
 
         self.first_letter = PaperLetter(template_name="firstletter.rtf",
-                                   bill=bill)
+                                        bill=bill)
         with open("output/fl" + str(bill.bill_id), "wt") as letter_file:
             letter_file.write(self.first_letter.text)
 
@@ -43,6 +52,7 @@ class FirstLetterProcessor(OverdueProcessor):
             and bill.client.debtor_prefs[0].letter_medium == "mail":
             self.first_mail = HTMLMailFirstOverdue(bill.bill_id)
             self.first_mail.write_file()
+
 
 class SecondLetterProcessor(OverdueProcessor):
 
@@ -63,6 +73,7 @@ class SecondLetterProcessor(OverdueProcessor):
             self.second_mail = HTMLMailSecondOverdue(bill.bill_id)
             self.second_mail.write_file()
 
+
 class DebtTransferProcessor(OverdueProcessor):
 
     def __init__(self):
@@ -73,7 +84,7 @@ class DebtTransferProcessor(OverdueProcessor):
     def _execute(self, bill=None):
 
         self.transfer_letter = PaperLetter(template_name="transferletter.rtf",
-                                         bill=bill)
+                                           bill=bill)
         with open("output/dtm" + str(bill.bill_id), "wt") as letter_file:
             letter_file.write(self.transfer_letter.text)
 
@@ -88,7 +99,7 @@ class DebtTransferProcessor(OverdueProcessor):
     def transfer_date(self, date_bill):
         """ Calculate the transfer date for a bill date """
 
-        return (date_bill + 
+        return (date_bill +
                 timedelta(days=self.processor_data[3])).strftime("%d %B %Y")
 
 
@@ -101,13 +112,14 @@ class DubiousDebtorProcessor(OverdueProcessor):
 
     def _execute(self, bill=None):
 
-        #create the debtorssignal
+        # create the debtorssignal
         signal = DebtorSignal(client=bill.client,
-                             date_start=date.today())
+                              date_start=date.today())
         signal.add()
         outstanding_bills = bill.get_outstanding_bills(bill.client)
         for other_bill in outstanding_bills:
             other_bill.debtor_becomes_dubious()
+
 
 class DubiousDebtorAccounting(AccountingTemplate):
     """ Create the accounting lines and external key for dubious
@@ -127,10 +139,10 @@ class DubiousDebtorAccounting(AccountingTemplate):
                         "valuedate": datetime.today().strftime("%Y-%m-%d")}
         posting_list.append(posting_debt)
         posting_dubious = {"account": "dubious", "currency":
-                        dubious_bill.billing_ccy,
-                        "amount": str(dubious_bill.total()),
-                        "debitcredit": "Db",
-                        "valuedate": datetime.today().strftime("%Y-%m-%d")}
+                           dubious_bill.billing_ccy,
+                           "amount": str(dubious_bill.total()),
+                           "debitcredit": "Db",
+                           "valuedate": datetime.today().strftime("%Y-%m-%d")}
         posting_list.append(posting_dubious)
         journal_dict["postings"] = posting_list
         return journal_dict

@@ -184,13 +184,28 @@ class OverdueActions(db.Model):
         db.session.add(self)
 
     @classmethod
+    def get_action_list(cls, bill):
+        """ Return the executed actions for bill
+
+        This returns only actions for an unpaid bill. The history for bills
+        that are paid or dubious are uninteresting.
+        """
+
+        if bill.status != Bills.ISSUED:
+            return []
+        actions = [action for action in bill.overdue_actions]
+        return actions
+
+    @classmethod
     def last_action(cls, bill):
         """ Get the last action performed from the table """
 
-        actions_bill = cls.query.filter_by(bill=bill).order_by(cls.step_id.desc()).all()
+        actions_bill = cls.query.filter_by(bill=bill).\
+            order_by(cls.step_id.desc()).all()
         if actions_bill:
             return actions_bill[0]
         return None
+
 
 class OverdueProcessor(object):
     """ Abstract ancestor for overdue processors
@@ -214,12 +229,11 @@ class OverdueProcessor(object):
             pass
         self.all_processors[self.processor_key] = self
         temp_data = OverdueSteps.get_by_processor(self.processor_key)
-        self.processor_data = [date.today() - 
+        self.processor_data = [date.today() -
                                timedelta(days=temp_data.number_of_days),
                                temp_data.step_name,
                                temp_data.processor,
                                temp_data.number_of_days]
-
 
     def execute(self, bill=None, processor_data=None):
         """This method executes the code needed for this step.
@@ -239,6 +253,14 @@ class OverdueProcessor(object):
             filter_by(step=current_step).first()
         if step_done:
             return
+        step_history = OverdueActions.query.filter_by(bill=bill).\
+            order_by(OverdueActions.step_id.desc()).all()
+        if step_history:
+            first_day = (step_history[0].date_action +
+                         timedelta(days=self.processor_data[3]) -
+                         timedelta(days=step_history[0].step.number_of_days))
+            if first_day > datetime.today():
+                return
         outstanding_bills = bill.get_outstanding_bills(bill.client)
         for each_bill in outstanding_bills:
             if each_bill != bill:
@@ -257,7 +279,7 @@ class OverdueProcessor(object):
         raise NotImplementedError("A subclass should implement this method")
 
     def add_step_to(self, bill):
-        """ This method creates the history record for executing the step 
+        """ This method creates the history record for executing the step
 
         The history record is for the bill passed in, every bill processed
         needs to be processed through this.
