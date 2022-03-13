@@ -26,8 +26,10 @@ overdue processing.
 from datetime import date, timedelta, datetime
 from debtors import db
 from sqlalchemy.orm import validates, load_only
+from debtors import app
 from debtmodels.debtbilling import Bills
 
+config = app.config
 
 class DuplicateStepIdError(ValueError):
     """ A step with the same id already exists """
@@ -261,6 +263,8 @@ class OverdueProcessor(object):
                          timedelta(days=step_history[0].step.number_of_days))
             if first_day > datetime.today():
                 return
+        if self._bill_amount_bagatelle(bill):
+            return
         outstanding_bills = bill.get_outstanding_bills(bill.client)
         for each_bill in outstanding_bills:
             if each_bill != bill:
@@ -289,3 +293,16 @@ class OverdueProcessor(object):
         current_action = OverdueActions(bill=bill, step=current_step)
         current_action.add()
         return current_action
+
+    def _bill_amount_bagatelle(self, bill):
+        """ Run bagatelle process; return false """
+
+        bagatelle_key = "BAGATELLE_" + bill.billing_ccy
+        if not config.get(bagatelle_key):
+            return False
+        all_outstanding = bill.get_outstanding_bills(bill.client)
+        total = sum([a_bill.total() if a_bill.billing_ccy == bill.billing_ccy
+                     else 0 for a_bill in all_outstanding])
+        if config[bagatelle_key] > total:
+            return True
+        return False

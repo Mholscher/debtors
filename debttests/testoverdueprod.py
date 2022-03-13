@@ -172,6 +172,7 @@ class TestFirstLetterProcess(unittest.TestCase):
         create_clients(self)
         add_addresses(self)
         create_bills(self)
+        create_bills_overdue(self)
         add_lines_to_bills(self)
         self.st11 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
@@ -225,6 +226,46 @@ class TestFirstLetterProcess(unittest.TestCase):
         self.flp04.execute(self.bll8, processor_data=current_processor_data)
         self.assertTrue(exists("output/mailfom" + str(self.bll8.bill_id)),
                                "First letter mail does not exist")
+
+    def test_bagatelle_bill_ignored(self):
+        """ A small bill should be ignored for overdue """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll9, processor_data=current_processor_data)
+        self.assertFalse(OverdueActions.last_action(self.bll9),
+                         "First letter for small bill")
+
+    def test_bagatelle_checks_debt(self):
+        """ The total debt should be below bagatelle amount """
+
+        bll24 = Bills(date_sale=date(year=2020, month=1, day=8),
+                              date_bill=date(year=2020, month=1, day=8),
+                              billing_ccy='GBP',
+                              status='issued')
+        bll24.add()
+        bill_line = BillLines(short_desc='F19',
+                              long_desc='Bald head',
+                              number_of=3,
+                              unit_price=115)
+        bll24.lines.append(bill_line)
+        bll24.client = self.clt6
+        db.session.commit()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll9, processor_data=current_processor_data)
+        self.assertTrue(OverdueActions.last_action(self.bll9),
+                        "No first letter overdue action")
+        self.assertEqual(OverdueActions.last_action(self.bll9).step_id,
+                         100, "First letter action not last")
 
 
 class TestFirstLetterContent(unittest.TestCase):
