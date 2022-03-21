@@ -146,3 +146,24 @@ class DubiousDebtorAccounting(AccountingTemplate):
         posting_list.append(posting_dubious)
         journal_dict["postings"] = posting_list
         return journal_dict
+
+
+class BagatelleAccounting(AccountingTemplate):
+    """ Create accounting for bagatelle processing
+
+    This creates only the accounting that is necessary to fund the
+    extra money (the bagatelle) that is necessary to pay the (rest of)
+    the bill in debt. The rest will be dealt with in assigning the debt.
+    """
+
+    def journal_entries(self, journal_dict, missing_amount):
+        """ Create the accounting to be able to fund a missing amount
+
+        The missing amount is a tuple with
+
+            * the currency of the missing amount
+            * the number of units in that currency
+
+        """
+
+        return journal_dict

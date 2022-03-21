@@ -35,6 +35,7 @@ from debtviews.overdue_processors import (FirstLetterProcessor,
                                            DubiousDebtorProcessor,
                                            DubiousDebtorAccounting)
 from debtmodels.debtbilling import Bills, BillLines, DebtorSignal
+from debtmodels.payments import (IncomingAmounts, AssignedAmounts)
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
 
 
@@ -266,6 +267,59 @@ class TestFirstLetterProcess(unittest.TestCase):
                         "No first letter overdue action")
         self.assertEqual(OverdueActions.last_action(self.bll9).step_id,
                          100, "First letter action not last")
+
+    def test_bagatelle_creates_amount(self):
+        """ Bagatelle processing should create an incoming amount """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll9, processor_data=current_processor_data)
+        incoming_amount = IncomingAmounts.query.filter_by(
+            client=self.bll9.client).first()
+        self.assertTrue(incoming_amount, "No incoming amount produced")
+        self.assertEqual(incoming_amount.payment_amount, self.bll9.total(),
+                         "Amount incoming does not match debt")
+
+    def test_bagatelle_assigned_to_bill(self):
+        """ If whole bill bagatelle, the bagatelle amount is assigned """
+
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll9, processor_data=current_processor_data)
+        self.assertEqual(self.bll9.status, "paid", "Bill not paid")
+
+    def test_pay_if_part_funds_are_present(self):
+        """ If an insufficient amount was paid, add amount and pay """
+
+        incoming_amount = IncomingAmounts(payment_ccy=self.bll9.billing_ccy,
+                                          payment_amount=100,
+                                          debcred="Cr",
+                                          our_ref="bagatest",
+                                          client=self.bll9.client)
+        incoming_amount.add()
+        db.session.flush()
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        for proc_data in dates_list:
+            if proc_data[2] == self.flp04.processor_key:
+                current_processor_data = proc_data
+                break
+        self.assertTrue(self.flp04, "No key {flp04.processor_key} found")
+        self.flp04.execute(self.bll9, processor_data=current_processor_data)
+        self.assertEqual(self.bll9.status, "paid", "Bill not paid")
+        payments = IncomingAmounts.query.filter_by(
+                        client=self.bll9.client, our_ref="Bagatelle " +
+                        str(self.bll9.bill_id)
+                        ).all()
+        self.assertEqual(len(payments), 2, "To many/little bagatelle amounts")
+        self.assertEqual(payments[0].payment_amount, 15, "Incorrect amount")
 
 
 class TestFirstLetterContent(unittest.TestCase):

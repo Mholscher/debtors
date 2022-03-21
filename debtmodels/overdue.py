@@ -28,6 +28,7 @@ from debtors import db
 from sqlalchemy.orm import validates, load_only
 from debtors import app
 from debtmodels.debtbilling import Bills
+from debtmodels.payments import IncomingAmounts
 
 config = app.config
 
@@ -295,7 +296,11 @@ class OverdueProcessor(object):
         return current_action
 
     def _bill_amount_bagatelle(self, bill):
-        """ Run bagatelle process; return false """
+        """ Run bagatelle process; return false if no bagatelle.
+
+        If it is a bagatelle, try to pay the bill. If that works, no
+        more processing required.
+        """
 
         bagatelle_key = "BAGATELLE_" + bill.billing_ccy
         if not config.get(bagatelle_key):
@@ -304,5 +309,41 @@ class OverdueProcessor(object):
         total = sum([a_bill.total() if a_bill.billing_ccy == bill.billing_ccy
                      else 0 for a_bill in all_outstanding])
         if config[bagatelle_key] > total:
+            if self._bagatelle_paid_bill(bill):
+                # No more processing required
+                return False
             return True
+        return False
+
+    def _bagatelle_paid_bill(self, bill):
+        """ Try to pay the bill. """
+
+        bill_amount = bill.billing_ccy, bill.total()
+        payments = IncomingAmounts.query.filter_by(client=bill.client,
+                                                   payment_ccy=bill.billing_ccy).all()
+        total = 0
+        for payment in payments:
+            total += payment.payment_amount
+        incoming_amount = IncomingAmounts(payment_ccy = bill_amount[0],
+                                          payment_amount = bill_amount[1]
+                                                            - total,
+                                          debcred = "Cr",
+                                          our_ref = "Bagatelle " 
+                                          + str(bill.bill_id),
+                                          client = bill.client)
+        incoming_amount.add()
+        if total:
+            summary_amount = IncomingAmounts(payment_ccy = bill_amount[0],
+                                          payment_amount = 0,
+                                          debcred = "Cr",
+                                          our_ref = "Bagatelle " 
+                                          + str(bill.bill_id),
+                                          client = bill.client)
+            for payment in payments:
+                if payment.payment_amount:
+                    payment.assign_to_amount(summary_amount)
+            incoming_amount.assign_to_amount(summary_amount)
+            summary_amount.assign_to_bill(bill)
+        else:
+            incoming_amount.assign_to_bill(bill)
         return False
