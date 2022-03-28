@@ -33,7 +33,8 @@ from debtviews.overdue_processors import (FirstLetterProcessor,
                                            SecondLetterProcessor,
                                            DebtTransferProcessor,
                                            DubiousDebtorProcessor,
-                                           DubiousDebtorAccounting)
+                                           DubiousDebtorAccounting,
+                                           BagatelleAccounting)
 from debtmodels.debtbilling import Bills, BillLines, DebtorSignal
 from debtmodels.payments import (IncomingAmounts, AssignedAmounts)
 from debtviews.physicaloverdue import PaperLetter, OverdueDictView
@@ -320,6 +321,25 @@ class TestFirstLetterProcess(unittest.TestCase):
                         ).all()
         self.assertEqual(len(payments), 2, "To many/little bagatelle amounts")
         self.assertEqual(payments[0].payment_amount, 15, "Incorrect amount")
+
+    def test_bagatelle_accounting(self):
+        """ Accounting is created for bagatelle processing """
+
+        bagatelle_accounting = BagatelleAccounting(self.bll9)
+        self.assertTrue(bagatelle_accounting, "No accounting")
+        self.assertEqual(bagatelle_accounting["journal"]["extkey"],
+                         "bagatelle" + str(self.bll9.bill_id),
+                         "Invalid external key")
+        postings = bagatelle_accounting["journal"]["postings"]
+        posting_debt = [posting for posting in postings
+                        if posting["account"] == "debt"]
+        self.assertEqual(len(posting_debt), 1, "No or more postings for debt")
+        posting_loss = [posting for posting in postings
+                        if posting["account"] == "bagatelle"]
+        self.assertEqual(len(posting_debt), 1, "No or more postings for bagatelle")
+        self.assertEqual(posting_debt[0]["amount"], str(self.bll9.total()),
+                         "No or more than 1 postings for bagatelle")
+
 
 
 class TestFirstLetterContent(unittest.TestCase):

@@ -319,8 +319,8 @@ class OverdueProcessor(object):
         """ Try to pay the bill. """
 
         bill_amount = bill.billing_ccy, bill.total()
-        payments = IncomingAmounts.query.filter_by(client=bill.client,
-                                                   payment_ccy=bill.billing_ccy).all()
+        payments = [payment for payment in bill.client.payments
+                    if payment.assigned() < payment.payment_amount]
         total = 0
         for payment in payments:
             total += payment.payment_amount

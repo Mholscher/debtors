@@ -156,14 +156,24 @@ class BagatelleAccounting(AccountingTemplate):
     the bill in debt. The rest will be dealt with in assigning the debt.
     """
 
-    def journal_entries(self, journal_dict, missing_amount):
-        """ Create the accounting to be able to fund a missing amount
+    def journal_entries(self, journal_dict, bill):
+        """ Create the accounting to be able to fund a missing amount"""
 
-        The missing amount is a tuple with
-
-            * the currency of the missing amount
-            * the number of units in that currency
-
-        """
-
+        journal_dict["extkey"] = "bagatelle" + str(bill.bill_id)
+        bill_total = bill.total()
+        payment_total = sum([payment.payment_amount for payment
+                         in bill.client.payments
+                         if payment.payment_ccy == bill.billing_ccy])
+        posting_list = []
+        posting_debt = {"account": "debt", "currency":bill.billing_ccy,
+                        "amount": str(bill_total - payment_total),
+                        "debitcredit": "Cr",
+                        "valuedate": datetime.today().strftime("%Y-%m-%d")}
+        posting_list.append(posting_debt)
+        posting_loss = {"account": "bagatelle", "currency":bill.billing_ccy,
+                        "amount": str(bill_total - payment_total),
+                        "debitcredit": "Db",
+                        "valuedate": datetime.today().strftime("%Y-%m-%d")}
+        posting_list.append(posting_loss)
+        journal_dict["postings"] = posting_list
         return journal_dict
