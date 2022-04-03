@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 
 {% from "fields.html" import fld %}
+{% from "mainmenu.html" import mainmenu %}
+
+{% block menu %}
+    {{ mainmenu(client_id=client.id) }}
+{% endblock menu %}
 
 {% block content %}
 <div class="page">
-<div  class="inlineform">
 <h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
 <table>
 {% for account in client.accounts %}

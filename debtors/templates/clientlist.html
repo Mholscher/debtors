@@ -1,11 +1,17 @@
 {% extends "base.html" %}
+{% from "mainmenu.html" import mainmenu %}
+
+{% block menu %}
+    {{ mainmenu() }}
+{% endblock menu %}
 
 {% block searches %}
    {% include "clientsearch.html" %}
 {% endblock searches %}
+
 {% block content %}
-<h2 class="inlineform"> Client list </h2>
-<div class="inlineform">
+<div class="content-main">
+<h2> Client list </h2>
 {% for client in client_list %}
     Name      <a href={{url_for('.clients', id=client.id)}}>{{client.initials}}{{client.surname}}</a> </br>
     {% if client.first_name %}
@@ -19,8 +25,11 @@
     {% for email in client.emails %}
                 {{email.mail_address}} {% if email.preferred %} (preferred) {% endif %} </br> </br>
     {% endfor %}
-    Traditional addresses </br></br>
+    </br>
+    Traditional addresses </br>
+    </br>
     {% for address in client.addrs %}
+    <a href={{ url_for("client.change_address", id=client.id, address_id=address.id) }}> Change/delete this address </a></br>
     {% if address.street %}
                  {{address.street}} {{address.house_number}} </br>
     {% endif %}
@@ -29,12 +38,12 @@
     {% endif %}
                  {{ address.postcode }} {{ address.town_or_village }} </br>
     {% endfor %}
-    Bank accounts : </br></br>
+    </br>Bank accounts : </br></br>
     {% for account in client.accounts %}
-    {{ account.iban }}  {{ account.bic }} </br>
-    In the name of {{ account.client_name }} </br>
+    <a href={{ url_for("client.change_accounts", id=client.id, account_id=account.id) }}>{{ account.iban }} </a>  {{ account.bic }} in the name of {{ account.client_name }} </br>
     {% endfor %}
 
 {% endfor %}
 </div>
 {% endblock content %}
+

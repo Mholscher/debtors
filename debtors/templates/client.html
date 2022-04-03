@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% from 'fields.html' import fld %}
 
+{% from "mainmenu.html" import mainmenu %}
+
+{% block menu %}
+    {{ mainmenu(client_surname=form.surname.data, client_id=form.id.data) }}
+{% endblock menu %}
+
 {% block title %}
   <title>{% if form.surname.data %}{{form.initials.data}} {{form.surname.data}} : {%endif %}Clients</title>
 {% endblock %}

@@ -134,7 +134,7 @@ class ClientListView(MethodView):
                                                     search_for=search_for)
         else:
             client_list = client_paginator.get_page(page)
-        
+
         if search_for:
             search_form.search_for.data = search_for
 
@@ -149,7 +149,7 @@ class MailView(MethodView):
     def get(self, id):
         """ Return a page to enter a mail address for a client  """
 
-        client = get_client_by_id(self.id)
+        client = get_client_by_id(self, id)
 
         client_mail_form = ClientMailForm()
 

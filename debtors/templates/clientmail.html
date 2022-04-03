@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 
 {% from "fields.html" import fld %}
+{% from "mainmenu.html" import mainmenu %}
 
+{% block menu %}
+    {{ mainmenu(client_id=client.id) }}
+{% endblock menu %}
 {% block content %}
 <div class="page">
-<div class="inlineform">
 <h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>
 {% for mail in client.emails %}
-Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %}
+Mail address {{mail.mail_address}}{%if mail.preferred %}(preferred){% endif %} </br>
 {% endfor %} </br>
 <form action="{{ url_for('.add_mail', id=client.id)}}" method="POST" class="inlineform">
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
-<div class="inputline">{{ fld(form.mail_address)}}
-</div>
-</div>
-<div class="inputline">{{ fld(form.preferred)}}
-</div>
+<div class="inputline">{{ fld(form.mail_address)}} </div>
+<div class="inputline">{{ fld(form.preferred)}} </div>
 {{form.update}}
 </form>
 </div>

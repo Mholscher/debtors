@@ -1,6 +1,10 @@
 {% extends "base.html" %}
-
 {% from "fields.html" import fld %}
+{% from "mainmenu.html" import mainmenu %}
+
+{% block menu %}
+    {{ mainmenu(client_id=client.id) }}
+{% endblock menu %}
 
 {% block content %}
 <div class="page">

@@ -1,0 +1,13 @@
+{% from "clientmenu.html" import clientmenu %}
+{% macro mainmenu(client_surname=None, client_id=None, bill=None, payment=None) -%}
+<div class="menu">
+    <a class="menu-item" href={{ url_for('client.list_clients') }}>Client list </a>
+    {% if client_surname %}
+        <a class="menu-item" href={{ url_for('client.list_clients', search_for= client_surname) }}>Clients named {{ client_surname }} </a>
+    {% endif %}
+    <a class="menu-item" href={{ url_for('client.create_client') }}>New client</a>
+    {{ clientmenu(client_surname=client_surname, client_id=client_id) }}
+    <a class="menu-item" href={{ url_for('bill_create') }}>New bill </a>
+    <a class="menu-item" href={{ url_for('payment_create') }}>Incoming payment </a>
+</div>
+{%- endmacro %}

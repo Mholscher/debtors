@@ -57,7 +57,7 @@ a.IMG {
 .staticline {
     width : 50em ;
     margin : 1em ;
-    display : block ;
+    display : float ;
     }
 
 

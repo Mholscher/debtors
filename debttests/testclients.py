@@ -829,6 +829,17 @@ class TestClientTransactions(unittest.TestCase):
             db.session.delete(each)
         db.session.commit()
 
+    def test_get_add_mail_panel(self):
+        """ An empty panel is returned when wanting to add a mail address """
+
+        clt19 = Clients(surname='Herfstkleur', first_name='Fedor',
+                        birthdate=date(1986, 10,3))
+        clt19.add()
+        db.session.flush()
+        rv = self.app.get('/client/' + str(clt19.id) + "/mail/new")
+        self.assertEqual(rv.status_code, 200, "Invalid result: " +
+                         str(rv.status_code))
+
 class TestClientList(unittest.TestCase):
 
     def setUp(self):
