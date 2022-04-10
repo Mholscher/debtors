@@ -3,5 +3,6 @@
             <a class="menu-item" href={{ url_for('client.add_address', id=client_id) }}>Add address </a>
             <a class="menu-item" href={{ url_for('client.add_mail', id=client_id) }}>Add e-mail address </a>
              <a class="menu-item" href={{ url_for('client.add_account', id=client_id) }}>Add bank account </a>
+             <a class="menu-item" href={{ url_for('client_debt', client_id=client_id) }}>Client debt </a>
         {% endif %}
 {%- endmacro %}

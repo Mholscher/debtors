@@ -1,13 +1,20 @@
 {% extends "base.html" %}
 {% from 'fields.html' import fld %}
 {% from 'nolabel.html' import nolabel %}
+{% from "mainmenu.html" import mainmenu %}
 
 {% block title %}
   <title>{% if form.bill_id.data %}Bill {{form.bill_id.data}} : {%endif %}Bills</title>
 {% endblock %}
+
+{% block menu %}
+    {{ mainmenu(bill=form.bill_id.data) }}
+{% endblock menu %}
+
 {% block searches %}
     {% include 'clientsearch.html' %}
 {% endblock searches %} 
+
 {% block content %}
 {% if form.bill_id.data %}
     <h2 class="inlineform"> Bill {{form.bill_id.data}} </h2>
@@ -25,6 +32,7 @@
 <div class="inputline">{{fld(form.billing_ccy, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.date_sale, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.bill_replaced, readonly=readonly)}}</div>
+<div>
 <table>
 <th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
 {% for line in form.lines.entries %}
@@ -35,8 +43,12 @@
 <tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{line.edited_amount(total, currency=bill.billing_ccy)}}</td> </tr>
 {% endfor %}
 </table><br/><br/>
+</div>
+<div>
 {{form.update}} {{form.add_1}} {{form.add_more}}
+</div>
 </form>
+<div>
 {% if debtor_signals %}
     <h2>Debtor signal(s) </h2>
 {% for signal in debtor_signals %}
@@ -49,4 +61,5 @@
     {% endif %}
 {% endfor %}
 {% endif %}
+</div>
 {% endblock content %}

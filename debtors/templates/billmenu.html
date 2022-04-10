@@ -1,0 +1,5 @@
+{% macro billmenu(bill=None) -%}
+        {% if bill %} 
+            <a class="menu-item" href={{ url_for('bill_update', bill_id=bill) }}>Update bill </a>
+        {% endif %}
+{%- endmacro %}

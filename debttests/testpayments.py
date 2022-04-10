@@ -20,6 +20,7 @@ from datetime import datetime, date
 from dateutil import parser
 from dateutil.tz import tzoffset
 from werkzeug.datastructures import ImmutableMultiDict
+from debtviews.monetary import edited_amount
 from debtors import app, db
 from debtmodels.payments import IncomingAmounts, AmountQueued, AssignedAmounts
 from debtmodels.debtbilling import Bills, BillLines
@@ -450,6 +451,72 @@ class TestAssignAmounts(unittest.TestCase):
         db.session.flush()
         aa12 = ia25.assign_to_bill(self.bll4, amount=self.bll4.total())
         self.assertEqual(self.bll4.status, Bills.PAID, "Bill not paid")
+
+    def test_list_unassigned(self):
+        """ We can list unassigned payments """
+
+        ia110 = IncomingAmounts(payment_ccy='JPY',
+                                payment_amount=1855,
+                                debcred='Cr',
+                                value_date=datetime(2021, 7, 1))
+        ia110.client = self.clt4
+        ia110.add()
+        db.session.flush()
+        ial13 = ia110.client_unassigned_payments(self.clt4)
+        self.assertEqual(len(ial13), 1, "Too many/little payments in list")
+        self.assertEqual(ia110.id, ial13[0][0],
+                         "Incoming amount not in list")
+        self.assertEqual(ia110.payment_amount, ial13[0][2],
+                         "Incoming amount not in list")
+        self.assertEqual(ia110.payment_amount, ial13[0][3],
+                         "Unassigned amount not in list")
+
+    def  test_assigned_subtracted_from_payment(self):
+        """ An assigned amount is subtracted from unassigned """
+
+        ia111 = IncomingAmounts(payment_ccy='EUR',
+                                payment_amount=1275,
+                                debcred='Cr',
+                                value_date=datetime(2021, 7, 12))
+        ia111.client = self.clt4
+        bll15 = Bills(billing_ccy='EUR',
+                                date_sale=datetime(2021, 7, 8),
+                                date_bill=datetime(2021, 7, 8),
+                                status="issued")
+        bill_line = BillLines(short_desc='Shrt', number_of=1,
+                          unit_price=875)
+        bill_line.bill = bll15
+        bll15.client = self.clt4
+        bll15.add()
+        db.session.flush()
+        aa34 = ia111.assign_to_bill(bll15, amount=875)
+        db.session.flush()
+        ial14 = ia111.client_unassigned_payments(self.clt4)
+        self.assertEqual(len(ial14), 1, "Too many/little payments in list")
+        self.assertEqual(ial14[0][3], 400,
+                         "Incorrect unassigned amount")
+
+    def test_fully_assigned_payment_ignored(self):
+        """ Fully assigned payments are not returned """
+
+        ia113 = IncomingAmounts(payment_ccy='EUR',
+                                payment_amount=1288,
+                                debcred='Cr',
+                                value_date=datetime(2021, 8, 3))
+        ia113.client = self.clt4
+        bll15 = Bills(billing_ccy='EUR',
+                                date_sale=datetime(2021, 8, 1),
+                                date_bill=datetime(2021, 8, 1),
+                                status="issued")
+        bill_line = BillLines(short_desc='PPK', number_of=1,
+                          unit_price=1288)
+        bill_line.bill = bll15
+        bll15.client = self.clt4
+        bll15.add()
+        db.session.flush()
+        aa35 = ia113.assign_to_bill(bll15)
+        ial15 = ia113.client_unassigned_payments(self.clt4)
+        self.assertEqual(len(ial15), 0, "Too many payments in list")
 
 
 class TestAssignment(unittest.TestCase):
@@ -2132,6 +2199,81 @@ class TestPaymentReversal(unittest.TestCase):
         db.session.commit()
         rv = self.app.get("/payment/reverse/" + ia93_id_str )
         self.assertIn(b"Assigned", rv.data, "No assignment remark")
+
+
+class TestPaymentsAndDebt(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+        self.infile = open('debttests/SEPA transacties test assignment.xml', 'r')
+        parse(self.infile, self.camthandler)
+        db.session.commit()
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def tearDown(self):
+
+        db.session.rollback()
+        self.infile.close()
+        delete_test_bills(self)
+        delete_test_prefs(self)
+        delete_test_clients(self)
+        db.session.query(AmountQueued).delete()
+        db.session.query(AssignedAmounts).delete()
+        db.session.query(IncomingAmounts).delete()
+        db.session.commit()
+
+    def test_payment_on_screen(self):
+        """ An unassigned payment appears on screen """
+
+        ia114 = db.session.query(IncomingAmounts).filter_by(bank_ref=
+                                                    '022221333306999888222200112')\
+                                                        .first()
+        ia114_id_str = str(ia114.id)
+        ia114.client = self.clt3
+        rv = self.app.get("/debt/" + str(ia114.client.id))
+        self.assertEqual(rv.status_code, 200, "Failed transaction")
+        self.assertIn(ia114_id_str.encode(), rv.data, "Amount not in output")
+        amount = edited_amount(ia114.payment_amount, currency=ia114.payment_ccy)
+        self.assertIn(amount.encode(), rv.data, "Amount not correct")
+
+    def test_payment_updates_ccy_debt(self):
+        """ A payment diminishes currency debt """
+
+        ia115 = db.session.query(IncomingAmounts).filter_by(bank_ref=
+                                                    '022221333306999888222200112')\
+                                                        .first()
+        ia115_id_str = str(ia115.id)
+        ia115.client = self.clt3
+        rv = self.app.get("/debt/" + str(ia115.client.id))
+        self.assertEqual(rv.status_code, 200, "Failed transaction")
+        amount = edited_amount(self.bll3.total() - ia115.payment_amount, currency=ia115.payment_ccy)
+        self.assertIn(amount.encode(), rv.data, "Amount not correct")
+
+    def test_payment_other_ccy_reported(self):
+        """ A payment in a currency without debt is reported """
+
+        ia116 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=3000,
+                               debcred='Cr',
+                               our_ref="Other ccy payment",
+                               creditor_iban="NL20INGB0001234567",
+                               value_date=datetime(2021, 12, 30),
+                               client_name="Aquamarijn")
+        ia116.client = self.clt3
+        db.session.flush()
+        rv = self.app.get("/debt/" + str(ia116.client.id))
+        self.assertEqual(rv.status_code, 200, "Failed transaction")
+        amount = edited_amount( -ia116.payment_amount, currency=ia116.payment_ccy)
+        self.assertIn(amount.encode(), rv.data, "Amount not correct")
 
 
 if __name__ == '__main__' :

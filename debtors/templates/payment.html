@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% from 'fields.html' import fld %}
 {% from 'nolabel.html' import nolabel %}
+{% from "mainmenu.html" import mainmenu %}
 
+{% block menu %}
+    {{ mainmenu() }}
+{% endblock menu %}
 {% block title %}
   <title>{% if client.id %}Payment from {{client.initials}} {{client.surname}} {% else %} Payment {%endif %}</title>
 {% endblock %}

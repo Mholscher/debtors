@@ -25,6 +25,7 @@ from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from debtmodels.debtbilling import (Bills, BillLines, db, BillNotFoundError,
                                     DebtorSignal)
+from debtmodels.payments import (IncomingAmounts)
 from clientmodels.clients import Clients, NoClientFoundError
 from clientviews.forms import ClientSearchForm
 from debtviews.forms import BillCreateForm, BillChangeForm, DebtorSignalForm
@@ -178,7 +179,10 @@ class ClientDebtView(MethodView):
     """
 
     def get(self, client_id=None):
-        """ Create the list of client debt """
+        """ Create the list of client debt 
+
+        It lists debt, payments and the balance per currency
+        """
 
         client_search_form = ClientSearchForm()
         if client_id is None:
@@ -191,12 +195,20 @@ class ClientDebtView(MethodView):
         for ccy in ccy_list:
             total = sum([bill.total() if bill.billing_ccy == ccy else 0
                 for bill in bills])
-            ccy_totals[ccy] = (total, ccy)
-        bills = {'bill_list': bills} 
+            ccy_totals[ccy] = total
+        bills = {'bill_list': bills}
+        payments = IncomingAmounts.client_unassigned_payments(client)
+        bills["payment_list"] = payments
+        for payment in payments:
+            if payment[1] in ccy_totals:
+                ccy_totals[payment[1]] = ccy_totals[payment[1]] - payment[3]
+            else:
+                ccy_totals[payment[1]] = 0 - payment[3]
         if bills['bill_list']:
             bills.update(ccy_totals)
 
         bills['edit_amount'] = edited_amount
+        #print(bills)
 
         return render_template('debtforclient.html', client=client, 
                                bills=bills, search_form=client_search_form)

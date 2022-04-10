@@ -1,21 +1,31 @@
 {% extends "base.html" %}
+{% from "mainmenu.html" import mainmenu %}
 
 {% block title %}
   <title>{{client.initials}} {{client.surname}} : Debt</title>
 {% endblock %}
+
+{% block menu %}
+    {{ mainmenu(client_id=client.id) }}
+{% endblock menu %}
+
 {% block searches %}
     {% include "clientsearch.html"%}
 {% endblock searches %}
+
 {% block content %}
-<h2 class="inlineform"> Client {{client.initials}} {{client.surname}}</h2>
+<h2 class="inlineform"> Client <a href={{url_for("client.clients", id=client.id)}}> {{client.initials}} {{client.surname}}</a></h2>
 <div class="inlineform">
 {% for bill in bills.bill_list %}
 <div>Bill <a href={{url_for('bill_detail', bill_id=bill.bill_id)}}>{{bill.bill_id}}</a> {{bill.billing_ccy}} {{bills.edit_amount(bill.total(), currency=bill.billing_ccy)}}</div></br>
 {% endfor %}
+</br><div>{% for payment in bills.payment_list %}
+Payment <a href={{ url_for("payment_update", payment_id=payment[0])}}>{{ payment[0] }}</a> original amount {{ payment[1] }} {{bills.edit_amount(payment[2], currency=payment[1]) }}, available {{ bills.edit_amount(payment[3], currency=payment[1]) }}
+{% endfor %} </div>
 {% if bills.bill_list -%}
 {% for ccy_item in bills.items() %}
-{% if ccy_item[0] != 'bill_list' and ccy_item[0] != 'edit_amount'-%}
-</br><div> The currency debt is {{ccy_item[0]}} {{ bills.edit_amount(ccy_item[1][0], currency=ccy_item[1][1]) }} </div>
+{% if ccy_item[0] != 'bill_list' and ccy_item[0] != 'payment_list' and ccy_item[0] != 'edit_amount'-%}
+</br><div> The currency debt is {{ccy_item[0]}} {{ bills.edit_amount(ccy_item[1], currency=ccy_item[0]) }} </div>
 {% endif %}
 {% endfor %}
 {% else %}

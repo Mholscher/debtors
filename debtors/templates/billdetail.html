@@ -1,14 +1,19 @@
 {% extends "base.html" %}
+{% from "mainmenu.html" import mainmenu %}
 
 {% block title %}
   <title>Bill {{bill.bill_id}} : Bill detail</title>
 {% endblock %}
+
+{% block menu %}
+    {{ mainmenu(bill=bill.bill_id) }}
+{% endblock menu %}
 {% block searches %}
     {% include 'clientsearch.html' %}
 {% endblock searches %} 
 
 {% block content %}
-<div class="inlineform">
+<div>
 <h2>Bill details for bill {{bill.bill_id }} </h2>
 <div><a href="{{ url_for('client.clients', id=bill.client_id)}}"> Client {{bill.client.initials}} {{ bill.client.surname}} </a></div></br>
 <div>Billing curency {{ bill.billing_ccy }}</div></br>
@@ -16,13 +21,14 @@
 <div>Billing date {% if bill.date_bill %}{{bill.date_bill.strftime('%d-%m-%Y')}}{% else %} - {% endif %}</div></br>
 {% if bill.bill_replaced %}<div>Replaces bill  {{bill.bill_replaced}}</div></br>
 {%- endif %}
-<div>Bill status {{bill.STATUS_NAME[bill.status]}} </div>
-<br/><br/>
+Bill status {{bill.STATUS_NAME[bill.status]}} </div>
 <table class="narrowborder">
+<tbody>
 <th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
 {% for line in bill.lines -%}
 <tr><td> {{ line.short_desc }} </td><td>{{ line.long_desc }} </td><td>{{ line.number_of }} {{ line.measured_in }}</td><td>{{ line.amount_edit(line.unit_price, currency=bill.billing_ccy) }}</td><td>{{ line.amount_edit(line.unit_price * line.number_of, currency=bill.billing_ccy) }} </td> </tr>
 {% endfor %}
+</tbody>
 </table><br/><br/>
 </div>
 {% endblock content %}

@@ -544,6 +544,31 @@ class IncomingAmounts(db.Model):
         q = q.all()
         return q
 
+    @staticmethod
+    def client_unassigned_payments(client):
+        """ Return unassigned payments for a client. 
+
+        Return a list of unassigned payments, taking into account
+        partial assignment (to other payments).
+
+        For each payment we return
+
+            :id: The payment number
+            :payment_ccy: The currency of the payment
+            :payment_amount: the original amount paid
+            :unassigned_amount: the amount not yet assigned
+            """
+
+        payments = []
+        for payment in client.payments:
+            payment_data = (payment.id,
+                            payment.payment_ccy,
+                            payment.payment_amount,
+                            payment.payment_amount - payment.assigned())
+            if payment_data[3]:
+                payments.append(payment_data)
+        return payments
+
 
 class IncomingAmountsList(list):
     ''' A list of incoming amounts to be processed  '''
