@@ -263,6 +263,9 @@ class TestAmountFormat(unittest.TestCase):
         amount_string = edited_amount(765, currency="JPY")
         self.assertNotEqual(ldb['mon_thousands_sep'] + "765", amount_string,
                             "Separator at position 1")
+        amount_string = edited_amount(-765, currency="JPY")
+        self.assertEqual("-765", amount_string,
+                         "Negative amount incorrect")
 
 
 class AmountHolder():

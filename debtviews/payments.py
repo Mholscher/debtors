@@ -80,7 +80,11 @@ class PaymentView(MethodView):
                 payment = IncomingAmounts.get_payment_by_id(payment_id)
             except IncomingAmountNotFoundError as ianfe:
                 abort(404, str(ianfe))
+            self._current_currency = payment.payment_ccy
+            AmountField.get_currency = self._get_my_currency
             payment_form = PaymentForm(obj=payment)
+            del AmountField.get_currency
+            del self._current_currency
             if payment.client:
                 payment_update_form.client_id.data = payment.client.id
         else:
@@ -132,6 +136,11 @@ class PaymentView(MethodView):
         """ Get the currency of this payment for validating amounts """
 
         return request.form.get('payment_ccy').upper()
+
+    def _get_my_currency(self):
+        """ Return the currency if set """
+
+        return self._current_currency if self._current_currency else None
 
 
 class PaymentUpdateView(MethodView):

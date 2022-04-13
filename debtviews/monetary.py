@@ -65,7 +65,8 @@ def edited_amount(amount, precision=2, currency=None):
     if decimal_char_pos == -1:
         decimal_char_pos = len(edited)
     for pos in thousand_separator_step(decimal_char_pos - 3, 0, -3):
-        edited = edited[:pos] + ldb['mon_thousands_sep'] + edited[pos:]
+        if edited[pos -1].isdigit():
+            edited = edited[:pos] + ldb['mon_thousands_sep'] + edited[pos:]
 
     return edited
 

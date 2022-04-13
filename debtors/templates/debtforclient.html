@@ -20,7 +20,7 @@
 <div>Bill <a href={{url_for('bill_detail', bill_id=bill.bill_id)}}>{{bill.bill_id}}</a> {{bill.billing_ccy}} {{bills.edit_amount(bill.total(), currency=bill.billing_ccy)}}</div></br>
 {% endfor %}
 </br><div>{% for payment in bills.payment_list %}
-Payment <a href={{ url_for("payment_update", payment_id=payment[0])}}>{{ payment[0] }}</a> original amount {{ payment[1] }} {{bills.edit_amount(payment[2], currency=payment[1]) }}, available {{ bills.edit_amount(payment[3], currency=payment[1]) }}
+Payment <a href={{ url_for("payment_update", payment_id=payment[0])}}>{{ payment[0] }}</a> original amount {{ payment[1] }} {{bills.edit_amount(payment[2], currency=payment[1]) }}, available {{ bills.edit_amount(payment[3], currency=payment[1]) }} </br>
 {% endfor %} </div>
 {% if bills.bill_list -%}
 {% for ccy_item in bills.items() %}

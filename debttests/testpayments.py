@@ -1771,6 +1771,19 @@ class TestPaymentTransactions(unittest.TestCase):
         self.bll4 = db.session.query(Bills).filter_by(bill_id=bll4_id).first()
         self.assertEqual(self.bll4.status, Bills.PAID, "Bill not assigned")
 
+    def test_amount_has_corrcet_precision(self):
+        """ The number of decimals after the decimal separator is correct """
+
+        ia117 = IncomingAmounts(payment_ccy='JPY',
+                               payment_amount=705,
+                               debcred='Cr',
+                               value_date=datetime(2022, 3, 17))
+        ia117.client = self.clt3
+        db.session.flush()
+        rv = self.app.get("/payment/" + str(ia117.id))
+        self.assertEqual(rv.status_code, 200., "Transaction failed")
+        self.assertIn(b"705", rv.data, "Amount not in right format") 
+
     def test_assign_nonexisting_payment_fails(self):
         """ Getting a non-existing payment to assign fails """
 
