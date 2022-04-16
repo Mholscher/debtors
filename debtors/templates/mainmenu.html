@@ -1,5 +1,6 @@
 {% from "clientmenu.html" import clientmenu %}
 {% from "billmenu.html" import billmenu %}
+{% from "paymentmenu.html" import paymentmenu %}
 {% macro mainmenu(client_surname=None, client_id=None, bill=None, payment=None) -%}
 <div class="menu">
     <a class="menu-item" href={{ url_for('client.list_clients') }}>Client list </a>
@@ -11,5 +12,6 @@
     <a class="menu-item" href={{ url_for('bill_create') }}>New bill </a>
     {{ billmenu(bill=bill) }}
     <a class="menu-item" href={{ url_for('payment_create') }}>Incoming payment </a>
+    {{ paymentmenu(payment=payment, client_id=client_id) }}
 </div>
 {%- endmacro %}

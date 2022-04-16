@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 {% from 'fields.html' import fld %}
 {% from 'nolabel.html' import nolabel %}
+{% from 'mainmenu.html' import mainmenu %}
 
 {% block title %}
 <title>Debtors signal for {{ signal.client.surname }}, {{ signal.client.initials }}</title>
 {% endblock %} 
+
+{% block menu %}
+    {{ mainmenu(client_id=signal.client.id) }}
+{% endblock menu %}
 {% block searches %}
     {% include "clientsearch.html"%}
 {% endblock searches %}

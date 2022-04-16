@@ -4,7 +4,7 @@
 {% from "mainmenu.html" import mainmenu %}
 
 {% block menu %}
-    {{ mainmenu() }}
+    {{ mainmenu(payment=form.id.data, client_id=client.id) }}
 {% endblock menu %}
 {% block title %}
   <title>{% if client.id %}Payment from {{client.initials}} {{client.surname}} {% else %} Payment {%endif %}</title>

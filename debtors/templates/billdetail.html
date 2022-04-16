@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block menu %}
-    {{ mainmenu(bill=bill.bill_id) }}
+    {{ mainmenu(bill=bill.bill_id, client_id=bill.client_id) }}
 {% endblock menu %}
 {% block searches %}
     {% include 'clientsearch.html' %}

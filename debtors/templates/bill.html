@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block menu %}
-    {{ mainmenu(bill=form.bill_id.data) }}
+    {{ mainmenu(bill=form.bill_id.data, client_id=form.client_id.data) }}
 {% endblock menu %}
 
 {% block searches %}
