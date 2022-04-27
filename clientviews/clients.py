@@ -29,7 +29,7 @@ from clientmodels.clients import Clients, Addresses, NoClientFoundError,\
 from clientviews.forms import ClientForm, ClientMailForm, ClientAddressForm,\
     AddressDeleteForm, ClientSearchForm, ClientBankAccountForm,\
         AccountDeleteForm
-from clientviews.mixins import PaginatorMixin
+from debtors.mixins import PaginatorMixin
 
 
 class ClientView(MethodView):

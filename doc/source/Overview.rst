@@ -144,7 +144,9 @@ Information about individual debtors and debts
 
 It is possible to get information on individual debtors and debts. The information shown:
 
-    * the name (full) and adresses of the debtor
+    * the name (full) and postal adress of the debtor
+    * mail addresses of the debtor
+    * bank accounts we know of for the debtor
     * the invoices of the debtor; when these were issued and for what amount they were
     * if the invoice was paid
     * if unpaid, at what stage the overdue processing is

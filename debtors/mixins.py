@@ -23,9 +23,9 @@ class PaginatorMixin():
     A viewing list is a combination of a list of models
     and this mixin which "knows" how to page the list.
     """
-    
+
     def __init__(self, list_creator, page=1, page_length=None):
-        
+
         self.page = page
         self.page_length = page_length
         self.list_creator = list_creator

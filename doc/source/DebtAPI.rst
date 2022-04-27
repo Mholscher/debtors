@@ -85,10 +85,10 @@ The module clientviews forms
 .. automodule:: clientviews.forms
    :members:
 
-The module clientviews mixins
+The module debtors mixins
 -----------------------------
 
-.. automodule:: clientviews.mixins
+.. automodule:: debtors.mixins
    :members:
 
 The module debtviews physicalbill

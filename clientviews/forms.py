@@ -31,7 +31,7 @@ from flask_wtf.csrf import CSRFProtect
 class BirthDateBeforeToday(ValueError):
     """ This date validator checks that the date passed is not later
     than today.
-    
+
     It is aimed at checking birth dates, that cannot be later than today.
     """
 

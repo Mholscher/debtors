@@ -1,0 +1,9 @@
+{% macro paymentmenu(payment=None, client_id=None) -%}
+        {% if payment %} 
+            <a class="menu-item" href={{ url_for('payment_assign', payment_id=payment) }}>Assign payment {{ payment }} </a>
+            {% if client_id %}
+            {% else %}
+            <a class="menu-item" href={{ url_for('payment_update', payment_id=payment) }}>Attach client</a>
+            {% endif %}
+        {% endif %}
+{%- endmacro %}
