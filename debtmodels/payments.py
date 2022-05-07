@@ -25,7 +25,7 @@ payment is larger than the debt, the debt will be paid and the rest
 of the amount retained for further processing.
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from debtors import db
 from sqlalchemy.orm import validates
 from iso4217 import raw_table  # This is the currency table
@@ -159,7 +159,7 @@ class IncomingAmounts(db.Model):
             or credit
         :client_id: After the client has been found, (s)he is coupled to
             the amount; this is the assignming process.
-        :value_date: The date that the amount was added to our bank balkance
+        :value_date: The date that the amount was added to our bank balance
         :our_ref: If a reference that we produced is on the payment, this is it
         :bank_ref: The reference from the clients bank
         :client_ref: The clients reference if (s)he has added one
@@ -182,7 +182,7 @@ class IncomingAmounts(db.Model):
     rvslind = db.Column(db.Boolean, default=False)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
                           index=True, nullable=True)
-    value_date = db.Column(db.DateTime, default=datetime.now,
+    value_date = db.Column(db.Date, default=date.today,
                            nullable=True)
     our_ref = db.Column(db.String(35))
     bank_ref = db.Column(db.String(35))
@@ -190,7 +190,7 @@ class IncomingAmounts(db.Model):
     client_name = db.Column(db.String(30))
     fully_assigned = db.Column(db.Boolean(), default=False)
     creditor_iban = db.Column(db.String(40), nullable=True, index=True)
-    client = db.relationship(Clients, backref='payments')
+    client = db.relationship("Clients", backref='payments')
     amount_queued = db.relationship('AmountQueued', uselist=False,
                                     backref='incoming_amount',
                                     cascade='all, delete')

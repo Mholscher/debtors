@@ -22,6 +22,17 @@ historical events for a client. It shows bills, payments and the
 things that "happened" to these.
 """
 
+from datetime import date, datetime
+from debtmodels.debtbilling import Bills
+
+def _get_bill_date(bill_or_payment):
+
+    if hasattr(bill_or_payment, "bill_id"):
+        if not bill_or_payment.date_bill:
+            return bill_or_payment.date_sale
+        return bill_or_payment.date_bill
+    return bill_or_payment.value_date
+
 class History(dict):
 
     def __init__(self, client):
@@ -35,6 +46,9 @@ class History(dict):
         accounts = self._bank_accounts()
         if accounts:
             self["bank_accounts"] = accounts
+        bills_payments = self._bills_and_payments()
+        if bills_payments:
+            self["bills_payments"] = bills_payments
 
     def _client_data(self):
         """ Fill the client data in the dictionary (self) """
@@ -88,3 +102,36 @@ class History(dict):
                 account_dict["client_name"] = account.client_name
             accounts_list.append(account_dict)
         return accounts_list
+
+    def _bills_and_payments(self):
+        """ Fill and order bills and payments """
+
+        bill_payment_list = []
+        bill_payments = []
+        bill_payments.extend(self.client.payments)
+        bill_payments.extend(self.client.bills)
+        for payment in self.client.payments:
+            if type(payment.value_date) == datetime:
+                raise TypeError("Payment " + payment.id)
+        for bill in self.client.bills:
+            if type(bill.date_bill) == datetime or type(bill.date_sale) == datetime:
+                raise TypeError("Bill " + bill.bill_id)
+        bill_payments = sorted(bill_payments, key=_get_bill_date, reverse=True)
+        for bill_or_payment in bill_payments:
+            if hasattr(bill_or_payment, "bill_id"):
+                bill_dict = {"bill_id" : bill_or_payment.bill_id }
+                bill_dict["status"] = Bills.STATUS_NAME[bill_or_payment.status]
+                if bill_or_payment.date_bill:
+                    bill_dict["date_bill"] = bill_or_payment.date_bill
+                else:
+                    bill_dict["date_bill"] = bill_or_payment.date_sale
+                bill_dict["status"] = bill_or_payment.status
+                bill_payment_list.append(bill_dict)
+            else:
+                payment_dict = {"id" : bill_or_payment.id }
+                payment_dict["value_date"] = bill_or_payment.value_date
+                payment_dict["payment_ccy"] = bill_or_payment.payment_ccy
+                payment_dict["payment_amount"] = bill_or_payment.payment_amount
+                payment_dict["debcred"] = bill_or_payment.debcred
+                bill_payment_list.append(payment_dict)
+        return bill_payment_list

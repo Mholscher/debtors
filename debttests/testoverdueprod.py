@@ -206,7 +206,7 @@ class TestFirstLetterProcess(unittest.TestCase):
     def test_execute(self):
         """ Execute produces a first letter """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp04.processor_key:
                 current_processor_data = proc_data

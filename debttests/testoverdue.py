@@ -186,7 +186,7 @@ class TestOverdueActions(unittest.TestCase):
     def test_overdue_step_create_action(self):
         """ Executing an overdue step creates history record """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
@@ -199,7 +199,7 @@ class TestOverdueActions(unittest.TestCase):
     def test_no_action_until_date(self):
         """ If the date is not yet reached, take no action  """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 8))
+        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 3, 18))
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
@@ -220,7 +220,7 @@ class TestOverdueActions(unittest.TestCase):
     def test_only_overdue_for_issued_bill(self):
         """ Only for issued bills overdue action is taken """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
@@ -233,7 +233,7 @@ class TestOverdueActions(unittest.TestCase):
     def test_overdue_step_executed_once(self):
         """ Any overdue step is only executed once for a bill """
 
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
@@ -254,7 +254,7 @@ class TestOverdueActions(unittest.TestCase):
 
         self.assertFalse(OverdueActions.last_action(self.bll4), 
                          "A step was returned where no action taken")
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 12))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp06.processor_key:
                 current_processor_data = proc_data
@@ -331,7 +331,7 @@ class TestOverdueActionsFunctions(unittest.TestCase):
         self.st14.add()
         self.flp07 = FirstLetterProcessor()
         self.slp10 = SecondLetterProcessor()
-        dates_list = OverdueSteps.get_date_list(from_date=date(2020, 4, 8))
+        dates_list = OverdueSteps.get_date_list()
         for proc_data in dates_list:
             if proc_data[2] == self.flp07.processor_key:
                 current_processor_data = proc_data

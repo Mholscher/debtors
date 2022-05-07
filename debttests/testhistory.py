@@ -21,7 +21,9 @@ from dateutil import parser as dt_parse
 from xml.sax import ContentHandler, make_parser, parse
 from debttests.helpers import (create_clients, create_bills, add_addresses,
                                add_lines_to_bills,delete_amountq, 
-                               delete_test_bills, delete_test_clients)
+                               delete_test_bills, delete_test_clients,
+                               create_payments_for_overdue,
+                               delete_test_payments)
 from debtors import app, db
 from debtors.processCAMT import CAMT53Handler
 from debtviews.history import History
@@ -34,6 +36,7 @@ class TestClientDataInMessages(unittest.TestCase):
         add_addresses(self)
         create_bills(self)
         add_lines_to_bills(self)
+        create_payments_for_overdue(self)
         db.session.flush()
         self.camthandler = CAMT53Handler()
         self.parser = make_parser()
@@ -44,6 +47,7 @@ class TestClientDataInMessages(unittest.TestCase):
         db.session.rollback()
         delete_amountq(self)
         delete_test_bills(self)
+        delete_test_payments(self)
         delete_test_clients(self)
         db.session.commit()
 
@@ -107,3 +111,80 @@ class TestClientDataInMessages(unittest.TestCase):
         his7 = History(client=self.clt3)
         self.assertEqual(len(his7["bank_accounts"]), 2,
                          "Too many/little accounts in dictionary")
+
+    def test_list_bills(self):
+        """ All bills must be in the list of bills and payments """
+
+        his8 = History(client=self.clt5)
+        bill_list = [bill["bill_id"] for bill in his8["bills_payments"]
+            if "bill_id" in bill]
+        self.assertIn(self.bll6.bill_id, bill_list, 
+                      "Bill not in generated list")
+        self.assertEqual(len(bill_list), 3, "Not enough/too many bills")
+
+    def test_newest_bill_first(self):
+        """ The bills should be presented from new to old """
+
+        his9 = History(client=self.clt5)
+        bill_list = [bill for bill in his9["bills_payments"]]
+        date_list = [bill["date_bill"]
+                     for bill in bill_list if "date_bill" in bill]
+        self.assertTrue(date_list[0] >= date_list[1],
+                        "First bills not in order")
+        self.assertTrue(date_list[1] >= date_list[2],
+                        "Last bills not in order")
+
+    def test_no_bills_for_client(self):
+        """ A client having no bills should return no bill """
+
+        his10 = History(client=self.clt2)
+        with self.assertRaises(KeyError,
+                               msg="Bill found for client having none"):
+            bill_list = [bill for bill in his10["bills_payments"]]
+
+    def test_bill_has_status(self):
+        """ Each bill comes with a status """
+
+        his11 = History(client=self.clt5)
+        bill_list = [bill for bill in his11["bills_payments"]]
+        status_list = [bill["status"]
+                     for bill in bill_list if "status" in bill]
+        self.assertEqual(len(status_list), 3,
+                         "Bills without status")
+
+    def test_payment_in_list(self):
+        """ Payments want to be in the bills and payments list """
+
+        his12 = History(client=self.clt5)
+        bill_payment_list = [bill_payment
+                             for bill_payment in his12["bills_payments"]]
+        id_list = [payment["id"] for payment in bill_payment_list
+                   if "id" in payment]
+        self.assertIn(self.ia112.id, id_list,
+                      "Payment not in list")
+        self.assertEqual(len(id_list), 2, "Too many little payments in list")
+
+    def test_payment_attributes(self):
+        """ The (non-key) attributes of a payment are in the list """
+
+        his13 = History(client=self.clt5)
+        bill_payment_list = [bill_payment
+                             for bill_payment in his13["bills_payments"]]
+        payment_list = [payment for payment in bill_payment_list
+                   if "id" in payment]
+        for payment in payment_list:
+            self.assertIn("value_date", payment, "Date not in payment")
+            self.assertIn("payment_ccy", payment, "Currency not in payment")
+            self.assertIn("payment_amount", payment, "Amount not in payment")
+            self.assertIn("debcred", payment, "Debit/credit not in payment")
+
+    def test_bills_payments_are_in_order(self):
+        """ The order is maintained for payments and bills interspersed """
+
+        his13 = History(client=self.clt5)
+        bill_payment_list = [bill_payment
+                             for bill_payment in his13["bills_payments"]]
+        self.assertEqual(bill_payment_list[0]["bill_id"], self.bll4.bill_id,
+                         "Bill 4 not in 1st position")
+        self.assertEqual(bill_payment_list[1]["id"], self.ia112.id,
+                         "Payment 112 not in 2nd position")

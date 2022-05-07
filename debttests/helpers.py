@@ -181,12 +181,12 @@ def create_bills(instance):
     """ Create bills for test 'instance' """
 
     instance.bills = []
-    instance.bll1 = Bills(date_sale=datetime.now().date(), date_bill=None,
+    instance.bll1 = Bills(date_sale=date.today(), date_bill=None,
                           status='new')
     instance.clt1.bills.append(instance.bll1)
     instance.bills.append(instance.bll1)
-    instance.bll2 = Bills(date_sale=datetime.now().date(),
-                          date_bill=datetime.now(),
+    instance.bll2 = Bills(date_sale=date.today(),
+                          date_bill=date.today(),
                           billing_ccy = 'EUR',
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
@@ -197,8 +197,8 @@ def create_bills(instance):
                           status='new')
     instance.clt3.bills.append(instance.bll3)
     instance.bills.append(instance.bll3)
-    instance.bll4 = Bills(date_sale=date(year=2020, month=2, day=18),
-                          date_bill=date(year=2020, month=2, day=18),
+    instance.bll4 = Bills(date_sale=date(year=2022, month=2, day=18),
+                          date_bill=date(year=2022, month=2, day=18),
                           billing_ccy='JPY',
                           status='issued')
     instance.clt5.bills.append(instance.bll4)
@@ -209,8 +209,8 @@ def create_bills(instance):
                           status='new')
     instance.clt5.bills.append(instance.bll5)
     instance.bills.append(instance.bll5)
-    instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=2),
-                          date_bill=date(year=2020, month=3, day=2),
+    instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=18),
+                          date_bill=date(year=2020, month=3, day=19),
                           billing_ccy='EUR',
                           status='issued')
     instance.clt5.bills.append(instance.bll6)
@@ -249,6 +249,7 @@ def create_payments_for_overdue(instance):
                                payment_amount=28,
                                creditor_iban= 'NL08INGB0212977892',
                                client_name='T. Gebraltas',
+                               value_date=date(2021, 2, 13),
                                our_ref='Ref Undef',
                                bank_ref='320098')
     instance.ia110.change_client(instance.bll4.client)
@@ -263,6 +264,7 @@ def create_payments_for_overdue(instance):
 
     instance.ia112 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=8,
+                               value_date=date(2022, 1, 8),
                                our_ref='Ref Undef')
     instance.ia112.change_client(instance.bll4.client)
 

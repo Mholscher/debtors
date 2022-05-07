@@ -461,7 +461,7 @@ class TestBillTransactions(unittest.TestCase):
         """ We can get a bill by its bill id """
 
         rv = self.app.get('/api/10/bill/' + str(self.bll2.bill_id))
-        bill_date = str(self.bll2.date_bill.date()).encode()
+        bill_date = str(self.bll2.date_bill).encode()
         self.assertIn(bill_date, rv.data, 'Date not returned')
 
     def test_get_bill_page(self):
@@ -619,7 +619,7 @@ class TestDebtEnquiries(unittest.TestCase):
     def test_client_debt_more_bills(self):
         """ A client may have more than one bill in debt """
 
-        bll1 = Bills(date_sale=datetime.now().date(), date_bill=None,
+        bll1 = Bills(date_sale=date.today(), date_bill=None,
                      status='new')
         self.clt1.bills.append(bll1)
         bl09 = BillLines(short_desc='Waffle', unit_price=68,
@@ -635,7 +635,7 @@ class TestDebtEnquiries(unittest.TestCase):
     def test_client_debt_more_bills(self):
         """ A client may have more than one bill in debt """
 
-        bll2 = Bills(date_sale=datetime.now().date(), date_bill=None,
+        bll2 = Bills(date_sale=date.today(), date_bill=None,
                      billing_ccy='JPY',
                      status='new')
         self.clt1.bills.append(bll2)
