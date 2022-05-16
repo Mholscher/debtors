@@ -26,6 +26,7 @@ from debttests.helpers import (create_clients, create_bills, add_addresses,
                                delete_test_payments)
 from debtors import app, db
 from debtors.processCAMT import CAMT53Handler
+from debtmodels.payments import IncomingAmounts
 from debtviews.history import History
 
 class TestClientDataInMessages(unittest.TestCase):
@@ -181,10 +182,78 @@ class TestClientDataInMessages(unittest.TestCase):
     def test_bills_payments_are_in_order(self):
         """ The order is maintained for payments and bills interspersed """
 
-        his13 = History(client=self.clt5)
+        his14 = History(client=self.clt5)
         bill_payment_list = [bill_payment
-                             for bill_payment in his13["bills_payments"]]
+                             for bill_payment in his14["bills_payments"]]
         self.assertEqual(bill_payment_list[0]["bill_id"], self.bll4.bill_id,
                          "Bill 4 not in 1st position")
         self.assertEqual(bill_payment_list[1]["id"], self.ia112.id,
                          "Payment 112 not in 2nd position")
+
+    def test_paid_bill_assigned_amount(self):
+        """ A paid bill has number of paying amount and date """
+
+        payment = self.ia110
+        his15 = History(client=self.clt5)
+        bill_list = [bill for bill in his15["bills_payments"]
+                     if "bill_id" in bill
+                     and bill["bill_id"] == self.bll5.bill_id]
+        self.assertTrue(bill_list, "Bill list empty")
+        self.assertEqual(bill_list[0]["payment_id"], payment.id,
+                        "No payment number")
+
+    def test_payment_has_source(self):
+        """ A payment has indication where it is from if from a payment """
+
+        payment = self.ia112
+        new_payment = IncomingAmounts(payment_ccy=payment.payment_ccy,
+                                      payment_amount=0,
+                                      value_date=date.today())
+        new_payment.client = self.clt5
+        payment.assign_to_amount(new_payment)
+        db.session.flush()
+        his16 = History(client=self.clt5)
+        payment_list = [payment for payment in his16["bills_payments"]
+                     if "id" in payment
+                     and payment["id"] == new_payment.id]
+        self.assertTrue(payment_list, "Payment list empty")
+        self.assertEqual(payment_list[0]["from_payments"][0]["from_payment"], payment.id,
+                        "No payment number")
+
+    def test_payment_has_more_than_1_source(self):
+        """ If a payment has 2 sources, both are reported  """
+
+        first_payment = self.ia112
+        another_payment = IncomingAmounts(
+                                      payment_ccy=first_payment.payment_ccy,
+                                      payment_amount=45,
+                                      value_date=date.today())
+        new_payment = IncomingAmounts(payment_ccy=first_payment.payment_ccy,
+                                      payment_amount=0,
+                                      value_date=date.today())
+        new_payment.client = self.clt5
+        another_payment.client = self.clt5
+        first_payment.assign_to_amount(new_payment)
+        another_payment.assign_to_amount(new_payment)
+        db.session.flush()
+        his17 = History(client=self.clt5)
+        payment_list = [payment for payment in his17["bills_payments"]
+                     if "id" in payment
+                     and payment["id"] == new_payment.id]
+        orig_payments = payment_list[0]["from_payments"]
+        for payment in orig_payments:
+            self.assertIn(payment["from_payment"],
+                          (first_payment.id, another_payment.id),
+                          f"Payment missing")
+
+    def test_no_source_payment_returns_nothing(self):
+        """ A payment with no source payments doesn't have sources """
+
+        first_payment = self.ia112
+        his18 = History(client=self.clt5)
+        payment_list = [payment for payment in his18["bills_payments"]
+                     if "id" in payment
+                     and payment["id"] == first_payment.id]
+        for each in payment_list:
+            self.assertNotIn("from_payment", each,
+                                "Payment in list as source")

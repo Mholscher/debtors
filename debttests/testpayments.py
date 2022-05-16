@@ -1133,23 +1133,23 @@ class TestAssignToPayment(unittest.TestCase):
     def test_reverse_fails_if_assigned(self):
         """ Trying to reverse a payment for another currency fails """
 
-        ia73 = IncomingAmounts(payment_ccy='EUR',
+        ia118 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=12500,
                                debcred='Cr',
                                creditor_iban= 'NL08INGB0212952803',
                                client_name='ING Testrekening',
                                our_ref='Reverse British Pounds',
                                bank_ref='Terugboeking betaling')
-        ia74 = db.session.query(IncomingAmounts).\
+        ia119 = db.session.query(IncomingAmounts).\
             filter_by(bank_ref='022221333306999888222200112').first()
-        ia75 = IncomingAmounts(payment_ccy='EUR',
+        ia120 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=0,
                                debcred='Cr')
         db.session.flush()
-        ia74.assign_to_amount(ia75)
+        ia119.assign_to_amount(ia120)
         db.session.flush()
         with  self.assertRaises(ValueError):
-            ia73.assign_reversal_to_payment(ia74)
+            ia118.assign_reversal_to_payment(ia119)
 
 
     def test_assign_reversal_cannot_be_reversed(self):
@@ -1173,6 +1173,29 @@ class TestAssignToPayment(unittest.TestCase):
         db.session.flush()
         with  self.assertRaises(ValueError):
             ia108.reverse_assignment(aa33)
+
+    def test_list_assignments(self):
+        """ Can get a list of amounts assigned to one amount """
+
+        ia118 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=12500,
+                               debcred='Cr',
+                               creditor_iban= 'NL08INGB0212952803',
+                               client_name='ING Testrekening',
+                               our_ref='Reverse British Pounds',
+                               bank_ref='Terugboeking betaling')
+        ia119 = db.session.query(IncomingAmounts).\
+            filter_by(bank_ref='022221333306999888222200112').first()
+        ia120 = IncomingAmounts(payment_ccy='EUR',
+                               payment_amount=0,
+                               debcred='Cr')
+        db.session.flush()
+        ia118.assign_to_amount(ia120)
+        ia119.assign_to_amount(ia120)
+        db.session.flush()
+        ial16 = ia120.list_assigned_from()
+        self.assertIn(ia118, ial16, "First not in list")
+        self.assertIn(ia119, ial16, "Second not in list")
 
 
 class TestAssignmentReversal(unittest.TestCase):

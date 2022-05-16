@@ -127,6 +127,11 @@ class History(dict):
                     bill_dict["date_bill"] = bill_or_payment.date_sale
                 bill_dict["status"] = bill_or_payment.status
                 bill_payment_list.append(bill_dict)
+                if bill_or_payment.assignments:
+                    bill_dict["payment_id"] =\
+                        bill_or_payment.assignments[0].from_amount.id
+                    bill_dict["payment_date"] =\
+                        bill_or_payment.assignments[0].from_amount.value_date 
             else:
                 payment_dict = {"id" : bill_or_payment.id }
                 payment_dict["value_date"] = bill_or_payment.value_date
@@ -134,4 +139,15 @@ class History(dict):
                 payment_dict["payment_amount"] = bill_or_payment.payment_amount
                 payment_dict["debcred"] = bill_or_payment.debcred
                 bill_payment_list.append(payment_dict)
+                if (hasattr(bill_or_payment, "from_amt")
+                    and bill_or_payment.from_amt):
+                    list_from_amounts = bill_or_payment.list_assigned_from()
+                    from_payments = []
+                    for payment in list_from_amounts:
+                        orig_payment = {"from_payment" : payment.id}
+                        orig_payment["from_ccy"] = payment.payment_ccy
+                        orig_payment["from_amount"] = payment.payment_amount
+                        from_payments.append(orig_payment)
+                    if from_payments:
+                        payment_dict["from_payments"] = from_payments
         return bill_payment_list

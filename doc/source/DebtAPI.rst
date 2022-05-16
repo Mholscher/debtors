@@ -121,6 +121,12 @@ The module debtviews physicalentities
 .. automodule:: debtviews.physicalentities
    :members:
 
+The module debtviews history
+----------------------------
+
+.. automodule:: debtviews.history
+   :members:
+
 The module debtors processCAMT
 ------------------------------
 

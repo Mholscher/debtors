@@ -305,6 +305,13 @@ class IncomingAmounts(db.Model):
 
         return [x for x in self.used_in if not x.reversed]
 
+    def list_assigned_from(self):
+        """ Return a list of payments that were assigned to this one """
+
+        assignments_from = [assignment for assignment in self.from_amt
+                            if not assignment.reversed]
+        return [assignment.from_amount for assignment in assignments_from]
+
     def assigned(self):
         """ Total up the amount assigned to this payment """
 
