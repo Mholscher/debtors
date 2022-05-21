@@ -23,6 +23,12 @@ things that "happened" to these.
 """
 
 from datetime import date, datetime
+from flask import render_template, abort
+from flask.views import MethodView
+from debtviews.monetary import edited_amount
+from clientviews.forms import ClientSearchForm
+from clientmodels.clients import (Clients, NoClientFoundError,
+                                  NoPostalAddressError)
 from debtmodels.debtbilling import Bills
 
 def _get_bill_date(bill_or_payment):
@@ -39,7 +45,9 @@ class History(dict):
 
         self.client = client
         self["client"] = self._client_data()
-        self["address"] = self._postal_address()
+        postal_address = self._postal_address()
+        if postal_address:
+            self["address"] = postal_address
         mails = self._mail_addresses()
         if mails:
             self["mail_addresses"] = mails
@@ -70,12 +78,16 @@ class History(dict):
         """ Fill address data in the dictionary (self) """
 
         address_dict = dict()
-        address = self.client.postal_address()
+        try:
+            address = self.client.postal_address()
+        except NoPostalAddressError:
+            return None
         if address.street:
             address_dict["street"] = address.street
             address_dict["house_number"] = address.house_number
         else:
             address_dict["po_box"] = address.po_box
+        address_dict["postcode"] = address.postcode
         address_dict["town_or_village"] = address.town_or_village
         address_dict["country_code"] = address.country_code
         return address_dict
@@ -110,12 +122,12 @@ class History(dict):
         bill_payments = []
         bill_payments.extend(self.client.payments)
         bill_payments.extend(self.client.bills)
-        for payment in self.client.payments:
-            if type(payment.value_date) == datetime:
-                raise TypeError("Payment " + payment.id)
-        for bill in self.client.bills:
-            if type(bill.date_bill) == datetime or type(bill.date_sale) == datetime:
-                raise TypeError("Bill " + bill.bill_id)
+        #for payment in self.client.payments:
+            #if type(payment.value_date) == datetime:
+                #raise TypeError("Payment " + str(payment.id))
+        #for bill in self.client.bills:
+            #if type(bill.date_bill) == datetime or type(bill.date_sale) == datetime:
+                #raise TypeError("Bill " + bill.bill_id)
         bill_payments = sorted(bill_payments, key=_get_bill_date, reverse=True)
         for bill_or_payment in bill_payments:
             if hasattr(bill_or_payment, "bill_id"):
@@ -126,6 +138,9 @@ class History(dict):
                 else:
                     bill_dict["date_bill"] = bill_or_payment.date_sale
                 bill_dict["status"] = bill_or_payment.status
+                bill_dict["currency"] = bill_or_payment.billing_ccy
+                bill_dict["total"] = edited_amount(bill_or_payment.total(),
+                                        currency=bill_or_payment.billing_ccy)
                 bill_payment_list.append(bill_dict)
                 if bill_or_payment.assignments:
                     bill_dict["payment_id"] =\
@@ -136,7 +151,9 @@ class History(dict):
                 payment_dict = {"id" : bill_or_payment.id }
                 payment_dict["value_date"] = bill_or_payment.value_date
                 payment_dict["payment_ccy"] = bill_or_payment.payment_ccy
-                payment_dict["payment_amount"] = bill_or_payment.payment_amount
+                payment_dict["payment_amount"] = edited_amount(
+                                        bill_or_payment.payment_amount,
+                                        currency=bill_or_payment.payment_ccy)
                 payment_dict["debcred"] = bill_or_payment.debcred
                 bill_payment_list.append(payment_dict)
                 if (hasattr(bill_or_payment, "from_amt")
@@ -151,3 +168,27 @@ class History(dict):
                     if from_payments:
                         payment_dict["from_payments"] = from_payments
         return bill_payment_list
+
+class HistoryView(MethodView):
+    """ Show the history of this client.
+
+    This view has the client history. It contains:
+
+        * general client data (like name, mail address and postal address
+        * the bills created for the client
+        * the payments received and attached from this client
+
+    the bills and payments are in a list in reversed date order.
+    """
+
+    def get(self, client_id):
+        """ Get the information for the client number requested """
+
+        try:
+            client = Clients.get_by_id(client_id)
+        except NoClientFoundError as ncfe:
+            abort(400, str(ncfe))
+        client_search_form = ClientSearchForm()
+        client_history = History(client)
+        return render_template("historyclient.html", client=client_history,
+                               search_form=client_search_form)

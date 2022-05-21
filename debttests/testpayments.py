@@ -377,7 +377,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia19 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=1000,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 21))
+                               value_date=date(2021, 1, 21))
         ia19.client = self.clt3
         ia19.add()
         db.session.flush()
@@ -393,7 +393,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia20 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=1880,
                                debcred='Cr',
-                               value_date=datetime(2020, 12, 11))
+                               value_date=date(2020, 12, 11))
         ia20.client = self.clt3
         ia20.add()
         db.session.flush()
@@ -406,7 +406,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia22 = IncomingAmounts(payment_ccy='USD',
                                payment_amount=890,
                                debcred='Cr',
-                               value_date=datetime(2021, 2, 1))
+                               value_date=date(2021, 2, 1))
         ia22.client = self.clt4
         ia22.add()
         db.session.flush()
@@ -419,7 +419,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia23 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=1880,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 25))
+                               value_date=date(2021, 1, 25))
         ia23.client = self.clt3
         ia23.add()
         db.session.flush()
@@ -432,7 +432,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia24 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=1758,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 25))
+                               value_date=date(2021, 1, 25))
         ia24.client = self.clt3
         ia24.add()
         db.session.flush()
@@ -445,7 +445,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia25 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=3760,
                                debcred='Cr',
-                               value_date=datetime(2021, 2, 1))
+                               value_date=date(2021, 2, 1))
         ia25.client = self.clt3
         ia25.add()
         db.session.flush()
@@ -458,7 +458,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia110 = IncomingAmounts(payment_ccy='JPY',
                                 payment_amount=1855,
                                 debcred='Cr',
-                                value_date=datetime(2021, 7, 1))
+                                value_date=date(2021, 7, 1))
         ia110.client = self.clt4
         ia110.add()
         db.session.flush()
@@ -477,11 +477,11 @@ class TestAssignAmounts(unittest.TestCase):
         ia111 = IncomingAmounts(payment_ccy='EUR',
                                 payment_amount=1275,
                                 debcred='Cr',
-                                value_date=datetime(2021, 7, 12))
+                                value_date=date(2021, 7, 12))
         ia111.client = self.clt4
         bll15 = Bills(billing_ccy='EUR',
-                                date_sale=datetime(2021, 7, 8),
-                                date_bill=datetime(2021, 7, 8),
+                                date_sale=date(2021, 7, 8),
+                                date_bill=date(2021, 7, 8),
                                 status="issued")
         bill_line = BillLines(short_desc='Shrt', number_of=1,
                           unit_price=875)
@@ -502,11 +502,11 @@ class TestAssignAmounts(unittest.TestCase):
         ia113 = IncomingAmounts(payment_ccy='EUR',
                                 payment_amount=1288,
                                 debcred='Cr',
-                                value_date=datetime(2021, 8, 3))
+                                value_date=date(2021, 8, 3))
         ia113.client = self.clt4
         bll15 = Bills(billing_ccy='EUR',
-                                date_sale=datetime(2021, 8, 1),
-                                date_bill=datetime(2021, 8, 1),
+                                date_sale=date(2021, 8, 1),
+                                date_bill=date(2021, 8, 1),
                                 status="issued")
         bill_line = BillLines(short_desc='PPK', number_of=1,
                           unit_price=1288)
@@ -1710,7 +1710,7 @@ class TestPaymentTransactions(unittest.TestCase):
                                            'value_date':'17-12-2020'})
         ia13 = db.session.query(IncomingAmounts).\
             filter_by(payment_amount=56799).first()
-        self.assertEqual(ia13.value_date, parser.parse('17-12-2020'),
+        self.assertEqual(ia13.value_date, parser.parse('17-12-2020').date(),
                          'Incorrect date')
         self.assertEqual(ia13.payment_ccy, 'EUR', 'Currency incorrect')
 
@@ -1784,7 +1784,7 @@ class TestPaymentTransactions(unittest.TestCase):
         ia24 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=1880,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 17))
+                               value_date=date(2021, 1, 17))
         ia24.client = self.clt3
         ia24.add()
         db.session.flush()
@@ -1800,7 +1800,7 @@ class TestPaymentTransactions(unittest.TestCase):
         ia117 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=705,
                                debcred='Cr',
-                               value_date=datetime(2022, 3, 17))
+                               value_date=date(2022, 3, 17))
         ia117.client = self.clt3
         db.session.flush()
         rv = self.app.get("/payment/" + str(ia117.id))
@@ -1820,7 +1820,7 @@ class TestPaymentTransactions(unittest.TestCase):
         ia26 = IncomingAmounts(payment_ccy='USD',
                                payment_amount=19980,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia26.add()
         db.session.flush()
         rv = self.app.get('/payment/assign/' + str(ia26.id))
@@ -1835,7 +1835,7 @@ class TestPaymentTransactions(unittest.TestCase):
         ia27 = IncomingAmounts(payment_ccy='USD',
                                payment_amount=19980,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia27.add()
         db.session.flush()
         qrystring = "?find_name=" + "Aubergine"
@@ -1848,7 +1848,7 @@ class TestPaymentTransactions(unittest.TestCase):
         ia28 = IncomingAmounts(payment_ccy='USD',
                                payment_amount=19980,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia28.add()
         db.session.flush()
         qrystring = "?find_number=" + str(self.clt5.id)
@@ -1966,7 +1966,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         ia45 = IncomingAmounts(payment_ccy='EUR',
                                payment_amount=0,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia45.add()
         db.session.commit()
         ia45_id = ia45.id
@@ -1989,7 +1989,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         ia51 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=0,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia51.add()
         db.session.flush()
         ia51_id = ia51.id
@@ -2010,7 +2010,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         ia53 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=0,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia53.add()
         db.session.flush()
         ia53_id = ia53.id
@@ -2028,7 +2028,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         ia55 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=0,
                                debcred='Cr',
-                               value_date=datetime(2021, 1, 16))
+                               value_date=date(2021, 1, 16))
         ia55.add()
         db.session.flush()
         ia55_id = ia55.id
@@ -2120,7 +2120,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="To find",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3))
+                               value_date=date(2014, 1, 3))
         ia82.add()
         db.session.flush()
         rv = self.app.get("/payment/reverse/" + ia81_id_str)
@@ -2137,7 +2137,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Test Conversion",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3))
+                               value_date=date(2014, 1, 3))
         ia84.add()
         db.session.flush()
         rv = self.app.get("/payment/reverse/" + ia83_id_str)
@@ -2154,7 +2154,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Test Conversion",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3),
+                               value_date=date(2014, 1, 3),
                                client_name="ING Testrekening")
         ia86.add()
         db.session.commit()
@@ -2173,7 +2173,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Test Conversion",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3),
+                               value_date=date(2014, 1, 3),
                                client_name="ING Testrekening")
         ia88.add()
         db.session.commit()
@@ -2183,7 +2183,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Test Conversion",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3),
+                               value_date=date(2014, 1, 3),
                                client_name="ING Testrekening")
         ia89.add()
         db.session.commit()
@@ -2206,7 +2206,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Test Conversion",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3),
+                               value_date=date(2014, 1, 3),
                                client_name="Oker")
         ia91.client = self.clt6
         ia91.add()
@@ -2227,7 +2227,7 @@ class TestPaymentReversal(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Paid bil reversal",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2014, 1, 3),
+                               value_date=date(2014, 1, 3),
                                client_name="Oker")
         ia92.client = self.clt6
         ia92.add()
@@ -2302,7 +2302,7 @@ class TestPaymentsAndDebt(unittest.TestCase):
                                debcred='Cr',
                                our_ref="Other ccy payment",
                                creditor_iban="NL20INGB0001234567",
-                               value_date=datetime(2021, 12, 30),
+                               value_date=date(2021, 12, 30),
                                client_name="Aquamarijn")
         ia116.client = self.clt3
         db.session.flush()

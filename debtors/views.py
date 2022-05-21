@@ -27,6 +27,7 @@ from debtviews.bills import (BillView, ClientDebtView, BillDetailView,
 from debtviews.payments import (PaymentView, PaymentUpdateView,
     PaymentAssignView, PaymentAssignToBill, PaymentAssignToPayment,
     PaymentReverseView, PaymentAssignReverseView)
+from debtviews.history import HistoryView
 from debtviews.forms import  FormForAmount
 
 
@@ -41,6 +42,8 @@ app.add_url_rule('/bill/new', view_func=BillView.as_view('bill_create'))
 app.add_url_rule('/bill/<int:bill_id>', view_func=BillView.as_view('bill_update'))
 app.add_url_rule('/debt/<int:client_id>',
     view_func=ClientDebtView.as_view('client_debt'))
+app.add_url_rule('/history/<int:client_id>',
+    view_func=HistoryView.as_view('client_history'))
 app.add_url_rule('/bill/<int:bill_id>/details',
     view_func=BillDetailView.as_view('bill_detail'))
 app.add_url_rule('/payment/new',
