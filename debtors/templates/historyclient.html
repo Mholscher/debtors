@@ -2,7 +2,7 @@
 {% from "mainmenu.html" import mainmenu %}
 
 {% block title %}
-  <title>{{client.client.initials}} {{client.client.surname}} : History</title>
+  <title>{{client.client.initials}} {{client.client.surname}} history</title>
 {% endblock %}
 
 {% block menu %}
@@ -34,12 +34,21 @@
 
 {% for bill_or_payment in client.bills_payments %}
 {% if bill_or_payment.bill_id %}
+
 <div>Bill <a href={{url_for('bill_detail', bill_id=bill_or_payment.bill_id)}}>{{bill_or_payment.bill_id}}</a> {{bill_or_payment.billing_ccy}}  {{ bill_or_payment.currency }} {{bill_or_payment.total }}</div>
-Date of bill/sale {{ bill_or_payment.date_bill }} </br></br>
+Date of bill/sale {{ bill_or_payment.date_bill }} <br/>
+{% if  bill_or_payment.payment_id %}
+<div class="fldindent">Paid from payment {{ bill_or_payment.payment_id }} at {{ bill_or_payment.payment_date }} </div>
+{% endif %}
+<br/><br/>
 {% endif %}
 {% if bill_or_payment.id %}
-Payment <a href={{ url_for("payment_update", payment_id=bill_or_payment.id)}}>{{ bill_or_payment.id }}</a>, original amount {{ bill_or_payment.payment_ccy }} {{ bill_or_payment.payment_amount }} </br>Value date (received) {{ bill_or_payment.value_date }} </br></br>
+Payment <a href={{ url_for("payment_update", payment_id=bill_or_payment.id)}}>{{ bill_or_payment.id }}</a>, amount {{ bill_or_payment.payment_ccy }} {{ bill_or_payment.payment_amount }} </br>Value date (received) {{ bill_or_payment.value_date }} <br/>
 {% endif %}
+{% for payment in bill_or_payment.from_payments %}
+<div class="fldindent">From payment {{ payment.from_payment }} amount {{payment.from_ccy}} {{ payment.from_amount }}
+</div><br/>
+{% endfor %}<br/>
 {% endfor %} </div>
 </div>
 {% endblock content %}

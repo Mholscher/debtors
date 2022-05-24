@@ -48,6 +48,12 @@ a.IMG {
     padding-left : 8ch ;
     }
 
+.fldindent {
+    float : left ;
+    width : 42ch ;
+    padding-left : 8ch ;
+    }
+
 .inputline {
     margin : 1em ;
     background-color : bisque ;

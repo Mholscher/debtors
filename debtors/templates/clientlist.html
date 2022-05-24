@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% from "mainmenu.html" import mainmenu %}
 
+{% block title %}
+    <title>{% if search_form.search_for.data %} Client list for {{ search_form.search_for.data }} {% else %} Debtors client list {% endif %}</title>
+{% endblock title %}
+
 {% block menu %}
     {{ mainmenu() }}
 {% endblock menu %}

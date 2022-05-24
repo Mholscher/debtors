@@ -6,6 +6,11 @@
 {% block menu %}
     {{ mainmenu(client_id=client.id) }}
 {% endblock menu %}
+
+{% block title %}
+    <title>{{client.initials}} {{client.surname}} new mail address</title>
+{% endblock title %}
+
 {% block content %}
 <div class="page">
 <h2>Client {{client.initials}} {{client.surname}} </h2> </br></br>

@@ -141,12 +141,12 @@ class History(dict):
                 bill_dict["currency"] = bill_or_payment.billing_ccy
                 bill_dict["total"] = edited_amount(bill_or_payment.total(),
                                         currency=bill_or_payment.billing_ccy)
-                bill_payment_list.append(bill_dict)
                 if bill_or_payment.assignments:
                     bill_dict["payment_id"] =\
                         bill_or_payment.assignments[0].from_amount.id
                     bill_dict["payment_date"] =\
                         bill_or_payment.assignments[0].from_amount.value_date 
+                bill_payment_list.append(bill_dict)
             else:
                 payment_dict = {"id" : bill_or_payment.id }
                 payment_dict["value_date"] = bill_or_payment.value_date
@@ -163,7 +163,9 @@ class History(dict):
                     for payment in list_from_amounts:
                         orig_payment = {"from_payment" : payment.id}
                         orig_payment["from_ccy"] = payment.payment_ccy
-                        orig_payment["from_amount"] = payment.payment_amount
+                        orig_payment["from_amount"] = edited_amount(
+                            payment.payment_amount,
+                            currency=payment.payment_ccy)
                         from_payments.append(orig_payment)
                     if from_payments:
                         payment_dict["from_payments"] = from_payments
