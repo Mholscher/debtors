@@ -25,6 +25,7 @@ from flask_wtf import FlaskForm
 from wtforms import HiddenField, StringField, DateField, SubmitField,\
     IntegerField, SelectField, FieldList, FormField
 from wtforms.validators import DataRequired, Length, Optional, ValidationError
+from debtors import config
 from debtmodels.debtbilling import Bills, ReplacedBillError
 from debtmodels.payments import validate_currency, IncomingAmounts as Amounts
 # For testing only!
@@ -144,7 +145,7 @@ class BillCreateForm(BillForm):
     """ This is the form for creating a new bill """
 
     client_id = StringField('Client number')
-    date_sale = DateField('Date of sale', format='%d-%m-%Y',
+    date_sale = DateField('Date of sale', format=config["SHORT_DATE"],
                           validators=[DataRequired()])
     add_1 = SubmitField('Update & exit')
     add_more = SubmitField('Update & new')
@@ -154,7 +155,7 @@ class BillChangeForm(BillForm):
     """ This is the form for changing an existing bill """
 
     client_id = StringField('Client number', validators=[Optional()])
-    date_sale = DateField('Date of sale', format='%d-%m-%Y')
+    date_sale = DateField('Date of sale', format=config["SHORT_DATE"])
     update = SubmitField('Update')
 
 
@@ -175,7 +176,7 @@ class PaymentForm(FlaskForm):
     payment_amount = AmountField('Amount paid')
     debcred = SelectField('Debit/credit', choices=local_choices,
                           validators=[Length(max=2)])
-    value_date = DateField('Paid at', format='%d-%m-%Y')
+    value_date = DateField('Paid at', format=config["SHORT_DATE"])
     our_ref = StringField('Our reference', validators=[Length(max=35)])
     bank_ref = StringField('Bank reference', validators=[Length(max=35)])
     creditor_iban = StringField('Creditors IBAN', validators=[Length(max=35)])
@@ -221,9 +222,9 @@ class OtherPaymentForm(FlaskForm):
 
 class DebtorSignalForm(FlaskForm):
     id = HiddenField("Signal id")
-    date_start = DateField("Start date", format="%d-%m-%Y",
+    date_start = DateField("Start date", format=config["SHORT_DATE"],
                            validators=[DataRequired()])
-    date_end = DateField("End date", format="%d-%m-%Y",
+    date_end = DateField("End date", format=config["SHORT_DATE"],
                          validators=[EndDateValid(), Optional()])
     change_signal = SubmitField("Update signal")
 

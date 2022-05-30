@@ -35,7 +35,7 @@
 {% for bill_or_payment in client.bills_payments %}
 {% if bill_or_payment.bill_id %}
 
-<div>Bill <a href={{url_for('bill_detail', bill_id=bill_or_payment.bill_id)}}>{{bill_or_payment.bill_id}}</a> {{bill_or_payment.billing_ccy}}  {{ bill_or_payment.currency }} {{bill_or_payment.total }}</div>
+<div>Bill <a href={{url_for('bill_detail', bill_id=bill_or_payment.bill_id)}}>{{bill_or_payment.bill_id}}</a> for amount {{bill_or_payment.billing_ccy}}  {{ bill_or_payment.currency }} {{bill_or_payment.total }}</div>
 Date of bill/sale {{ bill_or_payment.date_bill }} <br/>
 {% if  bill_or_payment.payment_id %}
 <div class="fldindent">Paid from payment {{ bill_or_payment.payment_id }} at {{ bill_or_payment.payment_date }} </div>

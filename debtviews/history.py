@@ -29,6 +29,7 @@ from debtviews.monetary import edited_amount
 from clientviews.forms import ClientSearchForm
 from clientmodels.clients import (Clients, NoClientFoundError,
                                   NoPostalAddressError)
+from debtors import config
 from debtmodels.debtbilling import Bills
 
 def _get_bill_date(bill_or_payment):
@@ -134,9 +135,11 @@ class History(dict):
                 bill_dict = {"bill_id" : bill_or_payment.bill_id }
                 bill_dict["status"] = Bills.STATUS_NAME[bill_or_payment.status]
                 if bill_or_payment.date_bill:
-                    bill_dict["date_bill"] = bill_or_payment.date_bill
+                    bill_dict["date_bill"] =\
+                        bill_or_payment.date_bill.strftime(config["DATE_FORMAT"])
                 else:
-                    bill_dict["date_bill"] = bill_or_payment.date_sale
+                    bill_dict["date_bill"] =\
+                        bill_or_payment.date_sale.strftime(config["DATE_FORMAT"])
                 bill_dict["status"] = bill_or_payment.status
                 bill_dict["currency"] = bill_or_payment.billing_ccy
                 bill_dict["total"] = edited_amount(bill_or_payment.total(),
@@ -145,11 +148,13 @@ class History(dict):
                     bill_dict["payment_id"] =\
                         bill_or_payment.assignments[0].from_amount.id
                     bill_dict["payment_date"] =\
-                        bill_or_payment.assignments[0].from_amount.value_date 
+                        bill_or_payment.assignments[0].from_amount.\
+                            value_date.strftime(config["DATE_FORMAT"])
                 bill_payment_list.append(bill_dict)
             else:
                 payment_dict = {"id" : bill_or_payment.id }
-                payment_dict["value_date"] = bill_or_payment.value_date
+                payment_dict["value_date"] =\
+                    bill_or_payment.value_date.strftime(config["DATE_FORMAT"])
                 payment_dict["payment_ccy"] = bill_or_payment.payment_ccy
                 payment_dict["payment_amount"] = edited_amount(
                                         bill_or_payment.payment_amount,

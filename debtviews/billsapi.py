@@ -18,7 +18,7 @@
 from datetime import date
 from flask import jsonify, abort, request
 from flask.views import MethodView
-#import debtors
+from debtors import config
 from debtmodels.debtbilling import (Bills, db, InvalidDataError,
                                     DebtorSignal)
 from clientmodels.clients import Clients, db as cdb, NoClientFoundError
@@ -91,7 +91,7 @@ class BillDict(dict):
             if dates:
                 signal_date = min(dates)
                 self["signal"] = ["dubious",
-                              signal_date.strftime("%d-%m-%Y")]
+                              signal_date.strftime(config["SHORT_DATE"])]
 
 
 class BillListDict(dict):

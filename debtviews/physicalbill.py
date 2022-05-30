@@ -28,6 +28,7 @@ from email.message import EmailMessage
 from json import dumps
 from iso4217 import raw_table as currencytable
 from debtviews.monetary import edited_amount
+from debtors import config
 from debtmodels.debtbilling import Bills, DebtorPreferences
 from debtmodels.accounting import AccountingTemplate
 from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
@@ -51,7 +52,7 @@ class BillDictView(dict, GeneralCorrespondence):
         self.client = self.bill.client
         self["bill"] = self._create_bill_dict(self.bill)
         self["client"] = self._create_client_dict(self.client)
-        self["date"] = rtf(date.today().strftime("%d %B %Y"))
+        self["date"] = rtf(date.today().strftime(config["DATE_FORMAT"]))
 
 
 class PaperBill(object):

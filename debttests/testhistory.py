@@ -128,12 +128,10 @@ class TestClientDataInMessages(unittest.TestCase):
 
         his9 = History(client=self.clt5)
         bill_list = [bill for bill in his9["bills_payments"]]
-        date_list = [bill["date_bill"]
-                     for bill in bill_list if "date_bill" in bill]
-        self.assertTrue(date_list[0] >= date_list[1],
-                        "First bills not in order")
-        self.assertTrue(date_list[1] >= date_list[2],
-                        "Last bills not in order")
+        self.assertEqual(bill_list[0]["bill_id"], self.bll4.bill_id,
+                        "First bills not correct")
+        self.assertEqual(bill_list[1]["id"], self.ia112.id,
+                        "Second bill not in order")
 
     def test_no_bills_for_client(self):
         """ A client having no bills should return no bill """

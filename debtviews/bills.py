@@ -23,6 +23,7 @@ to do so.
 """
 from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
+from debtors import config
 from debtmodels.debtbilling import (Bills, BillLines, db, BillNotFoundError,
                                     DebtorSignal)
 from debtmodels.payments import (IncomingAmounts)
@@ -89,6 +90,12 @@ class BillView(MethodView):
 
         if bill:
             signals = DebtorSignal.signals_for(bill)
+            for signal in signals:
+                signal.date_start = signal.date_start.strftime(
+                    config["DATE_FORMAT"])
+                if signal.date_end:
+                    signal.date_end = signal.date_end.strftime(
+                        config["DATE_FORMAT"])
         else:
             signals = []
 
@@ -228,6 +235,9 @@ class BillDetailView(MethodView):
         if bill_id is None:
             abort(404, 'A bill id is required')
         bill = Bills.get_bill_by_id(bill_id)
+        bill.date_sale_form = bill.date_sale.strftime(config["SHORT_DATE"])
+        if bill.date_bill:
+            bill.date_bill_form = bill.date_bill.strftime(config["SHORT_DATE"])
         for line in bill.lines:
             line.amount_edit = edited_amount
         return render_template('billdetail.html', bill=bill,

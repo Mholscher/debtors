@@ -921,9 +921,9 @@ class TestSignalFunctions(unittest.TestCase):
 
         rv = self.app.get("/bill/" + str(self.bll8.bill_id))
         self.assertEqual(rv.status_code, 200, "Get failed")
-        self.assertIn(str(self.sig12.date_start.strftime("%d %B %Y")).encode(),
+        self.assertIn(str(self.sig12.date_start).encode(),
                       rv.data, "Signal start date not in response")
-        self.assertNotIn(str(self.sig13.date_start.strftime("%d %B %Y")).encode(),
+        self.assertNotIn(str(self.sig13.date_start).encode(),
                       rv.data, "Ended signal in response")
 
     def test_2_on_screen(self):
@@ -936,9 +936,9 @@ class TestSignalFunctions(unittest.TestCase):
 
         rv = self.app.get("/bill/" + str(self.bll8.bill_id))
         self.assertEqual(rv.status_code, 200, "Get failed")
-        self.assertIn(str(self.sig12.date_start.strftime("%d %B %Y")).encode(),
+        self.assertIn(str(self.sig12.date_start).encode(),
                       rv.data, "Signal start date not in response")
-        self.assertIn(str(self.sig14.date_start.strftime("%d %B %Y")).encode(),
+        self.assertIn(str(self.sig14.date_start).encode(),
                       rv.data, "Second signal start date not in response")
 
     def test_no_signal_no_text(self):

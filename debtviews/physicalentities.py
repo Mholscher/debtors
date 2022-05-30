@@ -19,6 +19,7 @@ invoices) for sending to clients.
 """
 
 from iso4217 import raw_table as currencytable
+from debtors import config
 from debtviews.outputenvironments import (rtfenvironment, htmlenvironment,
                                           rtf)
 from debtviews.monetary import edited_amount
@@ -32,11 +33,11 @@ class GeneralCorrespondence():
 
         bill_dict = {"bill_id": bill.bill_id,
                      "date_sale":
-                         rtf(bill.date_sale.strftime("%d-%m-%Y")),
+                         rtf(bill.date_sale.strftime(config["SHORT_DATE"])),
                      "billing_ccy":
                          currencytable[bill.billing_ccy]["CcyNm"]}
         if bill.date_bill:
-            bill_dict["date_bill"] = rtf(bill.date_bill.strftime("%d %B %Y"))
+            bill_dict["date_bill"] = rtf(bill.date_bill.strftime(config["DATE_FORMAT"]))
 
         bill_dict["lines"] = []
         self.total = 0

@@ -53,9 +53,9 @@
     <h2>Debtor signal(s) </h2>
 {% for signal in debtor_signals %}
     Signal <a href={{ url_for("signal_update", signal_id=signal.id) }}>signal.id</a>
-    From date {{ signal.date_start.strftime("%d %B %Y") }}
+    From date {{ signal.date_start }}
     {% if signal.date_end %}
-    To date {{ signal.date_end.strftime("%d %B %Y") }}
+    To date {{ signal.date_end }}
     {% else %}
     <br/>
     {% endif %}

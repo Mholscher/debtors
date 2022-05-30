@@ -24,6 +24,7 @@ do subprocesses, like in DubiousDebtorAccounting.
 """
 
 from datetime import date, timedelta, datetime
+from debtors import config
 from debtmodels.overdue import OverdueProcessor
 from debtmodels.debtbilling import DebtorSignal
 from debtmodels.accounting import AccountingTemplate
@@ -100,7 +101,7 @@ class DebtTransferProcessor(OverdueProcessor):
         """ Calculate the transfer date for a bill date """
 
         return (date_bill +
-                timedelta(days=self.processor_data[3])).strftime("%d %B %Y")
+                timedelta(days=self.processor_data[3])).strftime(config["DATE_FORMAT"])
 
 
 class DubiousDebtorProcessor(OverdueProcessor):

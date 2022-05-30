@@ -26,7 +26,7 @@ from datetime import datetime
 from flask import render_template, redirect, url_for, request, flash, abort
 from flask.views import MethodView
 from clientmodels.clients import Clients
-from debtors import db
+from debtors import (db, config)
 from debtviews.monetary import edited_amount
 from debtmodels.payments import (IncomingAmounts, IncomingAmountNotFoundError)
 from debtmodels.debtbilling import Bills, BillNotFoundError
@@ -55,7 +55,7 @@ class PaymentDict(dict):
         self["payment_amount"] = edited_amount(payment.payment_amount,
                                                currency=payment.payment_ccy)
         self["debcred"] = IncomingAmounts.DEBCRED[payment.debcred]
-        self["value_date"] = payment.value_date.strftime("%d-%m-%Y")
+        self["value_date"] = payment.value_date.strftime(config["SHORT_DATE"])
         self["our_ref"] = payment.our_ref
         self["bank_ref"] = payment.bank_ref
         self["client_ref"] = payment.client_ref

@@ -26,6 +26,7 @@ from datetime import date
 from email.message import EmailMessage
 import json
 from iso4217 import raw_table as currencytable
+from debtors import config
 from debtviews.monetary import edited_amount
 from debtmodels.debtbilling import Bills
 from debtmodels.overdue import OverdueProcessor
@@ -56,7 +57,7 @@ class OverdueDictView(dict, GeneralCorrespondence):
         self["morebills"] = self._create_bill_list()
         self["client"] = self._create_client_dict(self.client)
         self["payments"] = self._create_payment_list()
-        self["date"] = rtf(date.today().strftime("%d %B %Y"))
+        self["date"] = rtf(date.today().strftime(config["DATE_FORMAT"]))
 
     def _add_transfer_date(self, bill_dict, bill):
         """ Add the transfer date to bill data """
@@ -85,7 +86,7 @@ class OverdueDictView(dict, GeneralCorrespondence):
                                           currency=payment.payment_ccy)}
         payment_dict["debcred"] = payment.debcred
         payment_dict["value_date"] =\
-            rtf(payment.value_date.strftime("%d-%m-%Y"))
+            rtf(payment.value_date.strftime(config["DATE_FORMAT"]))
         return payment_dict
 
     def _create_bill_list(self):
@@ -104,10 +105,10 @@ class OverdueDictView(dict, GeneralCorrespondence):
         """ Returns a bill dictionary for a bill """
 
         bill_dict = {"bill_id": bill.bill_id,
-                     "date_sale": rtf(bill.date_sale.strftime("%d-%m-%Y")),
+                     "date_sale": rtf(bill.date_sale.strftime(config["SHORT_DATE"])),
                      "billing_ccy": currencytable[bill.billing_ccy]["CcyNm"]}
         if bill.date_bill:
-            bill_dict["date_bill"] = rtf(bill.date_bill.strftime("%d %B %Y"))
+            bill_dict["date_bill"] = rtf(bill.date_bill.strftime(config["DATE_FORMAT"]))
         bill_dict["lines"] = []
         total = 0
         for line in bill.lines:

@@ -24,6 +24,7 @@ from flask_wtf.csrf import CSRFProtect
 
 app = Flask('debtors')
 app.config.from_pyfile('localdebtors.cfg')
+config = app.config
 db = SQLAlchemy(app, {"session_options" : "READ_UNCOMMITTED"})
 CSRFProtect(app)
 locale_module.setlocale(locale_module.LC_ALL, '')

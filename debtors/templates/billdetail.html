@@ -17,11 +17,11 @@
 <h2>Bill details for bill {{bill.bill_id }} </h2>
 <div><a href="{{ url_for('client.clients', id=bill.client_id)}}"> Client {{bill.client.initials}} {{ bill.client.surname}} </a></div></br>
 <div>Billing curency {{ bill.billing_ccy }}</div></br>
-<div>Transaction date {{bill.date_sale.strftime('%d-%m-%Y')}}</div></br>
-<div>Billing date {% if bill.date_bill %}{{bill.date_bill.strftime('%d-%m-%Y')}}{% else %} - {% endif %}</div></br>
-{% if bill.bill_replaced %}<div>Replaces bill  {{bill.bill_replaced}}</div></br>
+<div>Transaction date {{ bill.date_sale_form }}</div></br>
+<div>Billing date {% if bill.date_bill_form %}{{bill.date_bill_form }}{% else %} - {% endif %}</div></br>
+{% if bill.bill_replaced %}<div>Replaces bill  {{ bill.bill_replaced }}</div></br>
 {%- endif %}
-Bill status {{bill.STATUS_NAME[bill.status]}} </div>
+Bill status {{ bill.STATUS_NAME[bill.status] }} </div>
 <table class="narrowborder">
 <tbody>
 <th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
