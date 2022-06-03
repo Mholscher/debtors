@@ -32,6 +32,10 @@ from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
                                     DebtorSignal)
 from debtmodels.payments import (AmountQueued, IncomingAmounts,
                                  AssignedAmounts)
+from debtviews.overdue_processors import (FirstLetterProcessor,
+                                          SecondLetterProcessor,
+                                          DebtTransferProcessor,
+                                          DubiousDebtorProcessor)
 
 
 def create_clients(instance):
@@ -359,6 +363,30 @@ def create_debtor_signals(instance):
                                     date_start=date.today() - timedelta(days=6),
                                     date_end=date.today() - timedelta(days=2))
 
+def create_overdue_steps(instance):
+    """ Create steps for all steps defined in overdue_processors """
+
+    instance.st15 = OverdueSteps(id=100, number_of_days=25, 
+                                 step_name="First Letter",
+                                 processor="firstletter")
+    instance.st15.add()
+    instance.st16 = OverdueSteps(id=120, number_of_days=40, 
+                                 step_name="Second Letter",
+                                 processor="secondletter")
+    instance.st16.add()
+    instance.st17 = OverdueSteps(id=140, number_of_days=55, 
+                                 step_name="Debt transfer",
+                                 processor="transfer")
+    instance.st17.add()
+    instance.st18 = OverdueSteps(id=160, number_of_days=80, 
+                                 step_name="Debt dubious",
+                                 processor="dubious")
+    instance.st18.add()
+    # Create processors
+    instance.flp14 = FirstLetterProcessor()
+    instance.slp09 = SecondLetterProcessor()
+    instance.dtp06 = DebtTransferProcessor()
+    instance.ddp02 = DubiousDebtorProcessor()
 
 def delete_amountq(instance):
     """ Empty the amounts queue for assignment """

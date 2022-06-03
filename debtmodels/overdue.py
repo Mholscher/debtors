@@ -38,6 +38,12 @@ class DuplicateStepIdError(ValueError):
     pass
 
 
+class NoStepWithIdError(ValueError):
+    """ A step with the given id does not exist """
+
+    pass
+
+
 class StepMustHaveNameError(ValueError):
     """ A step must have a (non-empty) name """
 
@@ -95,7 +101,11 @@ class OverdueSteps(db.Model):
     def validate_id(self, key, for_id):
         """ Make sure at this moment the id is unique """
 
-        self.get_by_id(for_id)
+        try:
+            self.get_by_id(for_id)
+            raise DuplicateStepIdError( f"A step with {for_id} already exists")
+        except NoStepWithIdError:
+            pass
         return for_id
 
     @validates("step_name")
@@ -116,9 +126,9 @@ class OverdueSteps(db.Model):
 
         other_step = db.session.query(OverdueSteps).filter_by(id=step_id).\
             first()
-        if other_step:
-            raise DuplicateStepIdError(
-                f"The step with id {step_id} already exists")
+        if not other_step:
+            raise NoStepWithIdError(
+                f"The step with id {step_id} does not exist")
         return other_step
 
     @staticmethod
@@ -246,7 +256,7 @@ class OverdueProcessor(object):
         """
 
         if not processor_data:
-            raise ValueError("No processor data available!")
+            processor_data = self.processor_data
         if bill.status not in OverdueSteps.VALID_OVERDUE_STATUSES:
             raise BillStatusWrongError(f"Bill status {bill.status} incorrect")
         if bill.date_bill > processor_data[0]:

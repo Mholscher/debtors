@@ -209,14 +209,6 @@ class TestOverdueActions(unittest.TestCase):
         oa01 = db.session.query(OverdueActions).first()
         self.assertFalse(oa01, "Action created early")
 
-    def test_empty_dates_list_fails(self):
-        """ No processors defined fails """
-
-        current_processor_data = tuple()
-        with self.assertRaises(ValueError):
-            self.flp06.execute(bill=self.bll4,
-                               processor_data=current_processor_data)
-
     def test_only_overdue_for_issued_bill(self):
         """ Only for issued bills overdue action is taken """
 

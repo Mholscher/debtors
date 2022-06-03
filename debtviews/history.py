@@ -31,6 +31,7 @@ from clientmodels.clients import (Clients, NoClientFoundError,
                                   NoPostalAddressError)
 from debtors import config
 from debtmodels.debtbilling import Bills
+from debtmodels.overdue import OverdueSteps
 
 def _get_bill_date(bill_or_payment):
 
@@ -132,49 +133,71 @@ class History(dict):
         bill_payments = sorted(bill_payments, key=_get_bill_date, reverse=True)
         for bill_or_payment in bill_payments:
             if hasattr(bill_or_payment, "bill_id"):
-                bill_dict = {"bill_id" : bill_or_payment.bill_id }
-                bill_dict["status"] = Bills.STATUS_NAME[bill_or_payment.status]
-                if bill_or_payment.date_bill:
-                    bill_dict["date_bill"] =\
-                        bill_or_payment.date_bill.strftime(config["DATE_FORMAT"])
-                else:
-                    bill_dict["date_bill"] =\
-                        bill_or_payment.date_sale.strftime(config["DATE_FORMAT"])
-                bill_dict["status"] = bill_or_payment.status
-                bill_dict["currency"] = bill_or_payment.billing_ccy
-                bill_dict["total"] = edited_amount(bill_or_payment.total(),
-                                        currency=bill_or_payment.billing_ccy)
-                if bill_or_payment.assignments:
-                    bill_dict["payment_id"] =\
-                        bill_or_payment.assignments[0].from_amount.id
-                    bill_dict["payment_date"] =\
-                        bill_or_payment.assignments[0].from_amount.\
-                            value_date.strftime(config["DATE_FORMAT"])
-                bill_payment_list.append(bill_dict)
+                bill_payment_list.append(self._make_bill_dict(bill_or_payment))
             else:
-                payment_dict = {"id" : bill_or_payment.id }
-                payment_dict["value_date"] =\
-                    bill_or_payment.value_date.strftime(config["DATE_FORMAT"])
-                payment_dict["payment_ccy"] = bill_or_payment.payment_ccy
-                payment_dict["payment_amount"] = edited_amount(
-                                        bill_or_payment.payment_amount,
-                                        currency=bill_or_payment.payment_ccy)
-                payment_dict["debcred"] = bill_or_payment.debcred
-                bill_payment_list.append(payment_dict)
-                if (hasattr(bill_or_payment, "from_amt")
-                    and bill_or_payment.from_amt):
-                    list_from_amounts = bill_or_payment.list_assigned_from()
-                    from_payments = []
-                    for payment in list_from_amounts:
-                        orig_payment = {"from_payment" : payment.id}
-                        orig_payment["from_ccy"] = payment.payment_ccy
-                        orig_payment["from_amount"] = edited_amount(
-                            payment.payment_amount,
-                            currency=payment.payment_ccy)
-                        from_payments.append(orig_payment)
-                    if from_payments:
-                        payment_dict["from_payments"] = from_payments
+                bill_payment_list.append(self._make_payment_dict(bill_or_payment))
         return bill_payment_list
+
+    def _make_bill_dict(self, bill):
+        """ Make a dictionary for a bill """
+
+        bill_dict = {"bill_id" : bill.bill_id }
+        bill_dict["status"] = Bills.STATUS_NAME[bill.status]
+        if bill.date_bill:
+            bill_dict["date_bill"] =\
+                bill.date_bill.strftime(config["DATE_FORMAT"])
+        else:
+            bill_dict["date_bill"] =\
+                bill.date_sale.strftime(config["DATE_FORMAT"])
+        bill_dict["status"] = bill.status
+        bill_dict["currency"] = bill.billing_ccy
+        bill_dict["total"] = edited_amount(bill.total(),
+                                currency=bill.billing_ccy)
+        if bill.assignments:
+            bill_dict["payment_id"] =\
+                bill.assignments[0].from_amount.id
+            bill_dict["payment_date"] =\
+                bill.assignments[0].from_amount.\
+                    value_date.strftime(config["DATE_FORMAT"])
+        actions = []
+        for action in bill.overdue_actions:
+            overdue_action = { "id" : action.id }
+            step = OverdueSteps.get_by_id(action.step_id)
+            overdue_action["name"] = step.step_name
+            overdue_action["date_action"] =\
+                action.date_action.strftime(config["DATE_FORMAT"])
+            actions.append(overdue_action)
+        if actions:
+            bill_dict["overdue_actions"] = actions
+        return bill_dict
+
+    def _make_payment_dict(self, payment):
+        """ Make a dictionary for a payment """
+
+        payment_dict = {"id" : payment.id }
+        payment_dict["value_date"] =\
+            payment.value_date.strftime(config["DATE_FORMAT"])
+        payment_dict["payment_ccy"] = payment.payment_ccy
+        payment_dict["payment_amount"] = edited_amount(
+                                payment.payment_amount,
+                                currency=payment.payment_ccy)
+        payment_dict["debcred"] = payment.debcred
+        if (hasattr(payment, "from_amt")
+            and payment.from_amt):
+            list_from_amounts = payment.list_assigned_from()
+            from_payments = []
+            for payment in list_from_amounts:
+                orig_payment = {"from_payment" : payment.id}
+                orig_payment["from_ccy"] = payment.payment_ccy
+                orig_payment["from_amount"] = edited_amount(
+                    payment.payment_amount,
+                    currency=payment.payment_ccy)
+                from_payments.append(orig_payment)
+            if from_payments:
+                payment_dict["from_payments"] = from_payments
+        return payment_dict
+
+
 
 class HistoryView(MethodView):
     """ Show the history of this client.

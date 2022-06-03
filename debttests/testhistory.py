@@ -23,10 +23,12 @@ from debttests.helpers import (create_clients, create_bills, add_addresses,
                                add_lines_to_bills,delete_amountq, 
                                delete_test_bills, delete_test_clients,
                                create_payments_for_overdue,
+                               create_overdue_steps, delete_overdue_steps,
                                delete_test_payments)
 from debtors import app, db
 from debtors.processCAMT import CAMT53Handler
 from debtmodels.payments import IncomingAmounts
+from debtmodels.overdue import OverdueProcessor
 from debtviews.history import History
 
 class TestClientDataInMessages(unittest.TestCase):
@@ -38,6 +40,7 @@ class TestClientDataInMessages(unittest.TestCase):
         create_bills(self)
         add_lines_to_bills(self)
         create_payments_for_overdue(self)
+        create_overdue_steps(self)
         db.session.flush()
         self.camthandler = CAMT53Handler()
         self.parser = make_parser()
@@ -50,6 +53,8 @@ class TestClientDataInMessages(unittest.TestCase):
         delete_test_bills(self)
         delete_test_payments(self)
         delete_test_clients(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
         db.session.commit()
 
     def test_client_name_address_in_message(self):
@@ -255,3 +260,62 @@ class TestClientDataInMessages(unittest.TestCase):
         for each in payment_list:
             self.assertNotIn("from_payment", each,
                                 "Payment in list as source")
+
+
+class TestOverdueInHistory(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        db.session.flush()
+        self.camthandler = CAMT53Handler()
+        self.parser = make_parser()
+        self.parser.setContentHandler(self.camthandler)
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+
+    def test_first_letter_in_history(self):
+        """ A first letter appears in the history """
+
+        self.flp14.execute(self.bll4)
+        his19 = History(client=self.clt5)
+        for payment in his19["bills_payments"]:
+            if ("bill_id" in payment
+                and payment["bill_id"] == self.bll4.bill_id):
+                bll4_dict = payment
+                break
+        self.assertIn("overdue_actions", bll4_dict, "No overdue")
+        action_names = [action["name"] for action in bll4_dict["overdue_actions"]]
+        self.assertIn("First Letter", action_names,
+                          "No first letter action in history")
+
+    def test_two_overdue_actions(self):
+        """ Two overdue actions are both reported """
+
+        # Warning! Hack: second letter and first letter swapped otherwise
+        # only the first gets executed
+        self.slp09.execute(self.bll4)
+        self.flp14.execute(self.bll4)
+        his19 = History(client=self.clt5)
+        for bill in his19["bills_payments"]:
+            if ("bill_id" in bill
+                and bill["bill_id"] == self.bll4.bill_id):
+                bll4_dict = bill
+                break
+        self.assertEqual(len(bill["overdue_actions"]), 2,
+                         "No 2 overdue actions")
+

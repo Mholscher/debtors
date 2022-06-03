@@ -166,6 +166,14 @@ class TestCreateFirstLetterProcessor(unittest.TestCase):
         with self.assertRaises(ProcessorAlreadyExistsError):
             flp03 = FirstLetterProcessor()
 
+    def test_processor_defaults_data(self):
+        """ The processor data defaults to pleasant values """
+
+        flp15 = FirstLetterProcessor()
+        processor_data = flp15.processor_data
+        self.assertEqual(processor_data[2], "firstletter",
+                         "Step name does not match")
+
 
 class TestFirstLetterProcess(unittest.TestCase):
 
