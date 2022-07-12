@@ -139,6 +139,8 @@ For each of the steps accounting is done.
         * receipt before reconciliation - debit for the amount to be returned
         * available for crediting - credit for the amount to be returned
 
+    This is currently not implemented, as return payments are not part of debtors.
+
 Information about individual debtors and debts
 ----------------------------------------------
 

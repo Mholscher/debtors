@@ -246,6 +246,69 @@ def create_bills_overdue(instance):
                         unit_price=115)
     instance.bll9.lines.append(bill_line)
 
+def create_bills_for_positions(instance):
+    """ Add bills to test for age of position """
+
+    young_date = date.today() - timedelta(days=10)
+    instance.bll10 = Bills(date_sale=young_date,
+                          date_bill=young_date,
+                          billing_ccy = 'EUR',
+                          status='issued')
+    instance.clt1.bills.append(instance.bll10)
+    instance.bills.append(instance.bll10)
+    bill_line = BillLines(short_desc='Sk009',
+                        long_desc='A very fine product',
+                        number_of=10,
+                        unit_price=105)
+    instance.bll10.lines.append(bill_line)
+    older_date = date.today() - timedelta(days=45)
+    instance.bll11 = Bills(date_sale=older_date,
+                          date_bill=older_date,
+                          billing_ccy = 'EUR',
+                          status='issued')
+    instance.clt1.bills.append(instance.bll11)
+    instance.bills.append(instance.bll11)
+    bill_line = BillLines(short_desc='Sk011',
+                        long_desc='Another fine mess',
+                        number_of=8,
+                        unit_price=75)
+    instance.bll11.lines.append(bill_line)
+    worrying_date = date.today() - timedelta(days=72)
+    instance.bll12 = Bills(date_sale=worrying_date,
+                          date_bill=worrying_date,
+                          billing_ccy = 'EUR',
+                          status='issued')
+    instance.clt1.bills.append(instance.bll12)
+    instance.bills.append(instance.bll12)
+    bill_line = BillLines(short_desc='Sk11998',
+                        long_desc='Me worry? Noooo',
+                        number_of=2,
+                        unit_price=750)
+    instance.bll12.lines.append(bill_line)
+    instance.bll13 = Bills(date_sale=young_date,
+                          date_bill=young_date,
+                          billing_ccy = 'JPY',
+                          status='issued')
+    instance.clt1.bills.append(instance.bll13)
+    instance.bills.append(instance.bll13)
+    bill_line = BillLines(short_desc='Wampoo',
+                        long_desc='Japanese debt',
+                        number_of=4,
+                        unit_price=550)
+    instance.bll13.lines.append(bill_line)
+    instance.bll14 = Bills(date_sale=young_date,
+                          date_bill=young_date,
+                          billing_ccy = 'EUR',
+                          status='new')
+    instance.clt1.bills.append(instance.bll14)
+    instance.bills.append(instance.bll14)
+    bill_line = BillLines(short_desc='Sk98',
+                        long_desc='Not in position',
+                        number_of=1,
+                        unit_price=850)
+    instance.bll14.lines.append(bill_line)
+
+
 def create_payments_for_overdue(instance):
     """ Add received payments to a client having an overdue bill """
 

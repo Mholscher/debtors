@@ -22,7 +22,6 @@ historical events for a client. It shows bills, payments and the
 things that "happened" to these.
 """
 
-from datetime import date, datetime
 from flask import render_template, abort
 from flask.views import MethodView
 from debtviews.monetary import edited_amount
@@ -33,6 +32,7 @@ from debtors import config
 from debtmodels.debtbilling import Bills
 from debtmodels.overdue import OverdueSteps
 
+
 def _get_bill_date(bill_or_payment):
 
     if hasattr(bill_or_payment, "bill_id"):
@@ -40,6 +40,7 @@ def _get_bill_date(bill_or_payment):
             return bill_or_payment.date_sale
         return bill_or_payment.date_bill
     return bill_or_payment.value_date
+
 
 class History(dict):
 
@@ -97,10 +98,10 @@ class History(dict):
     def _mail_addresses(self):
         """ Fill mail addresses in the dictionary """
 
-        addresses = [ mail.mail_address for mail in self.client.emails]
+        addresses = [mail.mail_address for mail in self.client.emails]
         addresses_list = []
         for address in addresses:
-            addresses_list.append({ "mail_address" : address })
+            addresses_list.append({"mail_address": address})
         return addresses_list
 
     def _bank_accounts(self):
@@ -109,7 +110,7 @@ class History(dict):
         accounts = self.client.accounts
         accounts_list = []
         for account in accounts:
-            account_dict = {"iban" : account.iban}
+            account_dict = {"iban": account.iban}
             if account.bic:
                 account_dict["bic"] = account.bic
             if account.client_name:
@@ -124,12 +125,6 @@ class History(dict):
         bill_payments = []
         bill_payments.extend(self.client.payments)
         bill_payments.extend(self.client.bills)
-        #for payment in self.client.payments:
-            #if type(payment.value_date) == datetime:
-                #raise TypeError("Payment " + str(payment.id))
-        #for bill in self.client.bills:
-            #if type(bill.date_bill) == datetime or type(bill.date_sale) == datetime:
-                #raise TypeError("Bill " + bill.bill_id)
         bill_payments = sorted(bill_payments, key=_get_bill_date, reverse=True)
         for bill_or_payment in bill_payments:
             if hasattr(bill_or_payment, "bill_id"):
@@ -141,7 +136,7 @@ class History(dict):
     def _make_bill_dict(self, bill):
         """ Make a dictionary for a bill """
 
-        bill_dict = {"bill_id" : bill.bill_id }
+        bill_dict = {"bill_id": bill.bill_id}
         bill_dict["status"] = Bills.STATUS_NAME[bill.status]
         if bill.date_bill:
             bill_dict["date_bill"] =\
@@ -152,16 +147,16 @@ class History(dict):
         bill_dict["status"] = bill.status
         bill_dict["currency"] = bill.billing_ccy
         bill_dict["total"] = edited_amount(bill.total(),
-                                currency=bill.billing_ccy)
+                                           currency=bill.billing_ccy)
         if bill.assignments:
             bill_dict["payment_id"] =\
                 bill.assignments[0].from_amount.id
             bill_dict["payment_date"] =\
                 bill.assignments[0].from_amount.\
-                    value_date.strftime(config["DATE_FORMAT"])
+                value_date.strftime(config["DATE_FORMAT"])
         actions = []
         for action in bill.overdue_actions:
-            overdue_action = { "id" : action.id }
+            overdue_action = {"id": action.id}
             step = OverdueSteps.get_by_id(action.step_id)
             overdue_action["name"] = step.step_name
             overdue_action["date_action"] =\
@@ -174,7 +169,7 @@ class History(dict):
     def _make_payment_dict(self, payment):
         """ Make a dictionary for a payment """
 
-        payment_dict = {"id" : payment.id }
+        payment_dict = {"id": payment.id}
         payment_dict["value_date"] =\
             payment.value_date.strftime(config["DATE_FORMAT"])
         payment_dict["payment_ccy"] = payment.payment_ccy
@@ -183,11 +178,11 @@ class History(dict):
                                 currency=payment.payment_ccy)
         payment_dict["debcred"] = payment.debcred
         if (hasattr(payment, "from_amt")
-            and payment.from_amt):
+                and payment.from_amt):
             list_from_amounts = payment.list_assigned_from()
             from_payments = []
             for payment in list_from_amounts:
-                orig_payment = {"from_payment" : payment.id}
+                orig_payment = {"from_payment": payment.id}
                 orig_payment["from_ccy"] = payment.payment_ccy
                 orig_payment["from_amount"] = edited_amount(
                     payment.payment_amount,
@@ -196,7 +191,6 @@ class History(dict):
             if from_payments:
                 payment_dict["from_payments"] = from_payments
         return payment_dict
-
 
 
 class HistoryView(MethodView):

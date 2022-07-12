@@ -368,6 +368,31 @@ class Bills(db.Model):
                                                bill.client)
         return bill
 
+    @classmethod
+    def debt_for_period(cls, start_debt_period, end_debt_period):
+        """ Return the debt for a period 
+
+        The start and end of period are passed in as dates. The start
+        date is not included, the end date is. If start or end date is
+        None, that means unbounded, any start date or end date.
+        """
+
+        bills = db.session.query(cls)
+        bills = bills.filter(cls.status == Bills.ISSUED)
+        if start_debt_period:
+            bills = bills.filter(cls.date_bill >= start_debt_period)
+        if end_debt_period:
+            bills = bills.filter(cls.date_bill < end_debt_period)
+        bills = bills.all()
+        amount_bill_total = dict()
+        for bill in bills:
+            if bill.billing_ccy in amount_bill_total:
+                amount_bill_total[bill.billing_ccy] += bill.total()
+            else:
+                amount_bill_total[bill.billing_ccy] = bill.total()
+        return amount_bill_total
+
+
 
 class BillLines(db.Model):
     """ A line on the bill.
