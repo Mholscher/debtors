@@ -25,7 +25,7 @@ overdue processing.
 
 from datetime import date, timedelta, datetime
 from debtors import db
-from sqlalchemy.orm import validates, load_only
+from sqlalchemy.orm import (validates, load_only, aliased)
 from debtors import app
 from debtmodels.debtbilling import Bills
 from debtmodels.payments import IncomingAmounts
@@ -218,6 +218,26 @@ class OverdueActions(db.Model):
         if actions_bill:
             return actions_bill[0]
         return None
+
+    @classmethod
+    def get_by_action(cls, action_type):
+        """ Get all action of the type action_type """
+
+        step = OverdueSteps.get_by_processor(action_type)
+        return cls.query.filter_by(step_id=step.id).all()
+
+    @classmethod
+    def get_all_last_action(cls, processor):
+        """ Get last actions with processor equal processor """
+
+        action_alias = aliased(OverdueActions)
+        step = OverdueSteps.get_by_processor(processor)
+        sq = action_alias.query.filter(OverdueActions.bill_id==action_alias.bill_id,
+                                       OverdueActions.id<action_alias.id)
+        q = cls.query
+        q= q.filter_by(step_id=step.id)
+        q = q.filter(~sq.exists())
+        return q.all()
 
 
 class OverdueProcessor(object):

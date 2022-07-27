@@ -27,6 +27,7 @@ from flask import render_template, abort
 from flask.views import MethodView
 from debtors import config
 from debtmodels.debtbilling import Bills
+from debtmodels.overdue import OverdueActions
 from debtviews.monetary import edited_amount
 from debtviews.outputenvironments import rtfenvironment
 
@@ -115,3 +116,41 @@ class DebtAgeReport():
                            datetime.today().strftime("%H:%M"))
         with open("output/" + age_report_name, "w") as report_file:
             report_file.write(self.text)
+
+
+class DebtByStatus(object):
+    """ Debt by status
+
+    The status is the last overdue action executed. If that is writing
+    the second overdue letter the status will be "secondletter". For
+    each status there will be a method compiling the debt totals.
+
+    For each status a small dictionary will be built for debt totals
+    per currency, for it obviously is useless to have a position
+    where part is Euro and part is Yen.
+    """
+
+    def transferred(self):
+        """ Return the totals of debt in for status transfer """
+
+        transfer_actions = OverdueActions.get_all_last_action("transfer")
+        totals_by_currency = dict()
+        for action in transfer_actions:
+            if action.bill.billing_ccy in totals_by_currency:
+                totals_by_currency[action.bill.billing_ccy] += action.bill.total()
+            else:
+                totals_by_currency[action.bill.billing_ccy] = action.bill.total()
+        return totals_by_currency
+
+    def second_letter(self):
+        """ Return the totals of debt in for status second letter """
+
+        second_letter_actions = OverdueActions.get_all_last_action("secondletter")
+        totals_by_currency = dict()
+        for action in second_letter_actions:
+            if action.bill.billing_ccy in totals_by_currency:
+                totals_by_currency[action.bill.billing_ccy] += action.bill.total()
+            else:
+                totals_by_currency[action.bill.billing_ccy] = action.bill.total()
+        return totals_by_currency
+
