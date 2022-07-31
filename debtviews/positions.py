@@ -130,27 +130,74 @@ class DebtByStatus(object):
     where part is Euro and part is Yen.
     """
 
-    def transferred(self):
-        """ Return the totals of debt in for status transfer """
+    def _get_totals_by_currency(self, action):
+        """ Return totals by currency for this action """
 
-        transfer_actions = OverdueActions.get_all_last_action("transfer")
+        actions = OverdueActions.get_all_last_action(action)
         totals_by_currency = dict()
-        for action in transfer_actions:
+        for action in actions:
             if action.bill.billing_ccy in totals_by_currency:
                 totals_by_currency[action.bill.billing_ccy] += action.bill.total()
             else:
                 totals_by_currency[action.bill.billing_ccy] = action.bill.total()
         return totals_by_currency
+
+    def transferred(self):
+        """ Return the totals of debt in for status transfer """
+
+        return self._get_totals_by_currency("transfer")
 
     def second_letter(self):
         """ Return the totals of debt in for status second letter """
 
-        second_letter_actions = OverdueActions.get_all_last_action("secondletter")
-        totals_by_currency = dict()
-        for action in second_letter_actions:
-            if action.bill.billing_ccy in totals_by_currency:
-                totals_by_currency[action.bill.billing_ccy] += action.bill.total()
-            else:
-                totals_by_currency[action.bill.billing_ccy] = action.bill.total()
-        return totals_by_currency
+        return self._get_totals_by_currency("secondletter")
 
+    def first_letter(self):
+        """ Return the totals of debt in for status first letter """
+
+        return self._get_totals_by_currency("firstletter")
+
+class DebtStatusReport():
+    """ This object creates and renders the debt report by last action """
+
+    def __init__(self):
+
+        self.template = rtfenvironment.get_template("debtstatusreport.rtf")
+
+    def write_report(self):
+        """ Create the data and write the report """
+
+        debt_by_status = DebtByStatus()
+        report_data = dict()
+        report_data["date_report"] = date.today().strftime(config["DATE_FORMAT"])
+        report_data["time_report"] = datetime.today().strftime("%H:%M")
+        debt_by_ccy = []
+        debt_first_letter = debt_by_status.first_letter()
+        for k, v in debt_first_letter.items():
+            ccy_debt = {"ccy": k, "amount": v}
+            debt_by_ccy.append(ccy_debt)
+        report_data["first_letter"] = debt_by_ccy
+        debt_by_ccy = []
+        debt_second_letter = debt_by_status.second_letter()
+        for k, v in debt_second_letter.items():
+            ccy_debt = {"ccy": k, "amount": v}
+            debt_by_ccy.append(ccy_debt)
+        report_data["second_letter"] = debt_by_ccy
+        debt_by_ccy = []
+        debt_transferred = debt_by_status.transferred()
+        for k, v in debt_transferred.items():
+            ccy_debt = {"ccy": k, "amount": v}
+            debt_by_ccy.append(ccy_debt)
+        report_data["transferred"] = debt_by_ccy
+        self.text = self.template.render(status_data=report_data)
+
+    def write_file(self):
+        """ Output the status report to a file. """
+
+        if not (hasattr(self, "text") and self.text):
+            self.write_report()
+        status_report_name = ("Status-report" +
+                           date.today().strftime(config["DATE_FORMAT"]) +
+                           datetime.today().strftime("%H:%M"))
+        with open("output/" + status_report_name, "w") as report_file:
+            report_file.write(self.text)

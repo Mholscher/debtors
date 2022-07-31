@@ -127,6 +127,12 @@ The module debtviews history
 .. automodule:: debtviews.history
    :members:
 
+The module debtviews positions
+------------------------------
+
+.. automodule:: debtviews.positions
+   :members:
+
 The module debtors processCAMT
 ------------------------------
 

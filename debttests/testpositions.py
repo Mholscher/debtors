@@ -32,7 +32,8 @@ from debtviews.overdue_processors import (FirstLetterProcessor,
                                           SecondLetterProcessor,
                                           DebtTransferProcessor,
                                           DubiousDebtorProcessor)
-from debtviews.positions import (DebtByAge, DebtAgeReport, DebtByStatus)
+from debtviews.positions import (DebtByAge, DebtAgeReport, DebtByStatus,
+                                 DebtStatusReport)
 
 class TestDebtPosition(unittest.TestCase):
 
@@ -63,7 +64,8 @@ class TestDebtPosition(unittest.TestCase):
 
         debt_by_age = DebtByAge()
         self.assertEqual(debt_by_age.recent_debt()[self.bll10.billing_ccy],
-                         self.bll10.total(), "Recent debt incorrect")
+                         self.bll10.total() + self.bll15.total(),
+                         "Recent debt incorrect")
 
     def test_position_for_older(self):
         """ The position is reported for older debt """
@@ -85,7 +87,8 @@ class TestDebtPosition(unittest.TestCase):
         debt_by_age = DebtByAge()
         recent_debt = debt_by_age.recent_debt()
         self.assertEqual(recent_debt[self.bll10.billing_ccy],
-                         self.bll10.total(), "Currency debt incorrect")
+                         self.bll10.total() + self.bll15.total(),
+                         "Currency debt incorrect")
         self.assertIn(self.bll13.billing_ccy, recent_debt,
                       "No other currency in debt")
 
@@ -95,7 +98,8 @@ class TestDebtPosition(unittest.TestCase):
         debt_by_age = DebtByAge()
         recent_debt = debt_by_age.recent_debt()
         self.assertEqual(recent_debt[self.bll10.billing_ccy],
-                         self.bll10.total(), "Currency debt incorrect")
+                         self.bll10.total() + self.bll15.total(),
+                         "Currency debt incorrect")
 
 class TestPhysicalReport(unittest.TestCase):
 
@@ -232,3 +236,94 @@ class TestDebtByOverdueStatus(unittest.TestCase):
         self.assertEqual(debt_by_status.transferred()["EUR"],
                          transferred_debt_EUR,
                          "Transferred bill not in total")
+
+class TestOtherActionsAndTotal(unittest.TestCase):
+
+    def setUp(self):
+
+            create_clients(self)
+            add_addresses(self)
+            create_bills(self)
+            create_bills_for_positions(self)
+            add_lines_to_bills(self)
+            create_payments_for_overdue(self)
+            create_overdue_steps(self)
+            create_overdue_actions_for_positions(self)
+            db.session.flush()
+
+    def tearDown(self):
+
+            db.session.rollback()
+            delete_amountq(self)
+            delete_test_bills(self)
+            delete_test_payments(self)
+            delete_test_clients(self)
+            delete_overdue_actions(self)
+            OverdueProcessor.all_processors.clear()
+            delete_overdue_steps(self)
+            db.session.commit()
+
+    def test_first_letter(self):
+        """ Get bills having had overdue first letter """
+
+        debt_by_status = DebtByStatus()
+        first_letter_debt_EUR = self.bll15.total()
+        self.assertEqual(debt_by_status.first_letter()["EUR"],
+                         first_letter_debt_EUR,
+                         "Amount first letter Euro incorrect")
+
+    def test_report_for_all_processors(self):
+        """ Make sure report shows all actions """
+
+        debt_by_status = DebtByStatus()
+        debt = debt_by_status.first_letter()
+        self.assertTrue(debt["EUR"], "No debt for first letter")
+        debt = debt_by_status.second_letter()
+        self.assertTrue(debt["EUR"], "No debt for second letter")
+        debt = debt_by_status.transferred()
+        self.assertTrue(debt["EUR"], "No debt for transfers")
+
+
+class TestPhysicalDebtStatusReport(unittest.TestCase):
+
+    def setUp(self):
+
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_for_positions(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        create_overdue_actions_for_positions(self)
+        db.session.flush()
+
+    def tearDown(self):
+
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        delete_overdue_actions(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+
+    def test_create_physical_report(self):
+        """ We can create the physical report """
+
+        debt_by_status = DebtStatusReport()
+        debt_by_status.write_report()
+        #print(debt_by_status.text)
+        self.assertTrue(debt_by_status.text, "No text in report")
+        self.assertIn( date.today().strftime(config["DATE_FORMAT"]),
+                      debt_by_status.text,
+                      "Date today not in text")
+
+    def test_outfile(self):
+        """ Can produce an output file """
+
+        debt_status_report = DebtStatusReport()
+        debt_status_report.write_file()
+        self.assertTrue(debt_status_report.text, "Create failed")

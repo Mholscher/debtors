@@ -307,6 +307,17 @@ def create_bills_for_positions(instance):
                         number_of=1,
                         unit_price=850)
     instance.bll14.lines.append(bill_line)
+    instance.bll15 = Bills(date_sale=young_date,
+                          date_bill=young_date,
+                          billing_ccy = 'EUR',
+                          status='issued')
+    instance.clt2.bills.append(instance.bll15)
+    instance.bills.append(instance.bll15)
+    bill_line = BillLines(short_desc='fl15',
+                         long_desc='Needs 1 letter',
+                         number_of=8,
+                         unit_price=178)
+    instance.bll15.lines.append(bill_line)
 
 def create_overdue_actions_for_positions(instance):
     """ Create overdue actions for the overdue by status report """
@@ -321,6 +332,10 @@ def create_overdue_actions_for_positions(instance):
     secondletter = OverdueActions(date_action=two_days_before)
     secondletter.bill = instance.bll10
     secondletter.step = instance.st16
+    firstletter = OverdueActions(date_action=two_days_before)
+    firstletter.bill = instance.bll15
+    firstletter.step = instance.st15
+
 
 def create_payments_for_overdue(instance):
     """ Add received payments to a client having an overdue bill """
