@@ -174,19 +174,19 @@ class DebtStatusReport():
         debt_by_ccy = []
         debt_first_letter = debt_by_status.first_letter()
         for k, v in debt_first_letter.items():
-            ccy_debt = {"ccy": k, "amount": v}
+            ccy_debt = {"ccy": k, "amount": edited_amount(v, currency=k)}
             debt_by_ccy.append(ccy_debt)
         report_data["first_letter"] = debt_by_ccy
         debt_by_ccy = []
         debt_second_letter = debt_by_status.second_letter()
         for k, v in debt_second_letter.items():
-            ccy_debt = {"ccy": k, "amount": v}
+            ccy_debt = {"ccy": k, "amount": edited_amount(v, currency=k)}
             debt_by_ccy.append(ccy_debt)
         report_data["second_letter"] = debt_by_ccy
         debt_by_ccy = []
         debt_transferred = debt_by_status.transferred()
         for k, v in debt_transferred.items():
-            ccy_debt = {"ccy": k, "amount": v}
+            ccy_debt = {"ccy": k, "amount": edited_amount(v, currency=k)}
             debt_by_ccy.append(ccy_debt)
         report_data["transferred"] = debt_by_ccy
         self.text = self.template.render(status_data=report_data)
