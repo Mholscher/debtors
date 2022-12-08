@@ -3,7 +3,6 @@ attrs==19.3.0
 Babel==2.9.1
 blessings==1.7
 bpython==0.22.1
-certifi==2019.11.28
 chardet==3.0.4
 charset-normalizer==2.0.7
 click==8.0.3
