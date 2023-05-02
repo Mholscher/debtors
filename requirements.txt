@@ -15,7 +15,7 @@ docutils==0.15.2
 email-validator==1.0.5
 exceptiongroup==1.1.0
 flake8==3.8.1
-Flask==2.2.3
+Flask==2.3.2
 Flask-SQLAlchemy==2.5.1
 Flask-WTF==1.1.1
 greenlet==1.0.0
