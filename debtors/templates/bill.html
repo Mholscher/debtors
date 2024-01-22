@@ -32,9 +32,8 @@
 <div class="inputline">{{fld(form.billing_ccy, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.date_sale, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.bill_replaced, readonly=readonly)}}</div>
-<!-- <div> -->
 <table>
-<th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th>
+<tr><th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th></tr>
 {% for line in form.lines.entries %}
 {% if line.unit_price.data and line.number_of.data -%} 
 {% set total = line.unit_price.data * line.number_of.data %} 
@@ -43,7 +42,6 @@
 <tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{line.edited_amount(total, currency=bill.billing_ccy)}}</td> </tr>
 {% endfor %}
 </table><br/><br/>
-<!-- </div> -->
 <div>
 {{form.update}} {{form.add_1}} {{form.add_more}}
 </div>
