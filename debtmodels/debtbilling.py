@@ -28,8 +28,8 @@ from dateutil.parser import parse
 from sqlalchemy import event
 from sqlalchemy.orm import validates, Session
 from iso4217 import raw_table  # This is the currency table
-from clientmodels.clients import Clients, BankAccounts, db
-from debtors import InvalidDataError
+from clientmodels.clients import Clients, BankAccounts
+from debtors import InvalidDataError, db
 
 
 class BillNotFoundError(ValueError):
