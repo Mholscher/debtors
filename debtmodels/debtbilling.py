@@ -585,7 +585,7 @@ class DebtorPreferences(db.Model):
         """
 
         if not self.client:
-            raise NoClientInPreferenceError('A preference must be for a client')
+            raise NoClientInPreferenceError('A preference must be set for a client')
 
         if not self.client.preferred_mail():
             if self.bill_medium == self.PREF_MAIL:
