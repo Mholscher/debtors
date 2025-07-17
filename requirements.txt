@@ -1,6 +1,7 @@
 alabaster==0.7.12
 attrs==19.3.0
 Babel==2.9.1
+blessed==1.20.0
 blessings==1.7
 blinker==1.6.2
 bpython==0.22.1
@@ -29,9 +30,13 @@ itsdangerous==2.1.2
 Jinja2==3.1.6
 MarkupSafe==2.1.2
 mccabe==0.6.1
+-e git+https://github.com/Mholscher/monetary.git@325ab0206291f581d3cee976a852e50f2d48fd90#egg=monetary
 more-itertools==8.1.0
+mypy-extensions==1.0.0
 mysqlclient==2.1.0
 packaging==20.0
+pathspec==0.11.2
+platformdirs==3.10.0
 pluggy==0.13.1
 pycodestyle==2.6.0
 pycountry==19.8.18
