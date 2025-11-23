@@ -16,6 +16,7 @@
 {% endblock searches %} 
 
 {% block content %}
+
 {% if form.bill_id.data %}
     <h2 class="inlineform"> Bill {{form.bill_id.data}} </h2>
     <form action="/bill/{{form.bill_id.data}}" method="POST" class="inlineform">
@@ -23,15 +24,19 @@
     <h2 class="inlineform"> New Bill </h2>
     <form action={{ url_for('.bill_create') }} method="POST" class="inlineform">
 {% endif %}
+
 {%  if form.bill_id.data %}{% set readonly = true %} {% endif %}
+
 {{ form.csrf_token }}
 {% if form.csrf_token.errors %}
     <div class="warning">You have submitted an invalid CSRF token</div>
 {% endif %}
+
 <div class="inputline">{{fld(form.client_id, readonly=readonly)}} {% if form.client_id.data %}<a href="{{ url_for('client.clients', id=form.client_id.data)}}"> Client data </a>{% endif %}</div>
 <div class="inputline">{{fld(form.billing_ccy, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.date_sale, readonly=readonly)}}</div>
 <div class="inputline">{{fld(form.bill_replaced, readonly=readonly)}}</div>
+
 <table>
 <tr><th>Short desc </th> <th> Description </th> <th> Number of/measure </th> <th> price </th><th> Total </th></tr>
 {% for line in form.lines.entries %}
@@ -39,13 +44,18 @@
 {% set total = line.unit_price.data * line.number_of.data %} 
 {% else -%} {% set total = 0 %}
 {%- endif %}
+
 <tr><td> {{nolabel(line.short_desc)}} </td><td>{{nolabel(line.long_desc)}} </td><td>{{nolabel(line.number_of)}}{{nolabel(line.measured_in)}}</td><td>{{nolabel(line.unit_price)}}</td><td>{{line.edited_amount(total, currency=bill.billing_ccy)}}</td> </tr>
 {% endfor %}
+
 </table><br/><br/>
+
 <div>
 {{form.update}} {{form.add_1}} {{form.add_more}}
 </div>
+
 </form>
+
 <div>
 {% if debtor_signals %}
     <h2>Debtor signal(s) </h2>
@@ -60,4 +70,5 @@
 {% endfor %}
 {% endif %}
 </div>
+
 {% endblock content %}

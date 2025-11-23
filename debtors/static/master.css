@@ -68,7 +68,7 @@ a.IMG {
 
 .inlineform {
     width : 50em ;
-    display : block ;
+    display : grid ;
     margin-left : 15% ;    
     }
 
@@ -115,4 +115,8 @@ td, th {
 
 .narrowborder {
     border-width : 1px ;
+}
+
+.buttonbox {
+    padding : 8px ;
 }
