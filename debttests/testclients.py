@@ -30,11 +30,13 @@ class TestCreateClient(unittest.TestCase):
 
     def setUp(self):
 
-        pass
+        self.ctx = app.app_context()
+        self.ctx.push()
 
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_create_client(self):
         """ We can create a client """
@@ -93,6 +95,8 @@ class TestClientFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt16 = Clients(surname='Zwaluwen', first_name='Job',
                         initials='J.N.', birthdate=date(1984, 11, 2),
                         sex='M')
@@ -102,6 +106,7 @@ class TestClientFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_get_by_id(self):
         """ Get a client by its id """
@@ -119,6 +124,8 @@ class TestAddressCreate(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt07 = Clients(surname='Gershuis', first_name='Simon',
                         initials='S.N.', birthdate=date(1981, 10, 4),
                         sex='M')
@@ -128,6 +135,7 @@ class TestAddressCreate(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_create_address(self):
         """ We can create an address """
@@ -230,6 +238,8 @@ class TestAddressUse(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt08 = Clients(surname='Dalsberg', first_name='Philip',
                         initials='P.N.', birthdate=date(1967, 2, 1),
                         sex='M')
@@ -257,6 +267,7 @@ class TestAddressUse(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_client_returns_postal_address(self):
         """ When requested, the postal address is returned """
@@ -308,6 +319,8 @@ class TestAddressFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         db.session.flush()
@@ -317,6 +330,7 @@ class TestAddressFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_add_address(self):
         """ We can add an address to a client having an address """
@@ -362,6 +376,8 @@ class TestMailAddress(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt10 = Clients(surname='Snavelaar', first_name='Karel',
                         initials='K.T.', birthdate=date(1971, 4, 5),
                         sex='M')
@@ -371,6 +387,7 @@ class TestMailAddress(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_add_mail_address(self):
         """ We can add a first mail address """
@@ -476,6 +493,8 @@ class TestBankAccounts(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt11 = Clients(surname='Gijzen', first_name='Fien',
                         initials='F.', birthdate=date(1941, 4, 16),
                         sex='F')
@@ -485,6 +504,7 @@ class TestBankAccounts(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_can_create_account(self):
         """ We can create a new bankaccount """
@@ -543,6 +563,8 @@ class TestBankAccountsFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         db.session.flush()
         spread_created_at(self)
@@ -556,6 +578,7 @@ class TestBankAccountsFunctions(unittest.TestCase):
         db.session.rollback()
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_bankaccount(self):
         """ Get a bank account for a client """
@@ -673,6 +696,8 @@ class TestDebtorInterface(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.clt12 = Clients(surname='Jansen', first_name='Tycho',
                         initials='T.M.', birthdate=date(1971, 2, 23),
                         sex='M')
@@ -703,6 +728,7 @@ class TestDebtorInterface(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_get_postal_address(self):
         """ We get the correct postal address """
@@ -758,12 +784,14 @@ class TestClientTransactions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.app = app.test_client()
         self.app.testing = True
 
-    def rollback():
+    def tearDown(self):
 
-        pass
+        self.ctx.pop()
 
     def test_get_client(self):
         """ We can get a client """
@@ -844,6 +872,8 @@ class TestClientList(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         db.session.flush()
         spread_created_at(self)
@@ -853,6 +883,7 @@ class TestClientList(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_get_list_from_model(self):
         """ We can get a list of clients from the model """
@@ -959,6 +990,8 @@ class TestClientListFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         db.session.flush()
         spread_created_at(self)
@@ -970,6 +1003,7 @@ class TestClientListFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_get_first_page(self):
         """ We can get the first page of the client list """

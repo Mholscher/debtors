@@ -63,6 +63,7 @@ class BillCreateView(MethodView):
 
         bill_dict = request.get_json()
         bill = Bills.create_from_dict(bill_dict)
+        bill.add()
         db.session.commit()
         return jsonify(create_success_response({"bill-id" : bill.bill_id}))
 

@@ -39,25 +39,28 @@ class TestDebtPosition(unittest.TestCase):
 
     def setUp(self):
 
-            create_clients(self)
-            add_addresses(self)
-            create_bills(self)
-            create_bills_for_positions(self)
-            add_lines_to_bills(self)
-            create_payments_for_overdue(self)
-            create_overdue_steps(self)
-            db.session.flush()
+        self.ctx = app.app_context()
+        self.ctx.push()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_for_positions(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        db.session.flush()
 
     def tearDown(self):
 
-            db.session.rollback()
-            delete_amountq(self)
-            delete_test_bills(self)
-            delete_test_payments(self)
-            delete_test_clients(self)
-            OverdueProcessor.all_processors.clear()
-            delete_overdue_steps(self)
-            db.session.commit()
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+        self.ctx.pop()
 
     def test_position_for_recent(self):
         """ The position is reported for recent debt """
@@ -105,25 +108,28 @@ class TestPhysicalReport(unittest.TestCase):
 
     def setUp(self):
 
-            create_clients(self)
-            add_addresses(self)
-            create_bills(self)
-            create_bills_for_positions(self)
-            add_lines_to_bills(self)
-            create_payments_for_overdue(self)
-            create_overdue_steps(self)
-            db.session.flush()
+        self.ctx = app.app_context()
+        self.ctx.push()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_for_positions(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        db.session.flush()
 
     def tearDown(self):
 
-            db.session.rollback()
-            delete_amountq(self)
-            delete_test_bills(self)
-            delete_test_payments(self)
-            delete_test_clients(self)
-            OverdueProcessor.all_processors.clear()
-            delete_overdue_steps(self)
-            db.session.commit()
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+        self.ctx.pop()
 
     def test_create_report(self):
         """ A report is created """
@@ -155,27 +161,30 @@ class TestDebtByOverdueStatus(unittest.TestCase):
 
     def setUp(self):
 
-            create_clients(self)
-            add_addresses(self)
-            create_bills(self)
-            create_bills_for_positions(self)
-            add_lines_to_bills(self)
-            create_payments_for_overdue(self)
-            create_overdue_steps(self)
-            create_overdue_actions_for_positions(self)
-            db.session.flush()
+        self.ctx = app.app_context()
+        self.ctx.push()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_for_positions(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        create_overdue_actions_for_positions(self)
+        db.session.flush()
 
     def tearDown(self):
 
-            db.session.rollback()
-            delete_amountq(self)
-            delete_test_bills(self)
-            delete_test_payments(self)
-            delete_test_clients(self)
-            delete_overdue_actions(self)
-            OverdueProcessor.all_processors.clear()
-            delete_overdue_steps(self)
-            db.session.commit()
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        delete_overdue_actions(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+        self.ctx.pop()
 
     def test_get_overdue_for_status(self):
         """ Get all bills with a known overdue status """
@@ -200,6 +209,7 @@ class TestDebtByOverdueStatus(unittest.TestCase):
         action_jpy = OverdueActions(date_action=date(2020, 11, 3))
         action_jpy.step = self.st17
         action_jpy.bill = self.bll13
+        action_jpy.add()
         db.session.flush()
         debt_by_status = DebtByStatus()
         transferred_debt_EUR = self.bll11.total() + self.bll12.total()
@@ -228,6 +238,7 @@ class TestDebtByOverdueStatus(unittest.TestCase):
         transfer = OverdueActions(date_action=two_days_before)
         transfer.bill = self.bll10
         transfer.step = self.st17
+        transfer.add()
         db.session.flush()
         self.assertNotIn("EUR", debt_by_status.second_letter(),
                         "Transferred bill in second letter")
@@ -241,27 +252,30 @@ class TestOtherActionsAndTotal(unittest.TestCase):
 
     def setUp(self):
 
-            create_clients(self)
-            add_addresses(self)
-            create_bills(self)
-            create_bills_for_positions(self)
-            add_lines_to_bills(self)
-            create_payments_for_overdue(self)
-            create_overdue_steps(self)
-            create_overdue_actions_for_positions(self)
-            db.session.flush()
+        self.ctx = app.app_context()
+        self.ctx.push()
+        create_clients(self)
+        add_addresses(self)
+        create_bills(self)
+        create_bills_for_positions(self)
+        add_lines_to_bills(self)
+        create_payments_for_overdue(self)
+        create_overdue_steps(self)
+        create_overdue_actions_for_positions(self)
+        db.session.flush()
 
     def tearDown(self):
 
-            db.session.rollback()
-            delete_amountq(self)
-            delete_test_bills(self)
-            delete_test_payments(self)
-            delete_test_clients(self)
-            delete_overdue_actions(self)
-            OverdueProcessor.all_processors.clear()
-            delete_overdue_steps(self)
-            db.session.commit()
+        db.session.rollback()
+        delete_amountq(self)
+        delete_test_bills(self)
+        delete_test_payments(self)
+        delete_test_clients(self)
+        delete_overdue_actions(self)
+        OverdueProcessor.all_processors.clear()
+        delete_overdue_steps(self)
+        db.session.commit()
+        self.ctx.pop()
 
     def test_first_letter(self):
         """ Get bills having had overdue first letter """
@@ -288,6 +302,8 @@ class TestPhysicalDebtStatusReport(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -309,6 +325,7 @@ class TestPhysicalDebtStatusReport(unittest.TestCase):
         OverdueProcessor.all_processors.clear()
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_physical_report(self):
         """ We can create the physical report """

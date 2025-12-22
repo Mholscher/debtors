@@ -326,15 +326,19 @@ def create_overdue_actions_for_positions(instance):
     transferred = OverdueActions(date_action=two_days_before)
     transferred.bill = instance.bll12
     transferred.step = instance.st17
+    transferred.add()
     transferred = OverdueActions(date_action=two_days_before)
     transferred.bill = instance.bll11
     transferred.step = instance.st17
+    transferred.add()
     secondletter = OverdueActions(date_action=two_days_before)
     secondletter.bill = instance.bll10
     secondletter.step = instance.st16
+    secondletter.add()
     firstletter = OverdueActions(date_action=two_days_before)
     firstletter.bill = instance.bll15
     firstletter.step = instance.st15
+    firstletter.add()
 
 
 def create_payments_for_overdue(instance):
@@ -347,6 +351,7 @@ def create_payments_for_overdue(instance):
                                value_date=date(2021, 2, 13),
                                our_ref='Ref Undef',
                                bank_ref='320098')
+    instance.ia110.add()
     instance.ia110.change_client(instance.bll4.client)
 
     instance.ia111 = IncomingAmounts(payment_ccy='JPY',
@@ -355,12 +360,14 @@ def create_payments_for_overdue(instance):
                                client_name='T. Funderthun',
                                our_ref='Ref 8',
                                bank_ref='320155')
+    instance.ia111.add()
     instance.ia111.change_client(instance.clt1)
 
     instance.ia112 = IncomingAmounts(payment_ccy='JPY',
                                payment_amount=8,
                                value_date=date(2022, 1, 8),
                                our_ref='Ref Undef')
+    instance.ia112.add()
     instance.ia112.change_client(instance.bll4.client)
 
 def add_lines_to_bills(instance):
@@ -450,26 +457,28 @@ def create_debtor_signals(instance):
     instance.sig12 = DebtorSignal(client=instance.bll8.client,
                                     date_start=date.today() - timedelta(days=4),
                                     date_end=None)
+    instance.sig12.add()
     instance.sig13 = DebtorSignal(client=instance.bll8.client,
                                     date_start=date.today() - timedelta(days=6),
                                     date_end=date.today() - timedelta(days=2))
+    instance.sig13.add()
 
 def create_overdue_steps(instance):
     """ Create steps for all steps defined in overdue_processors """
 
-    instance.st15 = OverdueSteps(id=100, number_of_days=25, 
+    instance.st15 = OverdueSteps(id=100, number_of_days=25,
                                  step_name="First Letter",
                                  processor="firstletter")
     instance.st15.add()
-    instance.st16 = OverdueSteps(id=120, number_of_days=40, 
+    instance.st16 = OverdueSteps(id=120, number_of_days=40,
                                  step_name="Second Letter",
                                  processor="secondletter")
     instance.st16.add()
-    instance.st17 = OverdueSteps(id=140, number_of_days=55, 
+    instance.st17 = OverdueSteps(id=140, number_of_days=55,
                                  step_name="Debt transfer",
                                  processor="transfer")
     instance.st17.add()
-    instance.st18 = OverdueSteps(id=160, number_of_days=80, 
+    instance.st18 = OverdueSteps(id=160, number_of_days=80,
                                  step_name="Debt dubious",
                                  processor="dubious")
     instance.st18.add()
@@ -486,18 +495,31 @@ def delete_amountq(instance):
     for amount in amounts:
         db.session.delete(amount)
 
-def delete_test_bills(instance):
+def delete_test_bills(instance, debug=None):
     """ Delete all the bills created for a test """
 
+    lines = db.session.query(BillLines).all()
+    for line in lines:
+        if debug == "line":
+            print("bill","line", line.id)
+        db.session.delete(line)
+    repl_bills = db.select(Bills).where(Bills.status==Bills.REPLACED)
+    bills = db.session.execute(repl_bills)
+    for bill in bills:
+        if debug == "bill":
+            print("bill", bill)
+        db.session.delete(bill)
     bills = db.session.query(Bills).all()
     for bill in bills:
+        if debug == "bill":
+            print("bill", bill)
         db.session.delete(bill)
 
 def delete_test_payments(instance):
     """ Delete all payments created for a test """
 
     assignments = db.session.query(AssignedAmounts).all()
-    for assigned_amount in assignments:
+    for assigned_amount in assignments: 
         db.session.delete(assigned_amount)
     payments = db.session.query(IncomingAmounts).all()
     for payment in payments:

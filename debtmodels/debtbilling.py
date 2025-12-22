@@ -480,7 +480,7 @@ class BillLines(db.Model):
 
 class DebtorSignal(db.Model):
 
-    __table_name__ = "debtsignals"
+    __tablename__ = "debtsignals"
     id = db.Column(db.Integer, db.Sequence("signal_seq"),
                    primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), index=True)
@@ -545,13 +545,14 @@ class DebtorPreferences(db.Model):
 
     """
 
+    __tablename__ = 'debtprefs'
+
     PREF_MAIL = 'mail'
     PREF_POSTAL = 'post'
     PREF_DEBIT = 'dd'
     BILL_MEDIA = {PREF_MAIL, PREF_POSTAL, PREF_DEBIT}
     LETTER_MEDIA = {PREF_MAIL, PREF_POSTAL}
 
-    __table_name__ = 'debtprefs'
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'),
                           nullable=False, primary_key=True)
     bill_medium = db.Column(db.String(5), default='mail')

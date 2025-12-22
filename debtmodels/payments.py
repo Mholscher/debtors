@@ -26,6 +26,7 @@ of the amount retained for further processing.
 """
 
 from datetime import datetime, date
+from typing import List
 from debtors import db
 from sqlalchemy.orm import validates
 from iso4217 import raw_table  # This is the currency table
@@ -173,6 +174,7 @@ class IncomingAmounts(db.Model):
     DEBCRED = {CREDIT: "Credit", DEBIT: "Debit"}
     __tablename__ = 'payments'
     id = db.Column(db.Integer, db.Sequence('payment_seq'),
+                   db.ForeignKey('assignedamts.amount_id'),
                    primary_key=True)
     file_timestamp = db.Column(db.DateTime, nullable=False,
                                default=datetime.now)
@@ -361,6 +363,7 @@ class IncomingAmounts(db.Model):
         assigned_amount.bill = bill
         bill.bill_is_paid()
         assigned_amount.from_amount = self
+        assigned_amount.add()
         return assigned_amount
 
     def assign_to_amount(self, to_amount, other_ccy=None, other_amount=None):
@@ -396,6 +399,7 @@ class IncomingAmounts(db.Model):
                 raise AToAmountIsRequiredError("Amount in {} missing".format(other_ccy))
         else:
             to_amount.payment_amount += assigned_amount.amount_assigned
+        assigned_amount.add()
         self.fully_assigned = True
 
         return assigned_amount
@@ -645,7 +649,7 @@ class AssignedAmounts(db.Model):
 
     """
 
-    __table_name__ = 'assignedamts'
+    __tablename__ = 'assignedamts'
     id = db.Column(db.Integer, db.Sequence('assgn_seq'),
                    primary_key=True)
     amount_id = db.Column(db.Integer, db.ForeignKey('payments.id'))
@@ -659,8 +663,11 @@ class AssignedAmounts(db.Model):
     reversed = db.Column(db.Boolean, nullable=True, default=False)
     bill = db.relationship('Bills', backref='assignments')
     from_amount = db.relationship('IncomingAmounts', uselist=False,
+                                  primaryjoin=
+                                  "assignedamts.c.amount_id==payments.c.id",
                                   foreign_keys=[amount_id],
                                   backref='used_in')
+                                  # foreign_keys=[amount_id])
     to_amount = db.relationship('IncomingAmounts',
                                 foreign_keys=[amount_id_to],
                                 backref='from_amt')

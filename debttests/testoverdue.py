@@ -40,6 +40,8 @@ class TestCreateOverdueRule(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.st01 = OverdueSteps(id=100, number_of_days=30, 
                                 step_name="Baby step",
                                 processor="babyproc")
@@ -49,6 +51,7 @@ class TestCreateOverdueRule(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
 
     def test_create_simple_rule(self):
@@ -106,6 +109,8 @@ class TestOverdueStepFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.st08 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="Baby step",
                                 processor="babyproc")
@@ -115,6 +120,7 @@ class TestOverdueStepFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_overdue_days_list(self):
         """ Get overdue dates and id of step """
@@ -155,6 +161,8 @@ class TestOverdueActions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -182,6 +190,7 @@ class TestOverdueActions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_overdue_step_create_action(self):
         """ Executing an overdue step creates history record """
@@ -308,6 +317,8 @@ class TestOverdueActionsFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -345,6 +356,7 @@ class TestOverdueActionsFunctions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_return_action_list_for_bill(self):
         """ A action list is returned for a bill """

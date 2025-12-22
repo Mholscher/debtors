@@ -367,6 +367,7 @@ class EMail(db.Model):
     """
 
     __tablename__ = 'email'
+
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id',
                                                     ondelete='CASCADE'),
                           nullable=False)

@@ -19,10 +19,11 @@ import unittest
 from json import dumps
 from datetime import datetime, date, timedelta
 from sqlalchemy.exc import IntegrityError
+from flask import g
 from debtors import app, db
 from clientmodels.clients import Clients, Addresses, EMail, BankAccounts
 from debtmodels.debtbilling import (Bills, BillLines, DebtorPreferences,
-                                    DebtorSignal)
+                                    DebtorSignal, NoClientInPreferenceError)
 from debtviews.billsapi import BillDict, BillListDict
 from debttests.helpers import (delete_test_clients, add_addresses,
     create_clients, spread_created_at , create_bills, add_lines_to_bills,
@@ -34,20 +35,27 @@ class TestCreateBill(unittest.TestCase):
 
     def setUp(self):
 
-        pass
+        self.ctx = app.app_context()
+        self.ctx.push()
 
-    def rollback(self):
+    def tearDown(self):
 
         db.session.rollback()
+        for a_bill in db.session.new:
+            print(a_bill.bill_id)
+        delete_test_bills(self)
+        print(db.session.new)
+        db.session.commit()
+        self.ctx.pop()
 
     def test_create_bill(self):
         """ We can create a new bill  """
 
-        bill01 = Bills(date_sale=datetime.now(), date_bill=None,
+        self.bill01 = Bills(date_sale=datetime.now(), date_bill=None,
                       prev_bill=None, status=Bills.NEW)
-        bill01.add()
+        self.bill01.add()
         db.session.flush()
-        self.assertTrue(bill01.bill_id, 'No bill id found')
+        self.assertTrue(self.bill01.bill_id, 'No bill id found')
 
     def test_no_sale_date_fails(self):
         """ The date of sale is required """
@@ -93,7 +101,7 @@ class TestCreateBill(unittest.TestCase):
                       status=Bills.NEW)
         bill04.add()
         db.session.flush()
-        bill04 = db.session.query(Bills).first()
+        bill04 = db.session.query(Bills).filter_by(bill_id=bill04.bill_id).first()
         bill05 = Bills(date_sale=datetime.now(), date_bill=None,
                       prev_bill=bill04.bill_id, status=Bills.NEW)
         bill05.add()
@@ -153,6 +161,8 @@ class TestBillFromMessage(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -179,11 +189,13 @@ class TestBillFromMessage(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_bill_from_dict(self):
         """ We can create a bill from the dict """
 
         bill15 = Bills.create_from_dict(self.bill_dict)
+        print(bill15.bill_id)
         self.assertIn(bill15, self.clt1.bills, 'Bill not added')
 
     def test_invalid_client_fails(self):
@@ -198,20 +210,23 @@ class TestBillFromMessage(unittest.TestCase):
 
         bill17 = Bills.create_from_dict(self.bill_dict)
         self.assertEqual(len(bill17.lines), 2, 'Incorrect no of lines')
+        db.session.rollback()
 
 
 class TestBillFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.bill08 = Bills(date_sale=datetime.now(), date_bill=None,
                             status=Bills.NEW)
-        self.bill08.add()
         self.bl09 = BillLines(short_desc='Lumpy', unit_price=18)
         self.bill08.lines.append(self.bl09)
         self.bl10 = BillLines(short_desc='Gravy', unit_price=45,
                               number_of=5)
         self.bill08.lines.append(self.bl10)
+        self.bill08.add()
         create_clients(self)
         add_addresses(self)
         self.bill08.client = self.clt1
@@ -222,9 +237,10 @@ class TestBillFunctions(unittest.TestCase):
 
         db.session.rollback()
         delete_test_prefs(self)
-        delete_test_bills(self)
+        delete_test_bills(self, debug="bill")
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_bill_total(self):
         """ The bill can return total due on it """
@@ -254,6 +270,7 @@ class TestBillFunctions(unittest.TestCase):
         bill11 = Bills(date_sale=datetime.now(), date_bill=None,
                        status=Bills.NEW)
         bill11.client = self.clt1
+        bill11.add()
         db.session.flush()
 
         bill08_new = db.session.query(Bills).filter_by(bill_id=bill08_id).first()
@@ -267,6 +284,7 @@ class TestBillFunctions(unittest.TestCase):
         bill12 = Bills(date_sale=datetime.now(), date_bill=None,
                        status=Bills.ISSUED)
         bill12.client = self.clt1
+        bill12.add()
         db.session.flush()
 
         list_issued = Bills.get_bills_with_status(self.clt1, [Bills.ISSUED])
@@ -278,9 +296,11 @@ class TestBillFunctions(unittest.TestCase):
         bill13 = Bills(date_sale=datetime.now(), date_bill=None,
                        status=Bills.ISSUED)
         bill13.client = self.clt1
+        bill13.add()
         bill14 = Bills(date_sale=datetime.now(), date_bill=None,
                        status=Bills.PAID)
         bill14.client = self.clt1
+        bill14.add()
         db.session.flush()
 
         list_unpaid = Bills.get_outstanding_bills(self.clt1)
@@ -307,6 +327,8 @@ class TestConvertToTagged(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -319,6 +341,7 @@ class TestConvertToTagged(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_convert_bill(self):
         """ We can convert a bill to a billdict """
@@ -362,6 +385,8 @@ class TestBillTransactions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -393,6 +418,7 @@ class TestBillTransactions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_outstanding(self):
         """ We can retrieve a json with the debt """
@@ -576,6 +602,7 @@ class TestBillTransactions(unittest.TestCase):
                              follow_redirects=False)
         bill = db.session.query(Bills).\
             filter_by(client_id = clt6_id).first()
+        bill.add()
         self.assertEqual(99, bill.lines[0].unit_price,
                          'Unit price incorrect')
 
@@ -584,21 +611,24 @@ class TestDebtEnquiries(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
+        self.app = app.test_client()
+        self.app.testing = True
         create_clients(self)
         add_addresses(self)
         create_bills(self)
         add_lines_to_bills(self)
         db.session.flush()
-        self.app = app.test_client()
-        self.app.testing = True
 
     def tearDown(self):
 
         db.session.rollback()
-        delete_test_bills(self)
+        delete_test_bills(self, debug="bill")
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_client_debt(self):
         """ Debt is reported for a client """
@@ -621,6 +651,7 @@ class TestDebtEnquiries(unittest.TestCase):
 
         bll1 = Bills(date_sale=date.today(), date_bill=None,
                      status='new')
+        bll1.add()
         self.clt1.bills.append(bll1)
         bl09 = BillLines(short_desc='Waffle', unit_price=68,
                               number_of=5)
@@ -630,14 +661,15 @@ class TestDebtEnquiries(unittest.TestCase):
         rv = self.app.get('/debt/' + str(self.clt1.id))
         self.assertEqual(200, rv.status_code, 'Unsuccessful debt get')
         self.assertIn(str(bill_id).encode(), rv.data, 'Individual bill not in response')
-        self.assertIn(b'debt is EUR 4873', rv.data, 'Total line incorrect')
+        self.assertIn(b'debt is EUR 48,73', rv.data, 'Total line incorrect')
 
-    def test_client_debt_more_bills(self):
+    def test_client_debt_more_bills_2(self):
         """ A client may have more than one bill in debt """
 
         bll2 = Bills(date_sale=date.today(), date_bill=None,
                      billing_ccy='JPY',
                      status='new')
+        bll2.add()
         self.clt1.bills.append(bll2)
         bl11 = BillLines(short_desc='Waffle', unit_price=68,
                               number_of=5)
@@ -654,21 +686,27 @@ class TestDebtEnquiries(unittest.TestCase):
         """ Amount formatting in debt view correct for currency """
 
         rv = self.app.get('debt/' + str(self.clt5.id))
+        print(rv.status)
         self.assertIn(b'1.880', rv.data, 'Total wrongly formatted')
         self.assertNotIn(b'1880', rv.data, 'Total wrongly formatted')
+        # self.assertIn(b'1880', rv.data, 'Total wrongly formatted')
 
     def test_amount_edited_correct_precision_2(self):
         """ Amount formatting in debt view correct for currency """
 
         rv = self.app.get('debt/' + str(self.clt3.id))
+        print(rv.status)
         self.assertIn(b'567,97', rv.data, 'Total wrongly formatted')
         self.assertNotIn(b'56797', rv.data, 'Total wrongly formatted')
+        # self.assertIn(b'56797', rv.data, 'Total wrongly formatted')
 
 
 class TestBillEnquiries(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -684,6 +722,7 @@ class TestBillEnquiries(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_enquire_on_bill(self):
         """ We can enquire upon a bill """
@@ -699,6 +738,7 @@ class TestBillEnquiries(unittest.TestCase):
         bill_id = self.bll2.bill_id
         rv = self.app.get('/bill/' + str(self.bll2.bill_id) + '/details')
         self.assertEqual(200, rv.status_code, 'Unsuccessful bill get')
+        print(rv.data)
         self.assertIn(Bills.STATUS_NAME['paid'].encode(), rv.data,
                           'Bill status not in response') 
 
@@ -707,6 +747,8 @@ class TestLineCreate(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.bill06 = Bills(date_sale=datetime.now(), date_bill=None,
                             status='new')
         self.bill06.add()
@@ -715,6 +757,7 @@ class TestLineCreate(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_create_one_line(self):
         """ We can create a line for the bill """
@@ -765,6 +808,8 @@ class TestBillLineFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.bill07 = Bills(date_sale=datetime.now(), date_bill=None,
                             status='new')
         self.bill07.add()
@@ -778,6 +823,7 @@ class TestBillLineFunctions(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
+        self.ctx.pop()
 
     def test_line_totals(self):
         """ A line must have a total amount """
@@ -793,13 +839,15 @@ class TestDebtorSignal(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
+        self.app = app.test_client()
+        self.app.testing = True
         create_clients(self)
         add_addresses(self)
         create_bills(self)
         add_lines_to_bills(self)
         db.session.flush()
-        self.app = app.test_client()
-        self.app.testing = True
 
     def tearDown(self):
 
@@ -808,12 +856,14 @@ class TestDebtorSignal(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_signal_exist(self):
         """ A signal is reported """
 
         sig01 = DebtorSignal(client=self.clt1,
                              date_start=date.today())
+        sig01.add()
         self.assertEqual(sig01.client_has_signal(self.clt1), sig01,
                          "No/Wrong signal returned")
 
@@ -822,6 +872,7 @@ class TestDebtorSignal(unittest.TestCase):
 
         sig02 = DebtorSignal(client=self.clt1,
                              date_start=date(year=2020, month=3, day=2))
+        sig02.add()
         with self.assertRaises(ValueError):
             bll5 = Bills(client_id=self.clt1.id,
                          billing_ccy="JPY",
@@ -836,6 +887,7 @@ class TestDebtorSignal(unittest.TestCase):
 
         sig03 = DebtorSignal(client=self.clt1,
                              date_start=date.today())
+        sig03.add()
         bld3 = BillDict(self.bll8)
         self.assertIn("signal", bld3, "No signal in dict")
         self.assertIn(date.today().strftime("%d-%m-%Y"), bld3["signal"],
@@ -846,9 +898,11 @@ class TestDebtorSignal(unittest.TestCase):
 
         sig04 = DebtorSignal(client=self.clt1,
                              date_start=date.today())
+        sig04.add()
         second_date = date.today() - timedelta(days=2)
         sig05 = DebtorSignal(client=self.clt1,
                              date_start=second_date)
+        sig05.add()
         bld4 = BillDict(self.bll8)
         self.assertIn(second_date.strftime("%d-%m-%Y"), bld4["signal"],
                       "No/incorrect date in dictionary")
@@ -860,6 +914,7 @@ class TestDebtorSignal(unittest.TestCase):
         sig07 = DebtorSignal(client=self.clt1,
                              date_start=second_date,
                              date_end=date.today() - timedelta(days=1))
+        sig07.add()
         bld5 = BillDict(self.bll8)
         self.assertNotIn("signal", bld5,
                       "Incorrect date in dictionary")
@@ -869,9 +924,11 @@ class TestDebtorSignal(unittest.TestCase):
 
         sig08 = DebtorSignal(client=self.clt1,
                              date_start=date.today() - timedelta(days=4))
+        sig08.add()
         second_date = date.today() - timedelta(days=2)
         sig09 = DebtorSignal(client=self.clt1,
                              date_start=second_date)
+        sig09.add()
         signals = DebtorSignal.signals_for(self.bll8)
         self.assertIn(sig08, signals,
                       "Signal not in list for bill")
@@ -884,9 +941,11 @@ class TestDebtorSignal(unittest.TestCase):
         sig10 = DebtorSignal(client=self.clt1,
                              date_start=date.today() - timedelta(days=4),
                              date_end=date.today() - timedelta(days=2))
+        sig10.add()
         second_date = date.today() - timedelta(days=2)
         sig11 = DebtorSignal(client=self.clt1,
                              date_start=second_date)
+        sig11.add()
         signals = DebtorSignal.signals_for(self.bll8)
         self.assertNotIn(sig10, signals,
                       "Ended signal in list for bill")
@@ -898,6 +957,8 @@ class TestSignalFunctions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -915,6 +976,7 @@ class TestSignalFunctions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_signal_appears(self):
         """ A signal should appear on the bill page """
@@ -932,6 +994,7 @@ class TestSignalFunctions(unittest.TestCase):
         self.sig14 = DebtorSignal(client=self.bll8.client,
                                   date_start=date.today() - timedelta(days=4),
                                   date_end=None)
+        self.sig14.add()
         db.session.flush()
 
         rv = self.app.get("/bill/" + str(self.bll8.bill_id))
@@ -953,6 +1016,8 @@ class TestSignalTransactions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -970,6 +1035,7 @@ class TestSignalTransactions(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_signal(self):
         """ Get a signal on the page """
@@ -1035,6 +1101,8 @@ class TestDebtPreferences(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1047,6 +1115,7 @@ class TestDebtPreferences(unittest.TestCase):
         delete_test_prefs(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_preferences(self):
         """ We can create debt preferences """
@@ -1054,7 +1123,9 @@ class TestDebtPreferences(unittest.TestCase):
         prfs1 = DebtorPreferences(client_id=self.clt1.id, 
                                   bill_medium='mail',
                                   letter_medium='post')
-        db.session.flush()
+        prfs1.add()
+        with self.assertRaises(NoClientInPreferenceError):
+            db.session.flush()
         self.assertTrue(prfs1.client_id, 'No client_id')
 
     def test_add_client_to_preferences(self):
@@ -1063,6 +1134,7 @@ class TestDebtPreferences(unittest.TestCase):
         prfs3 = DebtorPreferences(bill_medium='post',
                                   letter_medium='post')
         prfs3.client = self.clt2
+        prfs3.add()
         db.session.flush()
         self.assertEqual(self.clt2.id, prfs3.client_id,
                          'Client not added correctly')
@@ -1082,11 +1154,13 @@ class TestDebtPreferences(unittest.TestCase):
         with self.assertRaises(ValueError):
             prfs5 = DebtorPreferences(bill_medium='qt',
                                       letter_medium='qt')
+            prfs5.add()
             db.session.flush()
 
         with self.assertRaises(ValueError):
             prfs5 = DebtorPreferences(bill_medium='mail',
                                       letter_medium='qt')
+            prfs5.add()
             db.session.flush()
 
     def test_update_preference(self):

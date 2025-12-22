@@ -25,7 +25,7 @@ overdue processing.
 
 from datetime import date, timedelta, datetime
 from debtors import db
-from sqlalchemy.orm import (validates, load_only, aliased)
+from sqlalchemy.orm import (validates, load_only, aliased, mapped_column)
 from debtors import app
 from debtmodels.debtbilling import Bills
 from debtmodels.payments import IncomingAmounts
@@ -89,8 +89,10 @@ class OverdueSteps(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     number_of_days = db.Column(db.Integer, default=30, nullable=False)
+    # number_of_days = mapped_column(db.Integer, default=30, nullable=False)
     step_name = db.Column(db.String(30), nullable=False)
     processor = db.Column(db.String(30), nullable=True)
+    in_actions = db.relationship("OverdueActions", back_populates="step")
 
     def add(self):
         """ Add step to the table """
@@ -149,7 +151,7 @@ class OverdueSteps(db.Model):
         """ Get a list of days and steps ordered by number of days """
 
         return db.session.query(OverdueSteps).\
-            options(load_only("number_of_days", "id")).\
+            options(load_only(cls.number_of_days, cls.id)).\
             order_by(cls.number_of_days.desc()).all()
 
     @classmethod
@@ -189,7 +191,7 @@ class OverdueActions(db.Model):
     date_action = db.Column(db.DateTime, nullable=False,
                             default=datetime.now)
     bill = db.relationship("Bills", backref="overdue_actions")
-    step = db.relationship("OverdueSteps", uselist=False)
+    step = db.relationship("OverdueSteps", uselist=False, back_populates="in_actions")
 
     def add(self):
         """ Add this action to the session """

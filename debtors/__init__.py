@@ -19,13 +19,18 @@ import logging
 import configparser
 import locale as locale_module
 from flask import Flask
+from sqlalchemy.orm import declarative_base
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+
+
+Base = declarative_base()
 
 app = Flask('debtors')
 app.config.from_pyfile('localdebtors.cfg')
 config = app.config
-db = SQLAlchemy(app, {"session_options" : "READ_UNCOMMITTED"})
+db = SQLAlchemy(model_class=Base)
+db.init_app(app)
 CSRFProtect(app)
 locale_module.setlocale(locale_module.LC_ALL, '')
 locale = locale_module.localeconv()

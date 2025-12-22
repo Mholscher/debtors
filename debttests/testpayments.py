@@ -38,6 +38,8 @@ class TestCreatePayment(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         #create_bills(self)
@@ -50,6 +52,7 @@ class TestCreatePayment(unittest.TestCase):
         #delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_incoming_amount(self):
         """ We can create an incoming amount """
@@ -141,6 +144,8 @@ class TestCAMTEntryHandler(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.camthandler = CAMT53Handler()
         self.camthandler.entries = []
         self.camthandler.creation_timestamp =\
@@ -152,6 +157,7 @@ class TestCAMTEntryHandler(unittest.TestCase):
 
         self.camthandler = None
         parser = None
+        self.ctx.pop()
 
     def test_create_unassigned_amount(self):
         """ We can create an unassigned amount in the handler """
@@ -229,6 +235,9 @@ class TestCAMTEntryHandler(unittest.TestCase):
 class TestMoreTransactions(unittest.TestCase):
 
     def setUp(self):
+
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.camthandler = CAMT53Handler()
         self.parser = make_parser()
         self.parser.setContentHandler(self.camthandler)
@@ -242,6 +251,7 @@ class TestMoreTransactions(unittest.TestCase):
         delete_amountq(self)
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_multiple_entries(self):
         """ We can parse more than one entry """
@@ -320,6 +330,8 @@ class TestAssignAmounts(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -336,6 +348,7 @@ class TestAssignAmounts(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_assigning_tried(self):
         """ Adding a payment triggers assigning attempt """
@@ -367,6 +380,7 @@ class TestAssignAmounts(unittest.TestCase):
                                 payment_amount=48876,
                                 debcred = 'Cr')
         incoming_amount.client = self.clt4
+        incoming_amount.add()
         db.session.flush()
         self.assertIn(incoming_amount, self.clt4.payments,
                       'Payment not in clients payments')
@@ -383,6 +397,7 @@ class TestAssignAmounts(unittest.TestCase):
         db.session.flush()
         aa06 = AssignedAmounts(ccy='JPY',
                                amount_assigned=1000)
+        aa06.add()
         aa06.bill = self.bll4
         db.session.flush()
         self.assertIn(aa06, self.bll4.assignments, "Not assigned to bill")
@@ -398,6 +413,7 @@ class TestAssignAmounts(unittest.TestCase):
         ia20.add()
         db.session.flush()
         aa07 = ia20.assign_to_bill(self.bll4)
+        db.session.flush()
         self.assertIn(aa07, ia20.used_in, "Not assigned to amount")
 
     def test_incoming_amount_bill_must_be_same_ccy(self):
@@ -479,6 +495,7 @@ class TestAssignAmounts(unittest.TestCase):
                                 debcred='Cr',
                                 value_date=date(2021, 7, 12))
         ia111.client = self.clt4
+        ia111.add()
         bll15 = Bills(billing_ccy='EUR',
                                 date_sale=date(2021, 7, 8),
                                 date_bill=date(2021, 7, 8),
@@ -504,6 +521,7 @@ class TestAssignAmounts(unittest.TestCase):
                                 debcred='Cr',
                                 value_date=date(2021, 8, 3))
         ia113.client = self.clt4
+        ia113.add()
         bll15 = Bills(billing_ccy='EUR',
                                 date_sale=date(2021, 8, 1),
                                 date_bill=date(2021, 8, 1),
@@ -523,6 +541,8 @@ class TestAssignment(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -549,6 +569,7 @@ class TestAssignment(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_assign_thru_account(self):
         """ We can assign if we know the other account """
@@ -860,6 +881,8 @@ class TestAssignToPayment(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -899,6 +922,7 @@ class TestAssignToPayment(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_shows_payment(self):
         """ The assignment page shows a payment for a reference """
@@ -964,6 +988,7 @@ class TestAssignToPayment(unittest.TestCase):
                                amount_assigned=4456)
         aa14.from_amount = self.ia38
         aa14.to_amount = self.ia39
+        aa14.add()
         db.session.flush()
         self.assertIn(aa14, self.ia39.from_amt, 
                          "Back link not set")
@@ -1001,6 +1026,7 @@ class TestAssignToPayment(unittest.TestCase):
         aa17 = AssignedAmounts(ccy='EUR',
                                amount_assigned=22)
         aa17.from_amount = self.ia38
+        aa17.add()
         db.session.flush()
         aa18 = self.ia38.assign_to_amount(self.ia39)
         self.assertEqual(self.ia39.payment_amount, 4434,
@@ -1202,6 +1228,8 @@ class TestAssignmentReversal(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1241,6 +1269,7 @@ class TestAssignmentReversal(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_reversable_assignments(self):
         """ Get assignments for the payment whose assignment(s) to reverse """
@@ -1387,6 +1416,8 @@ class TestAssignmentReversalTransactions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1428,6 +1459,7 @@ class TestAssignmentReversalTransactions(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_one_assignment(self):
         """ Get one assignment if there is only one """
@@ -1516,6 +1548,8 @@ class TestPaymentAccounting(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1544,6 +1578,8 @@ class TestPaymentAccounting(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
+
 
     def test_create_journal(self):
         """ From a payment a journal can be created """
@@ -1659,6 +1695,8 @@ class TestPaymentTransactions(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1687,6 +1725,7 @@ class TestPaymentTransactions(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_payment(self):
         """ We can retrieve a payment """
@@ -1760,6 +1799,7 @@ class TestPaymentTransactions(unittest.TestCase):
         client_id = self.clt3.id
         aa03 = AssignedAmounts(ccy='EUR', amount_assigned=3)
         aa03.from_amount=self.ia11
+        aa03.add()
         db.session.flush()
         rv = self.app.post('/payment/attach', data={'payment_id':
                                                     ia11_id,
@@ -1802,6 +1842,7 @@ class TestPaymentTransactions(unittest.TestCase):
                                debcred='Cr',
                                value_date=date(2022, 3, 17))
         ia117.client = self.clt3
+        ia117.add()
         db.session.flush()
         rv = self.app.get("/payment/" + str(ia117.id))
         self.assertEqual(rv.status_code, 200., "Transaction failed")
@@ -1883,6 +1924,8 @@ class TestPaymentAssignToPayment(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1911,6 +1954,7 @@ class TestPaymentAssignToPayment(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_put_selection(self):
         """ Get assignment page with selection by reference of payments """
@@ -2045,6 +2089,8 @@ class TestPaymentReversal(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -2070,6 +2116,7 @@ class TestPaymentReversal(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_can_request_reversal(self):
         """ We can request reversal page with a reversal """
@@ -2241,6 +2288,8 @@ class TestPaymentsAndDebt(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -2266,6 +2315,7 @@ class TestPaymentsAndDebt(unittest.TestCase):
         db.session.query(AssignedAmounts).delete()
         db.session.query(IncomingAmounts).delete()
         db.session.commit()
+        self.ctx.pop()
 
     def test_payment_on_screen(self):
         """ An unassigned payment appears on screen """
@@ -2305,6 +2355,7 @@ class TestPaymentsAndDebt(unittest.TestCase):
                                value_date=date(2021, 12, 30),
                                client_name="Aquamarijn")
         ia116.client = self.clt3
+        ia116.add()
         db.session.flush()
         rv = self.app.get("/debt/" + str(ia116.client.id))
         self.assertEqual(rv.status_code, 200, "Failed transaction")

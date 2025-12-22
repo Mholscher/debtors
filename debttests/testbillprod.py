@@ -19,7 +19,7 @@ import os
 from os.path import exists
 from datetime import datetime, date
 import unittest
-from debtors import db
+from debtors import db, app
 from debttests.helpers import (delete_test_clients, add_addresses,
     create_clients, spread_created_at, create_bills, add_lines_to_bills,
     delete_test_bills)
@@ -31,6 +31,8 @@ class TestPaperBillCreate(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -65,6 +67,7 @@ class TestPaperBillCreate(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_paper_bill(self):
         """ We can create a paper bill from the bill_dict"""
@@ -122,6 +125,8 @@ class TestPaperBillProcess(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -134,6 +139,7 @@ class TestPaperBillProcess(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_bill_text(self):
         """ Create a bill from a supplied bill_id """
@@ -154,6 +160,8 @@ class TestMailBill(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -166,6 +174,7 @@ class TestMailBill(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_can_create_text_document(self):
         """ We can create a text document """
@@ -215,6 +224,8 @@ class TestCreateAccounting(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -227,6 +238,7 @@ class TestCreateAccounting(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_accounting(self):
         """ We can create an accounting transaction """
@@ -268,6 +280,8 @@ class TestReversalAccounting(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -280,6 +294,7 @@ class TestReversalAccounting(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_accounting_replaced_bill(self):
         """ We create accounting for a replaced bill """
@@ -308,6 +323,8 @@ class TestCreateAnyBill(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -320,6 +337,7 @@ class TestCreateAnyBill(unittest.TestCase):
         delete_test_bills(self)
         delete_test_clients(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_bill_on_paper(self):
         """ We can create a paper bill through the any bill interface """
@@ -358,6 +376,7 @@ class TestCreateAnyBill(unittest.TestCase):
                                                      month=11,
                                                      day=21),
                     prev_bill=self.bll3.bill_id)
+        new.add()
         bill_line = BillLines(short_desc='Grater',
                         long_desc='A grater for cheese and vegetables',
                         number_of=1,

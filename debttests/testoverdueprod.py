@@ -19,7 +19,7 @@ import os, os.path
 import unittest
 from os.path import exists
 from datetime import date, timedelta
-from debtors import db
+from debtors import db, app
 from debttests.helpers import (create_clients, add_addresses,
                                create_bills, add_lines_to_bills,
                                delete_test_bills, delete_test_prefs,
@@ -44,7 +44,8 @@ class TestCreateOverdueDict(unittest.TestCase):
 
     def setUp(self):
 
-
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -63,6 +64,7 @@ class TestCreateOverdueDict(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_overdue_has_bill_data(self):
         """ An overdue dictionary should contain data for bill  """
@@ -140,6 +142,8 @@ class TestCreateFirstLetterProcessor(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.st21 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
                                 processor="firstletter")
@@ -151,6 +155,7 @@ class TestCreateFirstLetterProcessor(unittest.TestCase):
         db.session.rollback()
         delete_overdue_steps(self)
         OverdueProcessor.all_processors.clear()
+        self.ctx.pop()
 
     def test_create_processor(self):
         """ Create a firstletter processor """
@@ -179,6 +184,8 @@ class TestFirstLetterProcess(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -200,6 +207,7 @@ class TestFirstLetterProcess(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_processor_has_auxiliary_data(self):
         """ A processor must have its data  """
@@ -354,6 +362,8 @@ class TestFirstLetterContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.st22 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
                                 processor="firstletter")
@@ -378,6 +388,7 @@ class TestFirstLetterContent(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_instantiated_template_in_output(self):
         """ The template is in the output """
@@ -441,6 +452,8 @@ class TestFirstLetterMailContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         self.st23 = OverdueSteps(id=100, number_of_days=25, 
                                 step_name="First Letter",
                                 processor="firstletter")
@@ -467,6 +480,7 @@ class TestFirstLetterMailContent(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_bill_id_in_mail(self):
         """ The id of a bill needs to be present in the mail """
@@ -525,6 +539,8 @@ class TestCreateSecondLetterProcessor(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -546,6 +562,7 @@ class TestCreateSecondLetterProcessor(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_second_letter_processor_step(self):
         """ Create a second letter processor and add to all processors """
@@ -582,6 +599,8 @@ class TestSecondLetterProcess(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -614,6 +633,7 @@ class TestSecondLetterProcess(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_execute(self):
         """ Execute produces a second letter """
@@ -640,6 +660,8 @@ class TestSecondLetterContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -679,6 +701,7 @@ class TestSecondLetterContent(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_transfer_date_in_letter(self):
         """ The second overdue letter contains the transfer date """
@@ -725,6 +748,8 @@ class TestSecondMailContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -770,6 +795,7 @@ class TestSecondMailContent(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_bills_in_mail(self):
         """ The mail needs to show the overdue bill and other bills in debt """
@@ -826,6 +852,8 @@ class TestCreateDebtTransferProcessor(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -859,6 +887,7 @@ class TestCreateDebtTransferProcessor(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_get_transfer_date(self):
         """ We can get the transfer date from the transfer processor """
@@ -881,6 +910,8 @@ class TestDebtTransferProcess(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -913,6 +944,7 @@ class TestDebtTransferProcess(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_process_executed(self):
         """ The debt transfer process is ecxecuted """
@@ -965,6 +997,8 @@ class TestTransferMessageContent(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -998,6 +1032,7 @@ class TestTransferMessageContent(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_data_in_letter(self):
         """ Data like bill id and bill date in letter """
@@ -1120,6 +1155,8 @@ class TestCreateDubiousDebtor(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1153,6 +1190,7 @@ class TestCreateDubiousDebtor(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_can_create_processor(self):
         """ We can create a dubious debtor processor """
@@ -1173,6 +1211,8 @@ class TestDubiousDebtorProcess(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1211,6 +1251,7 @@ class TestDubiousDebtorProcess(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_create_dubious_signal(self):
         """ A dubious signal is created by the processor """
@@ -1360,6 +1401,8 @@ class TestTransactionTiming(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -1398,6 +1441,7 @@ class TestTransactionTiming(unittest.TestCase):
         delete_test_clients(self)
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_minimum_days_difference(self):
         """ The triggering bill must have a minimum time between steps """

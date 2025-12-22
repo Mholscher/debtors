@@ -150,6 +150,7 @@ class BillView(MethodView):
                 bill = Bills(billing_ccy=billing_ccy,
                             date_sale=date_sale,
                             prev_bill=prev_bill)
+                bill.add()
             bill.client = client
 
             for line in bill_form.lines.data:

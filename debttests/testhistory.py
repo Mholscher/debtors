@@ -31,10 +31,13 @@ from debtmodels.payments import IncomingAmounts
 from debtmodels.overdue import OverdueProcessor
 from debtviews.history import History
 
+
 class TestClientDataInMessages(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -56,6 +59,7 @@ class TestClientDataInMessages(unittest.TestCase):
         OverdueProcessor.all_processors.clear()
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_client_name_address_in_message(self):
         """ Name and address are in returned data """
@@ -213,6 +217,7 @@ class TestClientDataInMessages(unittest.TestCase):
                                       payment_amount=0,
                                       value_date=date.today())
         new_payment.client = self.clt5
+        new_payment.add()
         payment.assign_to_amount(new_payment)
         db.session.flush()
         his16 = History(client=self.clt5)
@@ -235,7 +240,9 @@ class TestClientDataInMessages(unittest.TestCase):
                                       payment_amount=0,
                                       value_date=date.today())
         new_payment.client = self.clt5
+        new_payment.add()
         another_payment.client = self.clt5
+        another_payment.add()
         first_payment.assign_to_amount(new_payment)
         another_payment.assign_to_amount(new_payment)
         db.session.flush()
@@ -266,6 +273,8 @@ class TestOverdueInHistory(unittest.TestCase):
 
     def setUp(self):
 
+        self.ctx = app.app_context()
+        self.ctx.push()
         create_clients(self)
         add_addresses(self)
         create_bills(self)
@@ -287,6 +296,7 @@ class TestOverdueInHistory(unittest.TestCase):
         OverdueProcessor.all_processors.clear()
         delete_overdue_steps(self)
         db.session.commit()
+        self.ctx.pop()
 
     def test_first_letter_in_history(self):
         """ A first letter appears in the history """
