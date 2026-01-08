@@ -41,10 +41,7 @@ class TestCreateBill(unittest.TestCase):
     def tearDown(self):
 
         db.session.rollback()
-        for a_bill in db.session.new:
-            print(a_bill.bill_id)
         delete_test_bills(self)
-        print(db.session.new)
         db.session.commit()
         self.ctx.pop()
 
@@ -195,7 +192,6 @@ class TestBillFromMessage(unittest.TestCase):
         """ We can create a bill from the dict """
 
         bill15 = Bills.create_from_dict(self.bill_dict)
-        print(bill15.bill_id)
         self.assertIn(bill15, self.clt1.bills, 'Bill not added')
 
     def test_invalid_client_fails(self):
@@ -686,7 +682,6 @@ class TestDebtEnquiries(unittest.TestCase):
         """ Amount formatting in debt view correct for currency """
 
         rv = self.app.get('debt/' + str(self.clt5.id))
-        print(rv.status)
         self.assertIn(b'1.880', rv.data, 'Total wrongly formatted')
         self.assertNotIn(b'1880', rv.data, 'Total wrongly formatted')
         # self.assertIn(b'1880', rv.data, 'Total wrongly formatted')
@@ -695,7 +690,6 @@ class TestDebtEnquiries(unittest.TestCase):
         """ Amount formatting in debt view correct for currency """
 
         rv = self.app.get('debt/' + str(self.clt3.id))
-        print(rv.status)
         self.assertIn(b'567,97', rv.data, 'Total wrongly formatted')
         self.assertNotIn(b'56797', rv.data, 'Total wrongly formatted')
         # self.assertIn(b'56797', rv.data, 'Total wrongly formatted')
@@ -738,7 +732,6 @@ class TestBillEnquiries(unittest.TestCase):
         bill_id = self.bll2.bill_id
         rv = self.app.get('/bill/' + str(self.bll2.bill_id) + '/details')
         self.assertEqual(200, rv.status_code, 'Unsuccessful bill get')
-        print(rv.data)
         self.assertIn(Bills.STATUS_NAME['paid'].encode(), rv.data,
                           'Bill status not in response') 
 

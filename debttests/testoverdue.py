@@ -377,6 +377,7 @@ class TestOverdueActionsFunctions(unittest.TestCase):
         # Sneak in an unreportable action
         unreportable = OverdueActions(date_action = date(year=2019, month=12,
                                                          day=8))
+        unreportable.add()
         unreportable.bill = self.bll2
         unreportable.step = self.st13
         db.session.flush()
