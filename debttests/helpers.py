@@ -189,42 +189,49 @@ def create_bills(instance):
                           status='new')
     instance.clt1.bills.append(instance.bll1)
     instance.bills.append(instance.bll1)
+    instance.bll1.add()
     instance.bll2 = Bills(date_sale=date.today(),
                           date_bill=date.today(),
                           billing_ccy = 'EUR',
                           status='paid')
     instance.clt1.bills.append(instance.bll2)
     instance.bills.append(instance.bll2)
+    instance.bll2.add()
     instance.bll3 = Bills(date_sale=date(year=2019, month=11, day=18),
                           billing_ccy='EUR',
                           date_bill=None,
                           status='new')
     instance.clt3.bills.append(instance.bll3)
     instance.bills.append(instance.bll3)
+    instance.bll3.add()
     instance.bll4 = Bills(date_sale=date(year=2022, month=2, day=18),
                           date_bill=date(year=2022, month=2, day=18),
                           billing_ccy='JPY',
                           status='issued')
     instance.clt5.bills.append(instance.bll4)
     instance.bills.append(instance.bll4)
+    instance.bll4.add()    
     instance.bll5 = Bills(date_sale=date(year=2020, month=3, day=2),
                           date_bill=None,
                           billing_ccy='JPY',
                           status='new')
     instance.clt5.bills.append(instance.bll5)
     instance.bills.append(instance.bll5)
+    instance.bll5.add()
     instance.bll6 = Bills(date_sale=date(year=2020, month=3, day=18),
                           date_bill=date(year=2020, month=3, day=19),
                           billing_ccy='EUR',
                           status='issued')
     instance.clt5.bills.append(instance.bll6)
     instance.bills.append(instance.bll6)
+    instance.bll6.add()
     instance.bll8 = Bills(date_sale=date(year=2020, month=2, day=18),
                           date_bill=date(year=2020, month=2, day=18),
                           billing_ccy = 'EUR',
                           status='issued')
     instance.clt1.bills.append(instance.bll8)
     instance.bills.append(instance.bll8)
+    instance.bll8.add()
 
 def create_bills_overdue(instance):
     """ Add some bills required for testing overdue """
